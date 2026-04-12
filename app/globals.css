@@ -1,0 +1,49 @@
+@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&family=Cairo:wght@400;600;700;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --cs-blue: #1E9CD7; --cs-blue-dark: #1578A8; --cs-blue-light: #E8F6FC;
+  --cs-red: #C0392B; --cs-orange: #E67E22; --cs-green: #27AE60;
+  --cs-gray: #2C3E50; --cs-gray-light: #F4F7FA; --cs-border: #E2EAF0;
+  --cs-text: #1A2332; --cs-text-muted: #6B7C93;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-family: 'Tajawal', sans-serif; direction: rtl; }
+body { background: var(--cs-gray-light); color: var(--cs-text); font-size: 14px; line-height: 1.6; }
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--cs-border); }
+::-webkit-scrollbar-thumb { background: var(--cs-blue); border-radius: 3px; }
+.card { background: white; border-radius: 12px; border: 1px solid var(--cs-border); box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+.stat-card { background: white; border-radius: 12px; padding: 20px; border: 1px solid var(--cs-border); transition: transform 0.15s, box-shadow 0.15s; }
+.stat-card:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(30,156,215,0.12); }
+.btn-primary { background: var(--cs-blue); color: white; border: none; padding: 8px 18px; border-radius: 8px; font-family: 'Tajawal',sans-serif; font-size: 14px; font-weight: 500; cursor: pointer; transition: background 0.15s; display: inline-flex; align-items: center; gap: 6px; }
+.btn-primary:hover { background: var(--cs-blue-dark); }
+.btn-secondary { background: white; color: var(--cs-blue); border: 1.5px solid var(--cs-blue); padding: 7px 18px; border-radius: 8px; font-family: 'Tajawal',sans-serif; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.15s; }
+.btn-secondary:hover { background: var(--cs-blue-light); }
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+th { background: var(--cs-gray-light); color: var(--cs-text-muted); font-weight: 600; font-size: 12px; text-transform: uppercase; padding: 10px 14px; text-align: right; border-bottom: 1px solid var(--cs-border); white-space: nowrap; }
+td { padding: 12px 14px; border-bottom: 1px solid var(--cs-border); font-size: 13.5px; vertical-align: middle; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--cs-blue-light); }
+.badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.badge-green { background: #E8F8EF; color: #1D7A43; }
+.badge-red { background: #FDECEA; color: #A32D2D; }
+.badge-amber { background: #FEF3E2; color: #854F0B; }
+.badge-blue { background: var(--cs-blue-light); color: var(--cs-blue-dark); }
+.badge-gray { background: #F0F4F8; color: #4A5568; }
+.form-input { width: 100%; padding: 9px 12px; border: 1.5px solid var(--cs-border); border-radius: 8px; font-family: 'Tajawal',sans-serif; font-size: 14px; color: var(--cs-text); background: white; transition: border-color 0.15s; outline: none; }
+.form-input:focus { border-color: var(--cs-blue); box-shadow: 0 0 0 3px rgba(30,156,215,0.1); }
+.form-label { display: block; font-size: 13px; font-weight: 600; color: var(--cs-text); margin-bottom: 5px; }
+.nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 14px; border-radius: 8px; cursor: pointer; transition: all 0.15s; color: var(--cs-text-muted); font-size: 13.5px; font-weight: 500; text-decoration: none; }
+.nav-item:hover { background: var(--cs-blue-light); color: var(--cs-blue); }
+.nav-item.active { background: var(--cs-blue); color: white; }
+.page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+.page-title { font-family: 'Cairo',sans-serif; font-size: 22px; font-weight: 700; color: var(--cs-text); }
+.page-subtitle { font-size: 13px; color: var(--cs-text-muted); margin-top: 2px; }
+@keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+.skeleton { background: linear-gradient(90deg,#f0f4f8 25%,#e2eaf0 50%,#f0f4f8 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 6px; }
+@media (max-width: 768px) { .sidebar { display: none !important; } .main-content { margin-right: 0 !important; padding-bottom: 70px; } }
