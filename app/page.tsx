@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import { LayoutDashboard, Users, FolderOpen, Wrench, DollarSign, Package, UserCheck, FileText, Bell, ChevronDown, AlertCircle, TrendingUp, Building2, Settings, Menu, X, BarChart3 } from 'lucide-react'
+import { LayoutDashboard, Users, FolderOpen, Wrench, DollarSign, Package, UserCheck, FileText, Bell, ChevronDown, AlertCircle, AlertTriangle, TrendingUp, Building2, Settings, Menu, X, BarChart3, Car, FileCheck } from 'lucide-react'
 import ClientsPage from '@/components/pages/ClientsPage'
 import ProjectsPage from '@/components/pages/ProjectsPage'
 import TechniciansPage from '@/components/pages/TechniciansPage'
@@ -10,6 +10,8 @@ import MaintenancePage from '@/components/pages/MaintenancePage'
 import InventoryPage from '@/components/pages/InventoryPage'
 import ExpensesPage from '@/components/pages/ExpensesPage'
 import ContractsPage from '@/components/pages/ContractsPage'
+import VehiclesPage from '@/components/pages/VehiclesPage'
+import CompanyDocsPage from '@/components/pages/CompanyDocsPage'
 
 const NAV = [
   { id: 'dashboard', label: 'لوحة التحكم', icon: LayoutDashboard },
@@ -27,12 +29,14 @@ const NAV = [
   ]},
   { id: 'hr_grp', label: 'الموارد البشرية', icon: UserCheck, children: [
     { id: 'technicians', label: 'الفنيون' },
+    { id: 'vehicles', label: 'المركبات' },
   ]},
   { id: 'inv_grp', label: 'المخزون', icon: Package, children: [
     { id: 'inventory', label: 'المخزون' },
   ]},
-  { id: 'con_grp', label: 'العقود', icon: FileText, children: [
+  { id: 'con_grp', label: 'العقود والوثائق', icon: FileText, children: [
     { id: 'contracts', label: 'عقود AMC' },
+    { id: 'company_docs', label: 'وثائق الشركة' },
   ]},
 ]
 
@@ -50,7 +54,7 @@ function StatCard({ label, value, icon: Icon, color, sub }: any) {
       <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between' }}>
         <div>
           <div style={{ fontSize:12, color:'var(--cs-text-muted)', fontWeight:600, marginBottom:6 }}>{label}</div>
-          <div style={{ fontSize:26, fontWeight:800, color:'var(--cs-text)', fontFamily:'Cairo,sans-serif' }}>{value ?? '—'}</div>
+          <div style={{ fontSize:24, fontWeight:800, color:'var(--cs-text)', fontFamily:'Cairo,sans-serif' }}>{value ?? '—'}</div>
           {sub && <div style={{ fontSize:12, color:'var(--cs-text-muted)', marginTop:4 }}>{sub}</div>}
         </div>
         <div style={{ background:color+'20', borderRadius:10, padding:10 }}>
@@ -61,18 +65,53 @@ function StatCard({ label, value, icon: Icon, color, sub }: any) {
   )
 }
 
-function Dashboard() {
+function AlertRow({ type, title, items, onNav }: any) {
+  const colors: any = { red: '#C0392B', amber: '#E67E22', blue: '#1E9CD7' }
+  const bgs: any = { red: '#FDECEA', amber: '#FEF3E2', blue: '#E8F6FC' }
+  const c = colors[type]; const bg = bgs[type]
+  if (!items || items.length === 0) return null
+  return (
+    <div style={{ background: bg, border: `1px solid ${c}30`, borderRadius: 10, padding: '12px 16px', marginBottom: 10 }}>
+      <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
+        <AlertTriangle size={15} color={c} />
+        <span style={{ fontSize:13, fontWeight:700, color:c }}>{title} ({items.length})</span>
+      </div>
+      <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+        {items.slice(0,5).map((item: any, i: number) => (
+          <div key={i} style={{ fontSize:12, color: c, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+            <span>{item.name}</span>
+            <span style={{ background: c+'15', padding:'1px 8px', borderRadius:10, fontWeight:600 }}>{item.detail}</span>
+          </div>
+        ))}
+        {items.length > 5 && <div style={{ fontSize:11, color:c, opacity:0.7 }}>+ {items.length - 5} أخرى</div>}
+      </div>
+    </div>
+  )
+}
+
+function Dashboard({ onNav }: { onNav: (id: string) => void }) {
   const [stats, setStats] = useState<any>({})
   const [loading, setLoading] = useState(true)
   const [recentProjects, setRecentProjects] = useState<any[]>([])
-  const [alerts, setAlerts] = useState<any[]>([])
+  const [alerts, setAlerts] = useState<any>({ expired: [], expiringSoon: [], expiringLater: [] })
 
   useEffect(() => {
     async function load() {
+      const today = new Date()
+      const in30 = new Date(today); in30.setDate(today.getDate() + 30)
+      const in60 = new Date(today); in60.setDate(today.getDate() + 60)
+      const todayStr = today.toISOString().split('T')[0]
+      const in30Str = in30.toISOString().split('T')[0]
+      const in60Str = in60.toISOString().split('T')[0]
+
       const [
         { count: cc }, { count: pc }, { count: tc },
         { data: invData }, { count: oc }, { count: ls },
         { data: projs }, { count: mo },
+        { data: techs },
+        { data: vehicles },
+        { data: docs },
+        { data: amcs },
       ] = await Promise.all([
         supabase.from('clients').select('*',{count:'exact',head:true}),
         supabase.from('projects').select('*',{count:'exact',head:true}).eq('status','In Progress'),
@@ -82,22 +121,56 @@ function Dashboard() {
         supabase.from('inventory').select('*',{count:'exact',head:true}).eq('status','Low Stock'),
         supabase.from('projects').select('project_name,status,completion_pct').order('created_at',{ascending:false}).limit(5),
         supabase.from('maintenance').select('*',{count:'exact',head:true}).eq('status','Overdue'),
+        supabase.from('technicians').select('full_name,residence_expiry,engineers_membership_exp').eq('status','Active'),
+        supabase.from('vehicles').select('plate_no,brand,model,insurance_expiry,registration_expiry'),
+        supabase.from('company_docs').select('doc_name,expiry_date'),
+        supabase.from('contracts_amc').select('contract_code,end_date,clients(company_name)').eq('status','Active'),
       ])
+
       const totalInv = invData?.reduce((s,r)=>s+(r.total_amount||0),0)||0
       const totalPaid = invData?.reduce((s,r)=>s+(r.paid_amount||0),0)||0
       setStats({ cc, pc, tc, totalInv, totalPaid, oc, ls, mo })
       setRecentProjects(projs||[])
-      const a:any[]=[]
-      if (oc) a.push({type:'red',msg:`${oc} فاتورة متأخرة`})
-      if (mo) a.push({type:'amber',msg:`${mo} صيانة متأخرة`})
-      if (ls) a.push({type:'blue',msg:`${ls} صنف مخزون منخفض`})
-      setAlerts(a)
+
+      // Build alerts
+      const expired: any[] = []
+      const expiringSoon: any[] = [] // within 30 days
+      const expiringLater: any[] = [] // 31-60 days
+
+      function addDoc(name: string, expiry: string, category: string) {
+        if (!expiry) return
+        const d = expiry.split('T')[0]
+        const daysLeft = Math.ceil((new Date(d).getTime() - today.getTime()) / 86400000)
+        const item = { name: `${category}: ${name}`, detail: daysLeft <= 0 ? 'منتهية' : `${daysLeft} يوم` }
+        if (daysLeft <= 0) expired.push(item)
+        else if (daysLeft <= 30) expiringSoon.push(item)
+        else if (daysLeft <= 60) expiringLater.push(item)
+      }
+
+      techs?.forEach((t: any) => {
+        if (t.residence_expiry) addDoc(t.full_name, t.residence_expiry, 'إقامة')
+        if (t.engineers_membership_exp) addDoc(t.full_name, t.engineers_membership_exp, 'عضوية')
+      })
+      vehicles?.forEach((v: any) => {
+        const name = `${v.brand||''} ${v.model||''} (${v.plate_no||''})`
+        if (v.insurance_expiry) addDoc(name, v.insurance_expiry, 'تأمين')
+        if (v.registration_expiry) addDoc(name, v.registration_expiry, 'استمارة')
+      })
+      docs?.forEach((d: any) => {
+        if (d.expiry_date) addDoc(d.doc_name, d.expiry_date, 'وثيقة')
+      })
+      amcs?.forEach((a: any) => {
+        if (a.end_date) addDoc(a.clients?.company_name || a.contract_code, a.end_date, 'عقد AMC')
+      })
+
+      setAlerts({ expired, expiringSoon, expiringLater })
       setLoading(false)
     }
     load()
   }, [])
 
   const fmt = (n:number) => new Intl.NumberFormat('ar-SA',{maximumFractionDigits:0}).format(n)+' ر.س'
+  const totalAlerts = alerts.expired.length + alerts.expiringSoon.length + alerts.expiringLater.length
 
   if (loading) return <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))',gap:16}}>{[...Array(8)].map((_,i)=><div key={i} className="skeleton" style={{height:100}}/>)}</div>
 
@@ -108,17 +181,34 @@ function Dashboard() {
           <div className="page-title">لوحة التحكم</div>
           <div className="page-subtitle">COOL SEASONS & DARAJA.STORE</div>
         </div>
+        {totalAlerts > 0 && (
+          <div style={{ background:'#FDECEA', border:'1px solid #C0392B30', borderRadius:8, padding:'8px 14px', display:'flex', alignItems:'center', gap:8 }}>
+            <AlertTriangle size={16} color="#C0392B" />
+            <span style={{ fontSize:13, fontWeight:700, color:'#C0392B' }}>{totalAlerts} تنبيه يحتاج انتباهك</span>
+          </div>
+        )}
       </div>
-      {alerts.length > 0 && (
-        <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:20}}>
-          {alerts.map((a,i)=>(
-            <div key={i} className={`badge badge-${a.type}`} style={{padding:'10px 14px',borderRadius:8,fontSize:13,display:'flex',alignItems:'center',gap:8}}>
-              <AlertCircle size={15}/> {a.msg}
-            </div>
-          ))}
+
+      {/* Document Alerts Section */}
+      {totalAlerts > 0 && (
+        <div className="card" style={{ padding:20, marginBottom:20, borderRight:'4px solid #C0392B' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:16 }}>
+            <AlertTriangle size={18} color="#C0392B" />
+            <span style={{ fontFamily:'Cairo,sans-serif', fontWeight:700, fontSize:16, color:'#C0392B' }}>تنبيهات الوثائق والتراخيص</span>
+          </div>
+          <AlertRow type="red" title="منتهية الصلاحية" items={alerts.expired} onNav={onNav} />
+          <AlertRow type="amber" title="تنتهي خلال 30 يوم" items={alerts.expiringSoon} onNav={onNav} />
+          <AlertRow type="blue" title="تنتهي خلال 60 يوم" items={alerts.expiringLater} onNav={onNav} />
+          <div style={{ display:'flex', gap:10, marginTop:12, flexWrap:'wrap' }}>
+            <button onClick={()=>onNav('technicians')} style={{ fontSize:12, background:'none', border:'1px solid var(--cs-border)', borderRadius:6, padding:'5px 12px', cursor:'pointer', color:'var(--cs-text-muted)' }}>← صفحة الفنيون</button>
+            <button onClick={()=>onNav('vehicles')} style={{ fontSize:12, background:'none', border:'1px solid var(--cs-border)', borderRadius:6, padding:'5px 12px', cursor:'pointer', color:'var(--cs-text-muted)' }}>← صفحة المركبات</button>
+            <button onClick={()=>onNav('company_docs')} style={{ fontSize:12, background:'none', border:'1px solid var(--cs-border)', borderRadius:6, padding:'5px 12px', cursor:'pointer', color:'var(--cs-text-muted)' }}>← وثائق الشركة</button>
+          </div>
         </div>
       )}
-      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(170px,1fr))',gap:14,marginBottom:24}}>
+
+      {/* Stats */}
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:14,marginBottom:24}}>
         <StatCard label="العملاء" value={stats.cc} icon={Users} color="var(--cs-blue)"/>
         <StatCard label="مشاريع جارية" value={stats.pc} icon={FolderOpen} color="var(--cs-green)"/>
         <StatCard label="الفنيون النشطون" value={stats.tc} icon={UserCheck} color="var(--cs-orange)"/>
@@ -128,25 +218,28 @@ function Dashboard() {
         <StatCard label="صيانة متأخرة" value={stats.mo} icon={Wrench} color="var(--cs-orange)"/>
         <StatCard label="مخزون منخفض" value={stats.ls} icon={Package} color="var(--cs-red)"/>
       </div>
+
       <div className="card" style={{padding:20}}>
         <div style={{fontFamily:'Cairo,sans-serif',fontWeight:700,fontSize:16,marginBottom:16}}>أحدث المشاريع</div>
         {recentProjects.length===0
-          ? <div style={{textAlign:'center',color:'var(--cs-text-muted)',padding:30}}>لا توجد بيانات بعد — ابدأ بإضافة مشاريع</div>
-          : <div className="table-wrap"><table><thead><tr><th>اسم المشروع</th><th>الحالة</th><th>الإنجاز</th></tr></thead>
-            <tbody>{recentProjects.map((p,i)=>(
-              <tr key={i}>
-                <td style={{fontWeight:600}}>{p.project_name}</td>
-                <td><span className={`badge ${p.status==='Completed'?'badge-green':p.status==='In Progress'?'badge-blue':'badge-gray'}`}>{p.status}</span></td>
-                <td>
-                  <div style={{display:'flex',alignItems:'center',gap:8}}>
-                    <div style={{flex:1,background:'var(--cs-border)',borderRadius:4,height:6}}>
-                      <div style={{width:`${p.completion_pct||0}%`,background:'var(--cs-blue)',height:6,borderRadius:4}}/>
+          ? <div style={{textAlign:'center',color:'var(--cs-text-muted)',padding:30}}>لا توجد مشاريع بعد</div>
+          : <div className="table-wrap"><table>
+              <thead><tr><th>اسم المشروع</th><th>الحالة</th><th>الإنجاز</th></tr></thead>
+              <tbody>{recentProjects.map((p,i)=>(
+                <tr key={i}>
+                  <td style={{fontWeight:600}}>{p.project_name}</td>
+                  <td><span className={`badge ${p.status==='Completed'?'badge-green':p.status==='In Progress'?'badge-blue':'badge-gray'}`}>{p.status}</span></td>
+                  <td>
+                    <div style={{display:'flex',alignItems:'center',gap:8,minWidth:100}}>
+                      <div style={{flex:1,background:'var(--cs-border)',borderRadius:4,height:6}}>
+                        <div style={{width:`${p.completion_pct||0}%`,background:'var(--cs-blue)',height:6,borderRadius:4}}/>
+                      </div>
+                      <span style={{fontSize:12,color:'var(--cs-text-muted)',minWidth:30}}>{p.completion_pct||0}%</span>
                     </div>
-                    <span style={{fontSize:12,color:'var(--cs-text-muted)',minWidth:30}}>{p.completion_pct||0}%</span>
-                  </div>
-                </td>
-              </tr>
-            ))}</tbody></table></div>
+                  </td>
+                </tr>
+              ))}</tbody>
+            </table></div>
         }
       </div>
     </div>
@@ -155,28 +248,25 @@ function Dashboard() {
 
 export default function Home() {
   const [page, setPage] = useState('dashboard')
-  const [open, setOpen] = useState<string[]>(['crm','ops'])
+  const [open, setOpen] = useState<string[]>(['crm','ops','hr_grp'])
   const [mob, setMob] = useState(false)
 
   const nav = (id:string) => { setPage(id); setMob(false) }
 
   function renderPage() {
     switch(page) {
-      case 'dashboard':   return <Dashboard/>
-      case 'clients':     return <ClientsPage/>
-      case 'projects':    return <ProjectsPage/>
-      case 'technicians': return <TechniciansPage/>
-      case 'invoices':    return <InvoicesPage/>
-      case 'maintenance': return <MaintenancePage/>
-      case 'inventory':   return <InventoryPage/>
-      case 'expenses':    return <ExpensesPage/>
-      case 'contracts':   return <ContractsPage/>
-      default: return (
-        <div style={{textAlign:'center',padding:60,color:'var(--cs-text-muted)'}}>
-          <BarChart3 size={40} style={{marginBottom:12,opacity:0.3}}/>
-          <div style={{fontWeight:600}}>هذه الصفحة قيد التطوير</div>
-        </div>
-      )
+      case 'dashboard':    return <Dashboard onNav={nav}/>
+      case 'clients':      return <ClientsPage/>
+      case 'projects':     return <ProjectsPage/>
+      case 'technicians':  return <TechniciansPage/>
+      case 'invoices':     return <InvoicesPage/>
+      case 'maintenance':  return <MaintenancePage/>
+      case 'inventory':    return <InventoryPage/>
+      case 'expenses':     return <ExpensesPage/>
+      case 'contracts':    return <ContractsPage/>
+      case 'vehicles':     return <VehiclesPage/>
+      case 'company_docs': return <CompanyDocsPage/>
+      default: return <div style={{textAlign:'center',padding:60,color:'var(--cs-text-muted)'}}><BarChart3 size={40} style={{marginBottom:12,opacity:0.3}}/><div style={{fontWeight:600}}>قيد التطوير</div></div>
     }
   }
 
@@ -184,9 +274,7 @@ export default function Home() {
     <div style={{display:'flex',flexDirection:'column',height:'100%'}}>
       <div style={{padding:'20px 16px 16px',borderBottom:'1px solid var(--cs-border)'}}>
         <div style={{display:'flex',alignItems:'center',gap:10}}>
-          <div style={{background:'var(--cs-blue)',borderRadius:10,width:36,height:36,display:'flex',alignItems:'center',justifyContent:'center'}}>
-            <Building2 size={18} color="white"/>
-          </div>
+          <div style={{background:'var(--cs-blue)',borderRadius:10,width:36,height:36,display:'flex',alignItems:'center',justifyContent:'center'}}><Building2 size={18} color="white"/></div>
           <div>
             <div style={{fontFamily:'Cairo,sans-serif',fontWeight:900,fontSize:13,color:'var(--cs-text)',lineHeight:1.2}}>COOL SEASONS</div>
             <div style={{fontSize:10,color:'var(--cs-text-muted)'}}>DARAJA.STORE</div>
@@ -226,12 +314,9 @@ export default function Home() {
 
   return (
     <div style={{display:'flex',minHeight:'100vh'}}>
-      {/* Desktop sidebar */}
       <aside style={{width:240,background:'white',borderLeft:'1px solid var(--cs-border)',position:'fixed',top:0,right:0,height:'100vh',zIndex:50,overflowY:'auto'}} className="sidebar">
         <SidebarContent/>
       </aside>
-
-      {/* Mobile overlay */}
       {mob && <>
         <div onClick={()=>setMob(false)} style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.4)',zIndex:99}}/>
         <aside style={{width:260,background:'white',position:'fixed',top:0,right:0,height:'100vh',zIndex:100,overflowY:'auto'}}>
@@ -242,7 +327,6 @@ export default function Home() {
           <SidebarContent/>
         </aside>
       </>}
-
       <main className="main-content" style={{flex:1,marginRight:240,minHeight:'100vh',display:'flex',flexDirection:'column'}}>
         <header style={{background:'white',borderBottom:'1px solid var(--cs-border)',padding:'0 24px',height:60,display:'flex',alignItems:'center',justifyContent:'space-between',position:'sticky',top:0,zIndex:40}}>
           <button onClick={()=>setMob(true)} style={{background:'none',border:'none',cursor:'pointer'}} id="mob-btn"><Menu size={22}/></button>
@@ -257,8 +341,6 @@ export default function Home() {
         </header>
         <div style={{flex:1,padding:24}}>{renderPage()}</div>
       </main>
-
-      {/* Mobile bottom nav */}
       <nav id="mob-nav" style={{display:'none',position:'fixed',bottom:0,left:0,right:0,background:'white',borderTop:'1px solid var(--cs-border)',zIndex:100,padding:'6px 0'}}>
         {MOBILE_NAV.map(item=>(
           <button key={item.id} onClick={()=>nav(item.id)} style={{flex:1,background:'none',border:'none',cursor:'pointer',display:'flex',flexDirection:'column',alignItems:'center',gap:3,padding:'4px 0',color:page===item.id?'var(--cs-blue)':'var(--cs-text-muted)',fontSize:10,fontFamily:'Tajawal,sans-serif',fontWeight:600}}>
@@ -266,14 +348,8 @@ export default function Home() {
           </button>
         ))}
       </nav>
-
       <style>{`
-        @media(max-width:768px){
-          .sidebar{display:none!important}
-          .main-content{margin-right:0!important;padding-bottom:70px}
-          #mob-nav{display:flex!important}
-          #mob-btn{display:flex!important}
-        }
+        @media(max-width:768px){.sidebar{display:none!important}.main-content{margin-right:0!important;padding-bottom:70px}#mob-nav{display:flex!important}#mob-btn{display:flex!important}}
         @media(min-width:769px){#mob-btn{display:none!important}}
       `}</style>
     </div>
