@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import { LayoutDashboard,Users,FolderOpen,Wrench,DollarSign,Package,UserCheck,FileText,Bell,ChevronDown,AlertCircle,AlertTriangle,TrendingUp,Building2,Settings,Menu,X,BarChart3,Car,Calendar,BarChart2 } from 'lucide-react'
+import { LayoutDashboard,Users,FolderOpen,Wrench,DollarSign,Package,UserCheck,FileText,Bell,ChevronDown,AlertCircle,AlertTriangle,TrendingUp,Building2,Settings,Menu,X,BarChart3,BarChart2,Trophy } from 'lucide-react'
 
 import ClientsPage from '@/components/pages/ClientsPage'
 import ProjectsPage from '@/components/pages/ProjectsPage'
@@ -30,6 +30,10 @@ import RecurringJobsPage from '@/components/pages/RecurringJobsPage'
 import FreonPage from '@/components/pages/FreonPage'
 import PurchaseOrdersPage from '@/components/pages/PurchaseOrdersPage'
 import EquipmentPage from '@/components/pages/EquipmentPage'
+import WarrantyPage from '@/components/pages/WarrantyPage'
+import ContractorPage from '@/components/pages/ContractorPage'
+import CustomerFollowupPage from '@/components/pages/CustomerFollowupPage'
+import TechLeaderboardPage from '@/components/pages/TechLeaderboardPage'
 
 const NAV = [
   { id:'dashboard', label:'لوحة التحكم', icon:LayoutDashboard },
@@ -37,6 +41,7 @@ const NAV = [
     {id:'clients',label:'العملاء'},
     {id:'quotations',label:'عروض الأسعار'},
     {id:'call_center',label:'Call Center'},
+    {id:'customer_followup',label:'متابعة العملاء'},
   ]},
   { id:'ops', label:'العمليات', icon:FolderOpen, children:[
     {id:'projects',label:'المشاريع'},
@@ -51,11 +56,13 @@ const NAV = [
   { id:'maint_grp', label:'الصيانة', icon:Wrench, children:[
     {id:'maintenance',label:'جدول الصيانة'},
     {id:'maint_report',label:'تقارير الصيانة'},
+    {id:'warranty',label:'الضمانات'},
   ]},
   { id:'hr_grp', label:'الموارد البشرية', icon:UserCheck, children:[
     {id:'technicians',label:'الفنيون'},
     {id:'hr_attendance',label:'الحضور'},
     {id:'commissions',label:'العمولات'},
+    {id:'leaderboard',label:'لوحة الأداء'},
     {id:'vehicles',label:'المركبات'},
   ]},
   { id:'inv_grp', label:'المخزون', icon:Package, children:[
@@ -72,6 +79,7 @@ const NAV = [
   ]},
   { id:'con_grp', label:'العقود والوثائق', icon:FileText, children:[
     {id:'contracts',label:'عقود AMC'},
+    {id:'contractors',label:'المقاولون'},
     {id:'company_docs',label:'وثائق الشركة'},
   ]},
 ]
@@ -101,8 +109,8 @@ function StatCard({label,value,icon:Icon,color}:any) {
 function AlertRow({type,title,items}:any) {
   const colors:any={red:'#C0392B',amber:'#E67E22',blue:'#1E9CD7'}
   const bgs:any={red:'#FDECEA',amber:'#FEF3E2',blue:'#E8F6FC'}
-  const c=colors[type];const bg=bgs[type]
-  if(!items||items.length===0)return null
+  const c=colors[type]; const bg=bgs[type]
+  if(!items||items.length===0) return null
   return (
     <div style={{background:bg,border:`1px solid ${c}30`,borderRadius:10,padding:'12px 16px',marginBottom:10}}>
       <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
@@ -131,12 +139,7 @@ function Dashboard({onNav}:{onNav:(id:string)=>void}) {
   useEffect(()=>{
     async function load() {
       const today=new Date()
-      const [
-        {count:cc},{count:pc},{count:tc},
-        {data:invData},{count:oc},{count:ls},
-        {data:projs},{count:mo},
-        {data:techs},{data:vehicles},{data:docs},{data:amcs},
-      ]=await Promise.all([
+      const [{count:cc},{count:pc},{count:tc},{data:invData},{count:oc},{count:ls},{data:projs},{count:mo},{data:techs},{data:vehicles},{data:docs},{data:amcs}]=await Promise.all([
         supabase.from('clients').select('*',{count:'exact',head:true}),
         supabase.from('projects').select('*',{count:'exact',head:true}).eq('status','In Progress'),
         supabase.from('technicians').select('*',{count:'exact',head:true}).eq('status','Active'),
@@ -156,25 +159,25 @@ function Dashboard({onNav}:{onNav:(id:string)=>void}) {
       setRecentProjects(projs||[])
       const expired:any[]=[],expiringSoon:any[]=[],expiringLater:any[]=[]
       function addDoc(name:string,expiry:string,cat:string){
-        if(!expiry)return
+        if(!expiry) return
         const d=expiry.split('T')[0]
         const days=Math.ceil((new Date(d).getTime()-today.getTime())/86400000)
         const item={name:`${cat}: ${name}`,detail:days<=0?'منتهية':`${days} يوم`}
-        if(days<=0)expired.push(item)
-        else if(days<=30)expiringSoon.push(item)
-        else if(days<=60)expiringLater.push(item)
+        if(days<=0) expired.push(item)
+        else if(days<=30) expiringSoon.push(item)
+        else if(days<=60) expiringLater.push(item)
       }
       techs?.forEach((t:any)=>{
-        if(t.residence_expiry)addDoc(t.full_name,t.residence_expiry,'إقامة')
-        if(t.engineers_membership_exp)addDoc(t.full_name,t.engineers_membership_exp,'عضوية')
+        if(t.residence_expiry) addDoc(t.full_name,t.residence_expiry,'إقامة')
+        if(t.engineers_membership_exp) addDoc(t.full_name,t.engineers_membership_exp,'عضوية')
       })
       vehicles?.forEach((v:any)=>{
-        const name=`${v.brand||''} ${v.model||''} (${v.plate_no||''})`
-        if(v.insurance_expiry)addDoc(name,v.insurance_expiry,'تأمين')
-        if(v.registration_expiry)addDoc(name,v.registration_expiry,'استمارة')
+        const n=`${v.brand||''} ${v.model||''} (${v.plate_no||''})`
+        if(v.insurance_expiry) addDoc(n,v.insurance_expiry,'تأمين')
+        if(v.registration_expiry) addDoc(n,v.registration_expiry,'استمارة')
       })
-      docs?.forEach((d:any)=>{if(d.expiry_date)addDoc(d.doc_name,d.expiry_date,'وثيقة')})
-      amcs?.forEach((a:any)=>{if(a.end_date)addDoc(a.clients?.company_name||a.contract_code,a.end_date,'عقد AMC')})
+      docs?.forEach((d:any)=>{if(d.expiry_date) addDoc(d.doc_name,d.expiry_date,'وثيقة')})
+      amcs?.forEach((a:any)=>{if(a.end_date) addDoc(a.clients?.company_name||a.contract_code,a.end_date,'عقد AMC')})
       setAlerts({expired,expiringSoon,expiringLater})
       setLoading(false)
     }
@@ -183,8 +186,7 @@ function Dashboard({onNav}:{onNav:(id:string)=>void}) {
 
   const fmt=(n:number)=>new Intl.NumberFormat('ar-SA',{maximumFractionDigits:0}).format(n)+' ر.س'
   const totalAlerts=alerts.expired.length+alerts.expiringSoon.length+alerts.expiringLater.length
-
-  if(loading)return<div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))',gap:16}}>{[...Array(8)].map((_,i)=><div key={i} className="skeleton" style={{height:100}}/>)}</div>
+  if(loading) return <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))',gap:16}}>{[...Array(8)].map((_,i)=><div key={i} className="skeleton" style={{height:100}}/>)}</div>
 
   return (
     <div>
@@ -243,34 +245,38 @@ export default function Home() {
 
   function renderPage() {
     switch(page) {
-      case 'dashboard':      return <Dashboard onNav={nav}/>
-      case 'clients':        return <ClientsPage/>
-      case 'projects':       return <ProjectsPage/>
-      case 'technicians':    return <TechniciansPage/>
-      case 'invoices':       return <InvoicesPage/>
-      case 'maintenance':    return <MaintenancePage/>
-      case 'maint_report':   return <MaintReportPage/>
-      case 'inventory':      return <InventoryPage/>
-      case 'expenses':       return <ExpensesPage/>
-      case 'contracts':      return <ContractsPage/>
-      case 'vehicles':       return <VehiclesPage/>
-      case 'company_docs':   return <CompanyDocsPage/>
-      case 'quotations':     return <QuotationsPage/>
-      case 'daily_logs':     return <DailyLogsPage/>
-      case 'punch_list':     return <PunchListPage/>
-      case 'change_orders':  return <ChangeOrdersPage/>
-      case 'hr_attendance':  return <HRAttendancePage/>
-      case 'call_center':    return <CallCenterPage/>
-      case 'commissions':    return <CommissionsPage/>
-      case 'dispatch':       return <DispatchBoardPage/>
-      case 'wip':            return <WIPPage/>
-      case 'job_costing':    return <JobCostingPage/>
-      case 'retention':      return <RetentionPage/>
-      case 'pricebook':      return <PricebookPage/>
-      case 'recurring_jobs': return <RecurringJobsPage/>
-      case 'freon':          return <FreonPage/>
-      case 'purchase_orders':return <PurchaseOrdersPage/>
-      case 'equipment':      return <EquipmentPage/>
+      case 'dashboard':         return <Dashboard onNav={nav}/>
+      case 'clients':           return <ClientsPage/>
+      case 'projects':          return <ProjectsPage/>
+      case 'technicians':       return <TechniciansPage/>
+      case 'invoices':          return <InvoicesPage/>
+      case 'maintenance':       return <MaintenancePage/>
+      case 'maint_report':      return <MaintReportPage/>
+      case 'inventory':         return <InventoryPage/>
+      case 'expenses':          return <ExpensesPage/>
+      case 'contracts':         return <ContractsPage/>
+      case 'vehicles':          return <VehiclesPage/>
+      case 'company_docs':      return <CompanyDocsPage/>
+      case 'quotations':        return <QuotationsPage/>
+      case 'daily_logs':        return <DailyLogsPage/>
+      case 'punch_list':        return <PunchListPage/>
+      case 'change_orders':     return <ChangeOrdersPage/>
+      case 'hr_attendance':     return <HRAttendancePage/>
+      case 'call_center':       return <CallCenterPage/>
+      case 'commissions':       return <CommissionsPage/>
+      case 'dispatch':          return <DispatchBoardPage/>
+      case 'wip':               return <WIPPage/>
+      case 'job_costing':       return <JobCostingPage/>
+      case 'retention':         return <RetentionPage/>
+      case 'pricebook':         return <PricebookPage/>
+      case 'recurring_jobs':    return <RecurringJobsPage/>
+      case 'freon':             return <FreonPage/>
+      case 'purchase_orders':   return <PurchaseOrdersPage/>
+      case 'equipment':         return <EquipmentPage/>
+      case 'warranty':          return <WarrantyPage/>
+      case 'contractors':       return <ContractorPage/>
+      case 'customer_followup': return <CustomerFollowupPage/>
+      case 'leaderboard':       return <TechLeaderboardPage/>
       default: return <div style={{textAlign:'center',padding:60,color:'var(--cs-text-muted)'}}><BarChart3 size={40} style={{marginBottom:12,opacity:0.3}}/><div style={{fontWeight:600}}>قيد التطوير</div></div>
     }
   }
