@@ -34,6 +34,10 @@ import WarrantyPage from '@/components/pages/WarrantyPage'
 import ContractorPage from '@/components/pages/ContractorPage'
 import CustomerFollowupPage from '@/components/pages/CustomerFollowupPage'
 import TechLeaderboardPage from '@/components/pages/TechLeaderboardPage'
+import CashFlowPage from '@/components/pages/CashFlowPage'
+import FlatRatePage from '@/components/pages/FlatRatePage'
+import CopperPipePage from '@/components/pages/CopperPipePage'
+import DuctWorksPage from '@/components/pages/DuctWorksPage'
 
 const NAV = [
   { id:'dashboard', label:'لوحة التحكم', icon:LayoutDashboard },
@@ -71,11 +75,15 @@ const NAV = [
     {id:'equipment',label:'المعدات المركّبة'},
     {id:'freon',label:'سجل الفريون'},
     {id:'pricebook',label:'كتالوج الأسعار'},
+    {id:'flat_rate',label:'أسعار ثابتة Flat Rate'},
+    {id:'copper_pipe',label:'مواسير النحاس'},
+    {id:'duct_works',label:'أعمال الدكت'},
   ]},
   { id:'finance_grp', label:'المالية', icon:BarChart2, children:[
     {id:'wip',label:'تقرير WIP'},
     {id:'job_costing',label:'تكاليف المشاريع'},
     {id:'retention',label:'مبالغ الضمان'},
+    {id:'cash_flow',label:'التدفق النقدي'},
   ]},
   { id:'con_grp', label:'العقود والوثائق', icon:FileText, children:[
     {id:'contracts',label:'عقود AMC'},
@@ -277,6 +285,10 @@ export default function Home() {
       case 'contractors':       return <ContractorPage/>
       case 'customer_followup': return <CustomerFollowupPage/>
       case 'leaderboard':       return <TechLeaderboardPage/>
+      case 'cash_flow':         return <CashFlowPage/>
+      case 'flat_rate':         return <FlatRatePage/>
+      case 'copper_pipe':       return <CopperPipePage/>
+      case 'duct_works':        return <DuctWorksPage/>
       default: return <div style={{textAlign:'center',padding:60,color:'var(--cs-text-muted)'}}><BarChart3 size={40} style={{marginBottom:12,opacity:0.3}}/><div style={{fontWeight:600}}>قيد التطوير</div></div>
     }
   }
