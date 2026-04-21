@@ -34,6 +34,14 @@ import WarrantyPage from '@/components/pages/WarrantyPage'
 import ContractorPage from '@/components/pages/ContractorPage'
 import CustomerFollowupPage from '@/components/pages/CustomerFollowupPage'
 import TechLeaderboardPage from '@/components/pages/TechLeaderboardPage'
+import UnsoldEstimatesPage from '@/components/pages/UnsoldEstimatesPage'
+import AMCDashboardPage from '@/components/pages/AMCDashboardPage'
+import CapacityPlanPage from '@/components/pages/CapacityPlanPage'
+import ClientCardPage from '@/components/pages/ClientCardPage'
+import JobChecklistsPage from '@/components/pages/JobChecklistsPage'
+import MultiQuotesPage from '@/components/pages/MultiQuotesPage'
+import MonthlyReportPage from '@/components/pages/MonthlyReportPage'
+import SupplierComparePage from '@/components/pages/SupplierComparePage'
 import CashFlowPage from '@/components/pages/CashFlowPage'
 import FlatRatePage from '@/components/pages/FlatRatePage'
 import CopperPipePage from '@/components/pages/CopperPipePage'
@@ -46,6 +54,9 @@ const NAV = [
     {id:'quotations',label:'عروض الأسعار'},
     {id:'call_center',label:'Call Center'},
     {id:'customer_followup',label:'متابعة العملاء'},
+    {id:'unsold_estimates',label:'العروض المعلقة'},
+    {id:'client_card',label:'بطاقة العميل'},
+    {id:'multi_quotes',label:'عروض متعددة الخيارات'},
   ]},
   { id:'ops', label:'العمليات', icon:FolderOpen, children:[
     {id:'projects',label:'المشاريع'},
@@ -56,6 +67,7 @@ const NAV = [
     {id:'punch_list',label:'Punch List'},
     {id:'daily_logs',label:'السجل اليومي'},
     {id:'recurring_jobs',label:'أعمال متكررة'},
+    {id:'job_checklists',label:'قوائم الفحص'},
   ]},
   { id:'maint_grp', label:'الصيانة', icon:Wrench, children:[
     {id:'maintenance',label:'جدول الصيانة'},
@@ -75,6 +87,7 @@ const NAV = [
     {id:'equipment',label:'المعدات المركّبة'},
     {id:'freon',label:'سجل الفريون'},
     {id:'pricebook',label:'كتالوج الأسعار'},
+    {id:'supplier_compare',label:'مقارنة الموردين'},
     {id:'flat_rate',label:'أسعار ثابتة Flat Rate'},
     {id:'copper_pipe',label:'مواسير النحاس'},
     {id:'duct_works',label:'أعمال الدكت'},
@@ -84,9 +97,12 @@ const NAV = [
     {id:'job_costing',label:'تكاليف المشاريع'},
     {id:'retention',label:'مبالغ الضمان'},
     {id:'cash_flow',label:'التدفق النقدي'},
+    {id:'capacity_plan',label:'خطة الطاقة الإنتاجية'},
+    {id:'monthly_report',label:'التقرير الشهري'},
   ]},
   { id:'con_grp', label:'العقود والوثائق', icon:FileText, children:[
     {id:'contracts',label:'عقود AMC'},
+    {id:'amc_dashboard',label:'لوحة AMC'},
     {id:'contractors',label:'المقاولون'},
     {id:'company_docs',label:'وثائق الشركة'},
   ]},
@@ -284,7 +300,15 @@ export default function Home() {
       case 'warranty':          return <WarrantyPage/>
       case 'contractors':       return <ContractorPage/>
       case 'customer_followup': return <CustomerFollowupPage/>
-      case 'leaderboard':       return <TechLeaderboardPage/>
+      case 'leaderboard':         return <TechLeaderboardPage/>
+      case 'unsold_estimates':  return <UnsoldEstimatesPage/>
+      case 'amc_dashboard':     return <AMCDashboardPage/>
+      case 'capacity_plan':     return <CapacityPlanPage/>
+      case 'client_card':       return <ClientCardPage/>
+      case 'job_checklists':    return <JobChecklistsPage/>
+      case 'multi_quotes':      return <MultiQuotesPage/>
+      case 'monthly_report':    return <MonthlyReportPage/>
+      case 'supplier_compare':  return <SupplierComparePage/>
       case 'cash_flow':         return <CashFlowPage/>
       case 'flat_rate':         return <FlatRatePage/>
       case 'copper_pipe':       return <CopperPipePage/>
