@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import { LayoutDashboard,Users,FolderOpen,Wrench,DollarSign,Package,UserCheck,FileText,Bell,ChevronDown,AlertCircle,AlertTriangle,TrendingUp,Building2,Settings,Menu,X,BarChart3,BarChart2,Trophy } from 'lucide-react'
+import { LayoutDashboard,Users,FolderOpen,Wrench,DollarSign,Package,UserCheck,FileText,Bell,ChevronDown,AlertCircle,AlertTriangle,TrendingUp,Building2,Settings,Menu,X,BarChart3,BarChart2 } from 'lucide-react'
 
 import ClientsPage from '@/components/pages/ClientsPage'
 import ProjectsPage from '@/components/pages/ProjectsPage'
@@ -56,17 +56,16 @@ const NAV = [
   { id:'crm', label:'CRM', icon:Users, children:[
     {id:'clients',label:'العملاء'},
     {id:'quotations',label:'عروض الأسعار'},
+    {id:'multi_quotes',label:'عروض متعددة الخيارات'},
     {id:'call_center',label:'Call Center'},
     {id:'customer_followup',label:'متابعة العملاء'},
     {id:'unsold_estimates',label:'العروض المعلقة'},
     {id:'client_card',label:'بطاقة العميل'},
-    {id:'multi_quotes',label:'عروض متعددة الخيارات'},
   ]},
   { id:'ops', label:'العمليات', icon:FolderOpen, children:[
     {id:'projects',label:'المشاريع'},
     {id:'dispatch',label:'Dispatch Board'},
-    {id:'gantt',label:'مخطط جانت Gantt'},
-    {id:'print_project',label:'طباعة أمر المشروع'},
+    {id:'gantt',label:'مخطط جانت'},
     {id:'invoices',label:'الفواتير'},
     {id:'expenses',label:'المصروفات'},
     {id:'change_orders',label:'أوامر التغيير'},
@@ -74,7 +73,6 @@ const NAV = [
     {id:'daily_logs',label:'السجل اليومي'},
     {id:'recurring_jobs',label:'أعمال متكررة'},
     {id:'job_checklists',label:'قوائم الفحص'},
-    {id:'gantt',label:'مخطط جانت Gantt'},
     {id:'print_project',label:'طباعة أمر المشروع'},
   ]},
   { id:'maint_grp', label:'الصيانة', icon:Wrench, children:[
@@ -95,10 +93,10 @@ const NAV = [
     {id:'equipment',label:'المعدات المركّبة'},
     {id:'freon',label:'سجل الفريون'},
     {id:'pricebook',label:'كتالوج الأسعار'},
-    {id:'supplier_compare',label:'مقارنة الموردين'},
-    {id:'flat_rate',label:'أسعار ثابتة Flat Rate'},
+    {id:'flat_rate',label:'أسعار ثابتة'},
     {id:'copper_pipe',label:'مواسير النحاس'},
     {id:'duct_works',label:'أعمال الدكت'},
+    {id:'supplier_compare',label:'مقارنة الموردين'},
   ]},
   { id:'finance_grp', label:'المالية', icon:BarChart2, children:[
     {id:'wip',label:'تقرير WIP'},
@@ -108,7 +106,6 @@ const NAV = [
     {id:'capacity_plan',label:'خطة الطاقة الإنتاجية'},
     {id:'monthly_report',label:'التقرير الشهري'},
     {id:'reports',label:'التقارير والإحصاءات'},
-    {id:'reports',label:'التقارير الإجمالية'},
   ]},
   { id:'con_grp', label:'العقود والوثائق', icon:FileText, children:[
     {id:'contracts',label:'عقود AMC'},
@@ -310,13 +307,9 @@ export default function Home() {
       case 'warranty':          return <WarrantyPage/>
       case 'contractors':       return <ContractorPage/>
       case 'customer_followup': return <CustomerFollowupPage/>
-      case 'leaderboard':         return <TechLeaderboardPage/>
+      case 'leaderboard':       return <TechLeaderboardPage/>
       case 'gantt':             return <GanttPage/>
-      case 'print_project':    return <PrintProjectPage/>
-      case 'reports':           return <ReportsPage/>
-      case 'settings_page':     return <SettingsPage/>
-      case 'gantt':             return <GanttPage/>
-      case 'print_project':    return <PrintProjectPage/>
+      case 'print_project':     return <PrintProjectPage/>
       case 'reports':           return <ReportsPage/>
       case 'settings_page':     return <SettingsPage/>
       case 'unsold_estimates':  return <UnsoldEstimatesPage/>
