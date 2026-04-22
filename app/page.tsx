@@ -34,6 +34,9 @@ import WarrantyPage from '@/components/pages/WarrantyPage'
 import ContractorPage from '@/components/pages/ContractorPage'
 import CustomerFollowupPage from '@/components/pages/CustomerFollowupPage'
 import TechLeaderboardPage from '@/components/pages/TechLeaderboardPage'
+import GanttPage from '@/components/pages/GanttPage'
+import ReportsPage from '@/components/pages/ReportsPage'
+import SettingsPage from '@/components/pages/SettingsPage'
 import UnsoldEstimatesPage from '@/components/pages/UnsoldEstimatesPage'
 import AMCDashboardPage from '@/components/pages/AMCDashboardPage'
 import CapacityPlanPage from '@/components/pages/CapacityPlanPage'
@@ -61,6 +64,7 @@ const NAV = [
   { id:'ops', label:'العمليات', icon:FolderOpen, children:[
     {id:'projects',label:'المشاريع'},
     {id:'dispatch',label:'Dispatch Board'},
+    {id:'gantt',label:'مخطط جانت Gantt'},
     {id:'invoices',label:'الفواتير'},
     {id:'expenses',label:'المصروفات'},
     {id:'change_orders',label:'أوامر التغيير'},
@@ -68,6 +72,7 @@ const NAV = [
     {id:'daily_logs',label:'السجل اليومي'},
     {id:'recurring_jobs',label:'أعمال متكررة'},
     {id:'job_checklists',label:'قوائم الفحص'},
+    {id:'gantt',label:'مخطط جانت Gantt'},
   ]},
   { id:'maint_grp', label:'الصيانة', icon:Wrench, children:[
     {id:'maintenance',label:'جدول الصيانة'},
@@ -99,6 +104,8 @@ const NAV = [
     {id:'cash_flow',label:'التدفق النقدي'},
     {id:'capacity_plan',label:'خطة الطاقة الإنتاجية'},
     {id:'monthly_report',label:'التقرير الشهري'},
+    {id:'reports',label:'التقارير والإحصاءات'},
+    {id:'reports',label:'التقارير الإجمالية'},
   ]},
   { id:'con_grp', label:'العقود والوثائق', icon:FileText, children:[
     {id:'contracts',label:'عقود AMC'},
@@ -301,6 +308,12 @@ export default function Home() {
       case 'contractors':       return <ContractorPage/>
       case 'customer_followup': return <CustomerFollowupPage/>
       case 'leaderboard':         return <TechLeaderboardPage/>
+      case 'gantt':             return <GanttPage/>
+      case 'reports':           return <ReportsPage/>
+      case 'settings_page':     return <SettingsPage/>
+      case 'gantt':             return <GanttPage/>
+      case 'reports':           return <ReportsPage/>
+      case 'settings_page':     return <SettingsPage/>
       case 'unsold_estimates':  return <UnsoldEstimatesPage/>
       case 'amc_dashboard':     return <AMCDashboardPage/>
       case 'capacity_plan':     return <CapacityPlanPage/>
@@ -352,7 +365,7 @@ export default function Home() {
         ))}
       </nav>
       <div style={{padding:'12px 10px',borderTop:'1px solid var(--cs-border)'}}>
-        <div className="nav-item"><Settings size={16}/><span>الإعدادات</span></div>
+        <div className={`nav-item ${page==='settings_page'?'active':''}`} onClick={()=>nav('settings_page')}><Settings size={16}/><span>الإعدادات</span></div>
       </div>
     </div>
   )
