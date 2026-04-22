@@ -48,14 +48,13 @@ export default function FlatRatePage() {
     const payload = {
       service_code: form.service_code.trim(),
       service_name: form.service_name.trim(),
-      category: form.category,
+      category: form.category||null,
       labor_hours: parseFloat(form.labor_hours)||0,
-      labor_cost: laborCost,
       material_cost: parseFloat(form.material_cost)||0,
       price_economy: parseFloat(form.price_economy)||0,
       price_standard: parseFloat(form.price_standard)||0,
       price_premium: parseFloat(form.price_premium)||0,
-      status: form.status,
+      status: form.status||'نشط',
       notes: form.notes||null,
     }
     const {error} = editId

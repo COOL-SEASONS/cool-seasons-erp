@@ -64,11 +64,10 @@ export default function WarrantyPage() {
       warranty_code: form.warranty_code.trim(),
       project_id: form.project_id||null,
       client_id: form.client_id||null,
-      description: form.description||null,
-      warranty_type: form.warranty_type,
+      warranty_type: form.warranty_type||null,
       start_date: form.start_date||null,
       duration_months: parseInt(form.duration_months)||12,
-      notes: form.notes||null,
+      notes: (form.description ? form.description+' | ' : '') + (form.notes||'') || null,
     }
     const {error} = editId
       ? await supabase.from('warranty_tracking').update(payload).eq('id',editId)

@@ -57,10 +57,14 @@ export default function MultiQuotesPage() {
       description: form.description||null,
       quote_date: form.quote_date||null,
       expiry_date: form.expiry_date||null,
-      economy_price: ep, economy_total: Math.round(ep*1.15*100)/100,
-      standard_price: sp, standard_total: Math.round(sp*1.15*100)/100,
-      premium_price: pp, premium_total: Math.round(pp*1.15*100)/100,
-      status: form.status, accepted_tier: form.accepted_tier||null,
+      economy_price: ep,
+      economy_total: Math.round(ep*1.15*100)/100,
+      standard_price: sp,
+      standard_total: Math.round(sp*1.15*100)/100,
+      premium_price: pp,
+      premium_total: Math.round(pp*1.15*100)/100,
+      status: form.status,
+      accepted_tier: form.accepted_tier||null,
       notes: form.notes||null,
     }
     const {error} = editId

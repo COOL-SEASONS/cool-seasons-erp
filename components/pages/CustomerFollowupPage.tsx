@@ -53,11 +53,18 @@ export default function CustomerFollowupPage() {
     if(!form.followup_code.trim()){alert('الكود مطلوب');return}
     setSaving(true)
     const payload = {
-      followup_code:form.followup_code.trim(),client_id:form.client_id||null,
-      project_id:form.project_id||null,service_type:form.service_type||null,
-      scheduled_date:form.scheduled_date||null,contact_method:form.contact_method,
-      summary:form.summary||null,rating:form.rating,action_required:form.action_required,
-      next_date:form.next_date||null,assigned_to:form.assigned_to||null,status:form.status
+      followup_code:form.followup_code.trim(),
+      client_id:form.client_id||null,
+      project_id:form.project_id||null,
+      service_type:form.service_type||null,
+      scheduled_date:form.scheduled_date||null,
+      contact_method:form.contact_method||null,
+      summary:form.summary||null,
+      rating:form.rating||null,
+      action_required:form.action_required||null,
+      next_date:form.next_date||null,
+      assigned_to:form.assigned_to||null,
+      status:form.status||'مفتوح'
     }
     const {error} = editId
       ? await supabase.from('customer_followup').update(payload).eq('id',editId)

@@ -50,10 +50,16 @@ export default function SupplierComparePage() {
     const dDate = form.delivery_date||null
     const delivDays = (oDate&&dDate) ? Math.ceil((new Date(dDate).getTime()-new Date(oDate).getTime())/86400000) : (parseInt(form.delivery_days)||null)
     const payload = {
-      ref_no: form.ref_no.trim(), item_name: form.item_name||null, supplier: form.supplier.trim(),
+      ref_no: form.ref_no.trim(),
+      item_name: form.item_name||null,
+      supplier: form.supplier.trim(),
       qty, unit_price: up, total_amount: total,
-      order_date: oDate, delivery_date: dDate, delivery_days: delivDays,
-      quality: form.quality, reliability: form.reliability, notes: form.notes||null,
+      order_date: oDate||null,
+      delivery_date: dDate||null,
+      delivery_days: delivDays||null,
+      quality: form.quality||null,
+      reliability: form.reliability||null,
+      notes: form.notes||null,
     }
     const {error} = editId
       ? await supabase.from('supplier_compare').update(payload).eq('id',editId)

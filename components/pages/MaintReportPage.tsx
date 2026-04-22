@@ -4,6 +4,21 @@ import { supabase } from '@/lib/supabase'
 import { Plus, Search, Edit2, Trash2, X, Save } from 'lucide-react'
 
 const UNIT_TYPES = ['SPLIT','D.SPLIT','PACKAGED','VRF','CHILLER','FCU','AHU','أخرى']
+const PROBLEMS = [
+  'عطل كهربائي - Electrical Fault',
+  'نقص غاز - Gas Leak/Low Gas',
+  'كمبروسر معطل - Compressor Failure',
+  'مروحة معطلة - Fan Motor Fault',
+  'فلتر متسخ - Dirty Filter',
+  'تسريب مياه - Water Leak',
+  'ضعف تبريد - Poor Cooling',
+  'ضوضاء - Noise Issue',
+  'بورد تحكم - Control Board',
+  'كابيستر - Capacitor Fault',
+  'صمام تمدد - Expansion Valve',
+  'ريموت - Remote Control',
+  'أخرى - Other',
+]
 const EMPTY = { report_no:'', report_date: new Date().toISOString().split('T')[0], client_id:'', tech_id:'', company:'', customer:'', section:'', unit_type:'SPLIT', equipment:'', model:'', serial_no:'', complaint:'', problem:'', problem_detail:'', call_time:'', attend_time:'', done_time:'', parts_used:'', cost:0, status:'Open', customer_signature:'', notes:'' }
 
 export default function MaintReportPage() {
@@ -114,7 +129,7 @@ export default function MaintReportPage() {
             <div style={{background:'var(--cs-gray-light)',borderRadius:8,padding:'6px 12px',marginBottom:12,fontSize:12,fontWeight:700,color:'var(--cs-text-muted)'}}>تفاصيل العطل</div>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:14}}>
               <div style={{gridColumn:'1/-1'}}><label className="form-label">الشكوى / Complaint</label><input className="form-input" value={form.complaint||''} onChange={e=>setForm({...form,complaint:e.target.value})}/></div>
-              <div><label className="form-label">المشكلة / Problem</label><input className="form-input" value={form.problem||''} onChange={e=>setForm({...form,problem:e.target.value})}/></div>
+              <div><label className="form-label">المشكلة / Problem</label><select className="form-input" value={form.problem||''} onChange={e=>setForm({...form,problem:e.target.value})}><option value="">اختر المشكلة...</option>{PROBLEMS.map(p=><option key={p}>{p}</option>)}</select></div>
               <div><label className="form-label">التكلفة (ر.س)</label><input type="number" className="form-input" value={form.cost||0} onChange={e=>setForm({...form,cost:e.target.value})}/></div>
               <div><label className="form-label">وقت البلاغ</label><input type="time" className="form-input" value={form.call_time||''} onChange={e=>setForm({...form,call_time:e.target.value})}/></div>
               <div><label className="form-label">وقت الوصول</label><input type="time" className="form-input" value={form.attend_time||''} onChange={e=>setForm({...form,attend_time:e.target.value})}/></div>

@@ -64,12 +64,15 @@ export default function DuctWorksPage() {
     const perimeter = (w && h) ? Math.round(2*(w+h)/100*100)/100 : null
     const payload = {
       duct_id: form.duct_id.trim(),
-      client_id: form.client_id||null, project_id: form.project_id||null,
-      tech_id: form.tech_id||null, entry_date: form.entry_date||null,
-      duct_type: form.duct_type, unit: form.unit,
+      project_id: form.project_id||null,
+      tech_id: form.tech_id||null,
+      entry_date: form.entry_date||null,
+      duct_type: form.duct_type||null,
+      unit: form.unit||null,
       total_qty: total, delivered_qty: delivered, remaining_qty: remaining,
-      width_mm: w||null, height_mm: h||null, perimeter_m: perimeter,
-      grille_status: form.grille_status, notes: form.notes||null,
+      width_mm: w||null, height_mm: h||null, perimeter_m: perimeter||null,
+      grille_status: form.grille_status||null,
+      notes: (form.client_id ? `عميل: ${form.client_id} | ` : '') + (form.notes||'') || null,
     }
     const {error} = editId
       ? await supabase.from('duct_works').update(payload).eq('id',editId)

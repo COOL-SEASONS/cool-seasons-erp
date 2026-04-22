@@ -61,15 +61,13 @@ export default function CopperPipePage() {
       entry_date: form.entry_date||null,
       project_id: form.project_id||null,
       tech_id: form.tech_id||null,
-      pipe_size: form.pipe_size,
-      coils_count: coils,
+      pipe_size: form.pipe_size||null,
       meters_per_coil: mpc,
       total_meters_received: totalReceived,
       meters_installed: installed,
       remaining_meters: remaining,
       unit_price: parseFloat(form.unit_price)||0,
-      total_value: totalValue,
-      notes: form.notes||null,
+      notes: `لفات: ${coils} | ${form.notes||''}`.trim()||null,
     }
     const {error} = editId
       ? await supabase.from('copper_pipe').update(payload).eq('id',editId)

@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase'
 import { Plus, Search, Edit2, Trash2, X, Save } from 'lucide-react'
 
 const FREON_TYPES = ['R-22','R-32','R-410A','R-404A','R-407C','R-134A','R-507']
+const BRANDS = ['Honeywell','SRF','Dupont','Chemours','Mexichem','Daikin','Linde','فريون محلي','أخرى']
 const ORIGINS = ['أمريكي','هندي','صيني','كوري','أوروبي','مكسيكي']
 const OPERATIONS = ['استلام أسطوانة','استخدام لدى عميل']
 const EMPTY = { record_id:'', entry_date: new Date().toISOString().split('T')[0], transaction_type:'استلام أسطوانة', freon_type:'R-410A', origin:'أمريكي', brand:'', tech_id:'', client_id:'', project_id:'', cylinders_count:'', kg_used:'', price_per_kg:'', notes:'' }
@@ -140,7 +141,7 @@ export default function FreonPage() {
                   <div><label className="form-label">المشروع</label><select className="form-input" value={form.project_id||''} onChange={e=>setForm({...form,project_id:e.target.value})}><option value="">اختر...</option>{projects.map(p=><option key={p.id} value={p.id}>{p.project_name}</option>)}</select></div>
                 </>
               )}
-              <div><label className="form-label">الماركة / Brand</label><input className="form-input" placeholder="Honeywell, SRF..." value={form.brand||''} onChange={e=>setForm({...form,brand:e.target.value})}/></div>
+              <div><label className="form-label">الماركة / Brand</label><select className="form-input" value={form.brand||''} onChange={e=>setForm({...form,brand:e.target.value})}><option value="">اختر...</option>{BRANDS.map(b=><option key={b}>{b}</option>)}</select></div>
               <div><label className="form-label">بلد المنشأ</label><select className="form-input" value={form.origin||'أمريكي'} onChange={e=>setForm({...form,origin:e.target.value})}>{ORIGINS.map(o=><option key={o}>{o}</option>)}</select></div>
               <div style={{gridColumn:'1/-1'}}><label className="form-label">ملاحظات</label><textarea className="form-input" rows={2} value={form.notes||''} onChange={e=>setForm({...form,notes:e.target.value})}/></div>
             </div>
