@@ -35,6 +35,7 @@ import ContractorPage from '@/components/pages/ContractorPage'
 import CustomerFollowupPage from '@/components/pages/CustomerFollowupPage'
 import TechLeaderboardPage from '@/components/pages/TechLeaderboardPage'
 import GanttPage from '@/components/pages/GanttPage'
+import PrintProjectPage from '@/components/pages/PrintProjectPage'
 import ReportsPage from '@/components/pages/ReportsPage'
 import SettingsPage from '@/components/pages/SettingsPage'
 import UnsoldEstimatesPage from '@/components/pages/UnsoldEstimatesPage'
@@ -65,6 +66,7 @@ const NAV = [
     {id:'projects',label:'المشاريع'},
     {id:'dispatch',label:'Dispatch Board'},
     {id:'gantt',label:'مخطط جانت Gantt'},
+    {id:'print_project',label:'طباعة أمر المشروع'},
     {id:'invoices',label:'الفواتير'},
     {id:'expenses',label:'المصروفات'},
     {id:'change_orders',label:'أوامر التغيير'},
@@ -73,6 +75,7 @@ const NAV = [
     {id:'recurring_jobs',label:'أعمال متكررة'},
     {id:'job_checklists',label:'قوائم الفحص'},
     {id:'gantt',label:'مخطط جانت Gantt'},
+    {id:'print_project',label:'طباعة أمر المشروع'},
   ]},
   { id:'maint_grp', label:'الصيانة', icon:Wrench, children:[
     {id:'maintenance',label:'جدول الصيانة'},
@@ -309,9 +312,11 @@ export default function Home() {
       case 'customer_followup': return <CustomerFollowupPage/>
       case 'leaderboard':         return <TechLeaderboardPage/>
       case 'gantt':             return <GanttPage/>
+      case 'print_project':    return <PrintProjectPage/>
       case 'reports':           return <ReportsPage/>
       case 'settings_page':     return <SettingsPage/>
       case 'gantt':             return <GanttPage/>
+      case 'print_project':    return <PrintProjectPage/>
       case 'reports':           return <ReportsPage/>
       case 'settings_page':     return <SettingsPage/>
       case 'unsold_estimates':  return <UnsoldEstimatesPage/>
