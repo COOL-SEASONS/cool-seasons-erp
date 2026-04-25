@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { LayoutDashboard,Users,FolderOpen,Wrench,DollarSign,Package,UserCheck,FileText,Bell,ChevronDown,AlertCircle,AlertTriangle,TrendingUp,Building2,Settings,Menu,X,BarChart3,BarChart2 } from 'lucide-react'
 
+import DashboardContent from '@/components/pages/DashboardContent'
 import ClientsPage from '@/components/pages/ClientsPage'
 import ProjectsPage from '@/components/pages/ProjectsPage'
 import TechniciansPage from '@/components/pages/TechniciansPage'
@@ -276,7 +277,7 @@ export default function Home() {
 
   function renderPage() {
     switch(page) {
-      case 'dashboard':         return <Dashboard onNav={nav}/>
+      case 'dashboard':         return <DashboardContent onNav={nav}/>
       case 'clients':           return <ClientsPage/>
       case 'projects':          return <ProjectsPage/>
       case 'technicians':       return <TechniciansPage/>
@@ -406,4 +407,3 @@ export default function Home() {
     </div>
   )
 }
-
