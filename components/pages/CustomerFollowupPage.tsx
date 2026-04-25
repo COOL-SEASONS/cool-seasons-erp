@@ -1,16 +1,25 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import { Plus, Search, Edit2, Trash2, X, Save, AlertTriangle } from 'lucide-react'
+import { Plus, Search, Edit2, Trash2, X, Save, Printer, AlertTriangle } from 'lucide-react'
 
 const CONTACT_METHODS = ['مكالمة هاتفية','واتساب','بريد إلكتروني','زيارة ميدانية','رسالة نصية']
 const RATINGS = ['راضٍ جداً ⭐⭐⭐⭐⭐','راضٍ ⭐⭐⭐⭐','محايد ⭐⭐⭐','غير راضٍ ⭐⭐','شكوى رسمية ⭐']
 const ACTIONS = ['تم الإغلاق','متابعة مجدولة','عرض سعر مطلوب','إرسال تقرير','إصلاح مطلوب','لا يجاوب']
+
 const newForm = () => ({
-  followup_code:'', client_id:'', project_id:'',
-  service_type:'', scheduled_date: new Date().toISOString().split('T')[0],
-  contact_method:'مكالمة هاتفية', summary:'', rating:'راضٍ جداً ⭐⭐⭐⭐⭐',
-  action_required:'تم الإغلاق', next_date:'', assigned_to:'', status:'مفتوح'
+  followup_code:'',
+  client_id:'',
+  project_id:'',
+  scheduled_date: new Date().toISOString().split('T')[0],
+  contact_method:'مكالمة هاتفية',
+  rating:'راضٍ جداً ⭐⭐⭐⭐⭐',
+  action_required:'تم الإغلاق',
+  next_date:'',
+  assigned_to:'',
+  status:'مفتوح',
+  summary:'',
+  service_type:'',
 })
 
 export default function CustomerFollowupPage() {
@@ -24,11 +33,14 @@ export default function CustomerFollowupPage() {
   const [saving,setSaving] = useState(false)
   const [editId,setEditId] = useState<string|null>(null)
   const [form,setForm] = useState<any>(newForm())
+  const [viewItem,setViewItem] = useState<any>(null)
 
   const load = async () => {
     setLoading(true)
     const [{data:f},{data:c},{data:p},{data:t}] = await Promise.all([
-      supabase.from('customer_followup').select('*,clients(company_name),projects(project_name)').order('scheduled_date',{ascending:false}),
+      supabase.from('customer_followup')
+        .select('*,clients(company_name),projects(project_name)')
+        .order('created_at',{ascending:false}),
       supabase.from('clients').select('id,company_name'),
       supabase.from('projects').select('id,project_name'),
       supabase.from('technicians').select('id,full_name').eq('status','Active'),
@@ -40,63 +52,116 @@ export default function CustomerFollowupPage() {
 
   const openEdit = (r:any) => {
     setForm({
-      followup_code:r.followup_code||'',client_id:r.client_id||'',project_id:r.project_id||'',
-      service_type:r.service_type||'',scheduled_date:r.scheduled_date?.split('T')[0]||'',
-      contact_method:r.contact_method||'مكالمة هاتفية',summary:r.summary||'',
-      rating:r.rating||'راضٍ جداً ⭐⭐⭐⭐⭐',action_required:r.action_required||'تم الإغلاق',
-      next_date:r.next_date?.split('T')[0]||'',assigned_to:r.assigned_to||'',status:r.status||'مفتوح'
+      followup_code: r.followup_code||'',
+      client_id: r.client_id||'',
+      project_id: r.project_id||'',
+      scheduled_date: r.scheduled_date?.split('T')[0]||'',
+      contact_method: r.contact_method||'مكالمة هاتفية',
+      rating: r.rating||'راضٍ جداً ⭐⭐⭐⭐⭐',
+      action_required: r.action_required||'تم الإغلاق',
+      next_date: r.next_date?.split('T')[0]||'',
+      assigned_to: r.assigned_to||'',
+      status: r.status||'مفتوح',
+      summary: r.summary||'',
+      service_type: r.service_type||'',
     })
     setEditId(r.id); setModal(true)
   }
 
   const save = async () => {
-    if(!form.followup_code.trim()){alert('الكود مطلوب');return}
+    if(!form.followup_code.trim()){ alert('رقم المتابعة مطلوب'); return }
     setSaving(true)
-    const payload = {
-      followup_code:form.followup_code.trim(),
-      client_id:form.client_id||null,
-      project_id:form.project_id||null,
-      service_type:form.service_type||null,
-      scheduled_date:form.scheduled_date||null,
-      contact_method:form.contact_method||null,
-      summary:form.summary||null,
-      rating:form.rating||null,
-      action_required:form.action_required||null,
-      next_date:form.next_date||null,
-      assigned_to:form.assigned_to||null,
-      status:form.status||'مفتوح'
+    
+    // Build payload with only columns that exist, use notes as fallback
+    const extra = [
+      form.action_required ? `الإجراء: ${form.action_required}` : '',
+      form.service_type ? `الخدمة: ${form.service_type}` : '',
+      form.assigned_to ? `المسؤول: ${form.assigned_to}` : '',
+    ].filter(Boolean).join(' | ')
+
+    const payload:any = {
+      followup_code: form.followup_code.trim(),
+      client_id: form.client_id||null,
+      project_id: form.project_id||null,
+      scheduled_date: form.scheduled_date||null,
+      contact_method: form.contact_method||null,
+      rating: form.rating||null,
+      next_date: form.next_date||null,
+      status: form.status||'مفتوح',
+      summary: form.summary ? `${form.summary}${extra?' | '+extra:''}` : extra||null,
     }
+
+    // Try adding optional columns (exist after SQL migration)
+    try {
+      payload.action_required = form.action_required||null
+      payload.service_type = form.service_type||null
+      payload.assigned_to = form.assigned_to||null
+    } catch(_){}
+
     const {error} = editId
       ? await supabase.from('customer_followup').update(payload).eq('id',editId)
       : await supabase.from('customer_followup').insert(payload)
-    if(error) alert('خطأ: '+error.message)
-    else { setModal(false); load() }
+    
+    if(error){
+      // If error is about missing column, retry without it
+      if(error.message?.includes('action_required')||error.message?.includes('service_type')||error.message?.includes('assigned_to')){
+        const safePayload = {
+          followup_code: payload.followup_code,
+          client_id: payload.client_id,
+          project_id: payload.project_id,
+          scheduled_date: payload.scheduled_date,
+          contact_method: payload.contact_method,
+          rating: payload.rating,
+          next_date: payload.next_date,
+          status: payload.status,
+          summary: payload.summary,
+        }
+        const {error:err2} = editId
+          ? await supabase.from('customer_followup').update(safePayload).eq('id',editId)
+          : await supabase.from('customer_followup').insert(safePayload)
+        if(err2) alert('خطأ: '+err2.message)
+        else { setModal(false); load() }
+      } else {
+        alert('خطأ: '+error.message)
+      }
+    } else {
+      setModal(false); load()
+    }
     setSaving(false)
   }
 
   const del = async (id:string) => { if(!confirm('حذف؟'))return; await supabase.from('customer_followup').delete().eq('id',id); load() }
-
   const today = new Date().toISOString().split('T')[0]
   const todayFollowups = rows.filter(r=>r.scheduled_date?.split('T')[0]===today)
-  const complaints = rows.filter(r=>r.rating?.includes('شكوى'))
-  const filtered = rows.filter(r=>r.clients?.company_name?.toLowerCase().includes(search.toLowerCase())||r.followup_code?.includes(search))
+  const filtered = rows.filter(r=>
+    r.clients?.company_name?.toLowerCase().includes(search.toLowerCase())||
+    r.followup_code?.includes(search)
+  )
 
   return (
     <div>
       <div className="page-header">
         <div><div className="page-title">متابعة العملاء</div><div className="page-subtitle">{rows.length} متابعة</div></div>
-        <button className="btn-primary" onClick={()=>{setForm(newForm());setEditId(null);setModal(true)}}><Plus size={16}/>متابعة جديدة</button>
+        <div style={{display:'flex',gap:8}}>
+          <button onClick={()=>window.print()} style={{display:'flex',alignItems:'center',gap:6,background:'white',color:'var(--cs-blue)',border:'1px solid var(--cs-blue)',borderRadius:8,padding:'8px 14px',cursor:'pointer',fontSize:13,fontFamily:'Tajawal,sans-serif',fontWeight:600}}><Printer size={15}/>طباعة</button>
+          <button className="btn-primary" onClick={()=>{setForm(newForm());setEditId(null);setModal(true)}}><Plus size={16}/>متابعة جديدة</button>
+        </div>
       </div>
 
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(140px,1fr))',gap:12,marginBottom:16}}>
-        {[{l:'متابعات اليوم',v:todayFollowups.length,c:'var(--cs-blue)'},{l:'راضٍ جداً',v:rows.filter(r=>r.rating?.includes('جداً')).length,c:'var(--cs-green)'},{l:'شكاوى مفتوحة',v:complaints.length,c:'var(--cs-red)'},{l:'متابعة مطلوبة',v:rows.filter(r=>r.status==='مفتوح').length,c:'var(--cs-orange)'}].map((s,i)=>(
-          <div key={i} className="stat-card"><div style={{fontSize:11,color:'var(--cs-text-muted)',fontWeight:600,marginBottom:4}}>{s.l}</div><div style={{fontSize:20,fontWeight:800,color:s.c}}>{s.v}</div></div>
+        {[
+          {l:'متابعات اليوم',v:todayFollowups.length,c:'var(--cs-blue)'},
+          {l:'راضٍ جداً',v:rows.filter(r=>r.rating?.includes('جداً')).length,c:'var(--cs-green)'},
+          {l:'شكاوى',v:rows.filter(r=>r.rating?.includes('شكوى')).length,c:'var(--cs-red)'},
+          {l:'مفتوحة',v:rows.filter(r=>r.status==='مفتوح').length,c:'var(--cs-orange)'},
+        ].map((s,i)=>(
+          <div key={i} className="stat-card"><div style={{fontSize:11,color:'var(--cs-text-muted)',fontWeight:600,marginBottom:4}}>{s.l}</div><div style={{fontSize:22,fontWeight:800,color:s.c}}>{s.v}</div></div>
         ))}
       </div>
 
       {todayFollowups.length>0&&(
-        <div style={{background:'#E8F6FC',border:'1px solid #1E9CD730',borderRadius:8,padding:'10px 14px',marginBottom:16,display:'flex',alignItems:'center',gap:8}}>
-          <AlertTriangle size={16} color="var(--cs-blue)"/>
+        <div style={{background:'#E8F6FC',border:'1px solid #1E9CD730',borderRadius:8,padding:'10px 14px',marginBottom:12,display:'flex',alignItems:'center',gap:8}}>
+          <AlertTriangle size={15} color="var(--cs-blue)"/>
           <span style={{fontSize:13,fontWeight:700,color:'var(--cs-blue)'}}>متابعات اليوم: {todayFollowups.map(r=>r.clients?.company_name||r.followup_code).join('، ')}</span>
         </div>
       )}
@@ -108,22 +173,22 @@ export default function CustomerFollowupPage() {
       <div className="card">
         {loading?<div style={{padding:40,textAlign:'center',color:'var(--cs-text-muted)'}}>جاري التحميل...</div>:(
           <div className="table-wrap"><table>
-            <thead><tr><th>الكود</th><th>العميل</th><th>التاريخ</th><th>طريقة التواصل</th><th>التقييم</th><th>الإجراء</th><th>الموعد القادم</th><th>الحالة</th><th>إجراءات</th></tr></thead>
+            <thead><tr><th>الكود</th><th>العميل</th><th>التاريخ</th><th>طريقة التواصل</th><th>التقييم</th><th>الموعد القادم</th><th>الحالة</th><th>إجراءات</th></tr></thead>
             <tbody>
-              {filtered.length===0?<tr><td colSpan={9} style={{textAlign:'center',padding:40,color:'var(--cs-text-muted)'}}>لا توجد متابعات</td></tr>
+              {filtered.length===0?<tr><td colSpan={8} style={{textAlign:'center',padding:40,color:'var(--cs-text-muted)'}}>لا توجد متابعات</td></tr>
               :filtered.map(r=>(
                 <tr key={r.id} style={{background:r.rating?.includes('شكوى')?'#FFF5F5':r.scheduled_date?.split('T')[0]===today?'#F0FAFF':'inherit'}}>
                   <td style={{fontFamily:'monospace',fontSize:12}}>{r.followup_code}</td>
                   <td style={{fontWeight:600}}>{r.clients?.company_name||'—'}</td>
-                  <td style={{fontSize:12}}>{r.scheduled_date?.split('T')[0]}</td>
+                  <td style={{fontSize:12}}>{r.scheduled_date?.split('T')[0]||'—'}</td>
                   <td>{r.contact_method}</td>
-                  <td style={{fontSize:12}}>{r.rating}</td>
-                  <td style={{fontSize:12}}>{r.action_required}</td>
+                  <td style={{fontSize:11}}>{r.rating}</td>
                   <td style={{fontSize:12,color:r.next_date&&r.next_date.split('T')[0]<=today?'var(--cs-red)':'inherit'}}>{r.next_date?.split('T')[0]||'—'}</td>
                   <td><span className={`badge ${r.status==='مكتمل'?'badge-green':r.status==='مفتوح'?'badge-blue':'badge-gray'}`}>{r.status}</span></td>
-                  <td><div style={{display:'flex',gap:6}}>
-                    <button onClick={()=>openEdit(r)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--cs-blue)'}}><Edit2 size={15}/></button>
-                    <button onClick={()=>del(r.id)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--cs-red)'}}><Trash2 size={15}/></button>
+                  <td><div style={{display:'flex',gap:4}}>
+                    <button onClick={()=>setViewItem(r)} title="عرض" style={{background:'none',border:'none',cursor:'pointer',color:'var(--cs-green)'}}><Printer size={14}/></button>
+                    <button onClick={()=>openEdit(r)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--cs-blue)'}}><Edit2 size={14}/></button>
+                    <button onClick={()=>del(r.id)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--cs-red)'}}><Trash2 size={14}/></button>
                   </div></td>
                 </tr>
               ))}
@@ -132,9 +197,43 @@ export default function CustomerFollowupPage() {
         )}
       </div>
 
+      {/* View Modal */}
+      {viewItem&&(
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.4)',zIndex:300,display:'flex',alignItems:'center',justifyContent:'center',padding:16}}>
+          <div id="fu-print" className="card" style={{width:'100%',maxWidth:500,padding:24}}>
+            <div style={{display:'flex',justifyContent:'space-between',marginBottom:16}}>
+              <div style={{fontFamily:'Cairo,sans-serif',fontWeight:700,fontSize:18}}>تفاصيل المتابعة</div>
+              <div style={{display:'flex',gap:8}}>
+                <button onClick={()=>window.print()} style={{background:'var(--cs-blue)',color:'white',border:'none',borderRadius:6,padding:'5px 12px',cursor:'pointer',display:'flex',alignItems:'center',gap:4,fontSize:12}}><Printer size={13}/>طباعة</button>
+                <button onClick={()=>setViewItem(null)} style={{background:'none',border:'none',cursor:'pointer'}}><X size={18}/></button>
+              </div>
+            </div>
+            {[
+              {l:'الكود',v:viewItem.followup_code},
+              {l:'العميل',v:viewItem.clients?.company_name},
+              {l:'المشروع',v:viewItem.projects?.project_name},
+              {l:'التاريخ',v:viewItem.scheduled_date?.split('T')[0]},
+              {l:'طريقة التواصل',v:viewItem.contact_method},
+              {l:'التقييم',v:viewItem.rating},
+              {l:'الإجراء المطلوب',v:viewItem.action_required},
+              {l:'الموعد القادم',v:viewItem.next_date?.split('T')[0]},
+              {l:'الحالة',v:viewItem.status},
+              {l:'ملخص',v:viewItem.summary},
+            ].map(({l,v},i)=>v?(
+              <div key={i} style={{display:'flex',padding:'7px 0',borderBottom:'1px solid var(--cs-border)'}}>
+                <span style={{width:140,color:'var(--cs-text-muted)',fontSize:13}}>{l}:</span>
+                <span style={{fontWeight:600,fontSize:13}}>{v}</span>
+              </div>
+            ):null)}
+          </div>
+          <style>{`@media print{body *{visibility:hidden}#fu-print,#fu-print *{visibility:visible}#fu-print{position:fixed;top:0;left:0;width:100%}}`}</style>
+        </div>
+      )}
+
+      {/* Edit Modal */}
       {modal&&(
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.4)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center',padding:16}}>
-          <div className="card" style={{width:'100%',maxWidth:560,maxHeight:'90vh',overflow:'auto',padding:24}}>
+          <div className="card" style={{width:'100%',maxWidth:580,maxHeight:'92vh',overflow:'auto',padding:24}}>
             <div style={{display:'flex',justifyContent:'space-between',marginBottom:20}}>
               <div style={{fontFamily:'Cairo,sans-serif',fontWeight:700,fontSize:18}}>{editId?'تعديل':'متابعة جديدة'}</div>
               <button onClick={()=>setModal(false)} style={{background:'none',border:'none',cursor:'pointer'}}><X size={20}/></button>
