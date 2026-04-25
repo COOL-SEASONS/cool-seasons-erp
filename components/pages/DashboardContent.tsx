@@ -1,153 +1,187 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import { AlertTriangle, TrendingUp, DollarSign, Wrench, Users, Package, FolderOpen, UserCheck, AlertCircle } from 'lucide-react'
+import { AlertTriangle } from 'lucide-react'
 
 function AlertRow({type,title,items}:any) {
-  const colors:any={red:'#C0392B',amber:'#E67E22',blue:'#1E9CD7'}
-  const bgs:any={red:'#FDECEA',amber:'#FEF3E2',blue:'#E8F6FC'}
-  const c=colors[type]; const bg=bgs[type]
-  if(!items||items.length===0) return null
+  const col:any={red:'#C0392B',amber:'#E67E22',blue:'#1E9CD7'}
+  const bg:any={red:'#FDECEA',amber:'#FEF3E2',blue:'#E8F6FC'}
+  const c=col[type]
+  if(!items?.length) return null
   return (
-    <div style={{background:bg,border:`1px solid ${c}30`,borderRadius:10,padding:'12px 16px',marginBottom:10}}>
-      <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
-        <AlertTriangle size={15} color={c}/>
-        <span style={{fontSize:13,fontWeight:700,color:c}}>{title} ({items.length})</span>
+    <div style={{background:bg[type],border:`1px solid ${c}30`,borderRadius:8,padding:'10px 14px',marginBottom:8}}>
+      <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:6}}>
+        <AlertTriangle size={14} color={c}/>
+        <span style={{fontSize:12,fontWeight:700,color:c}}>{title} ({items.length})</span>
       </div>
-      <div style={{display:'flex',flexDirection:'column',gap:4}}>
-        {items.slice(0,5).map((item:any,i:number)=>(
-          <div key={i} style={{fontSize:12,color:c,display:'flex',justifyContent:'space-between'}}>
-            <span>{item.name}</span>
-            <span style={{background:c+'15',padding:'1px 8px',borderRadius:10,fontWeight:600}}>{item.detail}</span>
-          </div>
-        ))}
-        {items.length>5&&<div style={{fontSize:11,color:c,opacity:0.7}}>+ {items.length-5} أخرى</div>}
-      </div>
+      {items.slice(0,4).map((item:any,i:number)=>(
+        <div key={i} style={{fontSize:11,color:c,display:'flex',justifyContent:'space-between',marginBottom:2}}>
+          <span>{item.name}</span>
+          <span style={{background:c+'15',padding:'0 7px',borderRadius:8,fontWeight:600}}>{item.detail}</span>
+        </div>
+      ))}
+      {items.length>4&&<div style={{fontSize:10,color:c,opacity:0.7}}>+ {items.length-4} أخرى</div>}
     </div>
   )
 }
 
-function KpiCard({label,value,sub,color,bg}:{label:string,value:any,sub?:string,color:string,bg?:string}) {
+// Colored KPI card matching Excel style
+function KPI({label,sub,value,color,onClick}:{label:string,sub?:string,value:any,color:string,onClick?:()=>void}) {
   return (
-    <div style={{background:bg||'white',border:'1px solid var(--cs-border)',borderRadius:10,padding:'12px 14px',textAlign:'center'}}>
-      <div style={{fontSize:10,fontWeight:600,marginBottom:4,color:bg?'rgba(255,255,255,0.8)':'var(--cs-text-muted)'}}>{label}</div>
-      <div style={{fontSize:18,fontWeight:900,color:bg?'white':color,fontFamily:'Cairo,sans-serif'}}>{value??'—'}</div>
-      {sub&&<div style={{fontSize:10,color:bg?'rgba(255,255,255,0.7)':'var(--cs-text-muted)',marginTop:2}}>{sub}</div>}
+    <div onClick={onClick} style={{background:color,borderRadius:8,padding:'10px 12px',textAlign:'center',cursor:onClick?'pointer':'default',minWidth:0}}>
+      <div style={{fontSize:10,color:'rgba(255,255,255,0.85)',fontWeight:600,lineHeight:1.3,marginBottom:4}}>{label}{sub&&<><br/><span style={{fontSize:9,opacity:0.8}}>{sub}</span></>}</div>
+      <div style={{fontSize:20,fontWeight:900,color:'white',fontFamily:'Cairo,sans-serif'}}>{value??'—'}</div>
     </div>
+  )
+}
+
+// Section header matching Excel
+function Section({title,color}:{title:string,color:string}) {
+  return (
+    <div style={{background:color,borderRadius:'8px 8px 0 0',padding:'8px 16px',color:'white',fontFamily:'Cairo,sans-serif',fontWeight:700,fontSize:13,marginTop:16}}>
+      {title}
+    </div>
+  )
+}
+
+function Grid8({children}:{children:any}) {
+  return (
+    <div style={{display:'grid',gridTemplateColumns:'repeat(8,1fr)',gap:6,background:'white',border:'1px solid var(--cs-border)',borderRadius:'0 0 8px 8px',padding:10,marginBottom:4}}>
+      {children}
+    </div>
+  )
+}
+
+function NavBtn({label,onClick}:{label:string,onClick:()=>void}) {
+  return (
+    <button onClick={onClick} style={{background:'white',border:'1px solid #E0E7EF',borderRadius:6,padding:'6px 8px',cursor:'pointer',fontSize:11,fontFamily:'Tajawal,sans-serif',fontWeight:600,color:'#2C3E7B',textAlign:'center',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',width:'100%'}}>
+      {label}
+    </button>
   )
 }
 
 export default function DashboardContent({onNav}:{onNav:(id:string)=>void}) {
-  const [data,setData]=useState<any>(null)
+  const [d,setD]=useState<any>(null)
   const [loading,setLoading]=useState(true)
-  const [alerts,setAlerts]=useState<any>({expired:[],expiringSoon:[],expiringLater:[]})
+  const [alerts,setAlerts]=useState<any>({expired:[],soon:[],later:[]})
 
   useEffect(()=>{
     async function load() {
       const today=new Date()
+      const m1start=new Date(today.getFullYear(),today.getMonth(),1).toISOString()
+
       const [
-        {data:invData},{count:overdueInv},{data:projs},{count:activeProj},
-        {data:maint},{count:openMaint},{data:techs},{count:activeTechs},
-        {data:exp},{data:vehicles},{data:docs},{data:amcs},
-        {data:clients},{data:contracts},{data:quotes},{data:punchItems},
-        {data:inventory},{data:recurringJobs},{data:maintReports}
+        {data:inv},{data:proj},{data:maint},
+        {data:techs},{data:veh},{data:docs},{data:amcs},
+        {data:quot},{data:punches},{data:recur},
+        {data:po},{data:exp},{data:warranty},
+        {data:comm},{data:inv2},{data:contr},
+        {data:maintRep}
       ] = await Promise.all([
         supabase.from('invoices').select('total_amount,paid_amount,balance,status'),
-        supabase.from('invoices').select('*',{count:'exact',head:true}).eq('status','Overdue'),
-        supabase.from('projects').select('project_name,status,completion_pct').order('created_at',{ascending:false}).limit(5),
-        supabase.from('projects').select('*',{count:'exact',head:true}).eq('status','In Progress'),
-        supabase.from('maintenance').select('status,job_code'),
-        supabase.from('maintenance').select('*',{count:'exact',head:true}).in('status',['Open','Scheduled']),
-        supabase.from('technicians').select('full_name,residence_expiry,engineers_membership_exp,status'),
-        supabase.from('technicians').select('*',{count:'exact',head:true}).eq('status','Active'),
-        supabase.from('expenses').select('amount,transaction_type'),
+        supabase.from('projects').select('project_name,status,completion_pct,budget,actual_cost'),
+        supabase.from('maintenance').select('status,cost,job_code,description'),
+        supabase.from('technicians').select('full_name,status,residence_expiry,engineers_membership_exp'),
         supabase.from('vehicles').select('plate_no,brand,model,insurance_expiry,registration_expiry'),
         supabase.from('company_docs').select('doc_name,expiry_date'),
-        supabase.from('contracts_amc').select('contract_code,end_date,annual_value,paid_amount,status,clients(company_name)'),
-        supabase.from('clients').select('id,status'),
-        supabase.from('contracts_amc').select('annual_value,status'),
+        supabase.from('contracts_amc').select('contract_code,status,annual_value,end_date,clients(company_name)'),
         supabase.from('quotations').select('status,total_amount'),
         supabase.from('punch_list').select('status'),
-        supabase.from('inventory').select('status,quantity,min_quantity'),
         supabase.from('recurring_jobs').select('status'),
-        supabase.from('maint_reports').select('created_at').gte('created_at', new Date(today.getFullYear(),today.getMonth(),1).toISOString()),
+        supabase.from('purchase_orders').select('status').eq('status','Sent'),
+        supabase.from('expenses').select('amount,transaction_type,status'),
+        supabase.from('warranty_tracking').select('start_date,duration_months'),
+        supabase.from('commissions').select('balance'),
+        supabase.from('inventory').select('status,quantity,min_quantity'),
+        supabase.from('contractors').select('status'),
+        supabase.from('maint_reports').select('id').gte('created_at',m1start),
       ])
 
-      // Financial
-      const totalInvoiced=(invData||[]).reduce((s,r)=>s+(r.total_amount||0),0)
-      const totalCollected=(invData||[]).reduce((s,r)=>s+(r.paid_amount||0),0)
-      const balanceDue=(invData||[]).reduce((s,r)=>s+(r.balance||0),0)
-      const activeAMC=(contracts||[]).filter(c=>c.status==='Active')
-      const totalAMCValue=activeAMC.reduce((s,c)=>s+(c.annual_value||0),0)
-      const totalAMCCollected=0
+      // ===== FINANCIAL =====
+      const totalInvoiced=(inv||[]).reduce((s,r)=>s+(r.total_amount||0),0)
+      const totalCollected=(inv||[]).reduce((s,r)=>s+(r.paid_amount||0),0)
+      const balanceDue=(inv||[]).reduce((s,r)=>s+(r.balance||0),0)
+      const overdueCount=(inv||[]).filter(r=>r.status==='Overdue').length
+      const contractsValue=(proj||[]).reduce((s,r)=>s+(r.budget||0),0)
+      const jobCostingProfit=(proj||[]).reduce((s,r)=>s+(((r.budget||0)-(r.actual_cost||0))),0)
+      const activeAMCCount=(amcs||[]).filter(c=>c.status==='Active').length
       const totalSarf=(exp||[]).filter(e=>e.transaction_type==='صرف').reduce((s,r)=>s+(r.amount||0),0)
-      const totalOhda=(exp||[]).filter(e=>e.transaction_type==='عهدة').reduce((s,r)=>s+(r.amount||0),0)
-      const netProfit=totalCollected-totalSarf
-      const retentionValue=totalInvoiced*0.1 // estimate
+      const retentionVal=totalInvoiced*0.1
 
-      // Operations
-      const sentQuotes=(quotes||[]).filter(q=>q.status==='Sent').length
-      const overdueRecurring=(recurringJobs||[]).filter(r=>r.status==='Overdue').length
-      const overdueOverdue=(maint||[]).filter(m=>m.status==='Overdue').length
-      const pendingMaint=(maint||[]).filter(m=>m.status==='Open').length
-      const overduePunch=(punchItems||[]).filter(p=>p.status==='متأخر').length
-      const maintThisMonth=(maintReports||[]).length
-      const pendingExp=(exp||[]).filter(e=>e.transaction_type==='عهدة').length
-      const openPOs=0 // placeholder
+      // ===== OPERATIONS =====
+      const activeProj=(proj||[]).filter(p=>p.status==='In Progress').length
+      const openMaint=(maint||[]).filter(m=>m.status==='Open').length
+      const maintThisMonth=(maintRep||[]).length
+      const overduePunch=(punches||[]).filter(p=>p.status==='متأخر').length
+      const sentQuotes=(quot||[]).filter(q=>q.status==='Sent').length
+      const overdueRecurring=(recur||[]).filter(r=>r.status==='متأخرة').length
+      const openPOs=(po||[]).length
+      const pendingExp=(exp||[]).filter(e=>e.status==='Pending').length
 
-      // People & Assets
-      const activeTechCount=activeTechs||0
-      const activeContractors=3 // from contractors table
-      const lowStock=(inventory||[]).filter(i=>i.quantity<=(i.min_quantity||5)).length
-      const vehicleViolations=(vehicles||[]).filter(v=>{
-        if(!v.insurance_expiry&&!v.registration_expiry) return false
-        const ins=v.insurance_expiry?Math.ceil((new Date(v.insurance_expiry).getTime()-today.getTime())/86400000):999
-        const reg=v.registration_expiry?Math.ceil((new Date(v.registration_expiry).getTime()-today.getTime())/86400000):999
-        return ins<=0||reg<=0
-      }).length
-      const expiredDocs=(docs||[]).filter(d=>{
-        if(!d.expiry_date) return false
-        return new Date(d.expiry_date)<today
-      }).length
+      // ===== PEOPLE & ASSETS =====
+      const activeTechs=(techs||[]).filter(t=>t.status==='Active').length
+      // Residency expiring within 14 days
       const residencyExpiring=(techs||[]).filter(t=>{
         if(!t.residence_expiry) return false
         const days=Math.ceil((new Date(t.residence_expiry).getTime()-today.getTime())/86400000)
         return days>0&&days<=14
       }).length
-      const warrantyExpiring=0
+      // Warranty expiring soon
+      const warrantyExpiring=(warranty||[]).filter((w:any)=>{
+        if(!w.start_date||!w.duration_months) return false
+        const exp=new Date(w.start_date); exp.setMonth(exp.getMonth()+w.duration_months)
+        const days=Math.ceil((exp.getTime()-today.getTime())/86400000)
+        return days>0&&days<=30
+      }).length
+      const dueCommissions=(comm||[]).reduce((s:number,r:any)=>s+(r.balance||0),0)
+      const lowStock=(inv2||[]).filter(i=>i.status==='Low Stock').length
+      // Expired vehicle docs
+      const expiredVehDocs=(veh||[]).filter(v=>{
+        const ins=v.insurance_expiry&&new Date(v.insurance_expiry)<today
+        const reg=v.registration_expiry&&new Date(v.registration_expiry)<today
+        return ins||reg
+      }).length
+      const vehicleViolations=expiredVehDocs
+      const activeContractors=(contr||[]).filter((c:any)=>c.status==='نشط').length
 
-      // Alerts
-      const expired:any[]=[],expiringSoon:any[]=[],expiringLater:any[]=[]
-      function addDoc(name:string,expiry:string,cat:string){
+      // ===== ALERTS =====
+      const expired:any[]=[],soon:any[]=[],later:any[]=[]
+      const addAlert=(name:string,expiry:string,cat:string)=>{
         if(!expiry) return
         const days=Math.ceil((new Date(expiry.split('T')[0]).getTime()-today.getTime())/86400000)
         const item={name:`${cat}: ${name}`,detail:days<=0?'منتهية':`${days} يوم`}
         if(days<=0) expired.push(item)
-        else if(days<=30) expiringSoon.push(item)
-        else if(days<=60) expiringLater.push(item)
+        else if(days<=30) soon.push(item)
+        else if(days<=60) later.push(item)
       }
       ;(techs||[]).forEach((t:any)=>{
-        if(t.residence_expiry) addDoc(t.full_name,t.residence_expiry,'إقامة')
-        if(t.engineers_membership_exp) addDoc(t.full_name,t.engineers_membership_exp,'عضوية')
+        if(t.residence_expiry) addAlert(t.full_name,t.residence_expiry,'إقامة')
+        if(t.engineers_membership_exp) addAlert(t.full_name,t.engineers_membership_exp,'عضوية')
       })
-      ;(vehicles||[]).forEach((v:any)=>{
-        const n=`${v.brand||''} ${v.model||''} (${v.plate_no||''})`
-        if(v.insurance_expiry) addDoc(n,v.insurance_expiry,'تأمين')
-        if(v.registration_expiry) addDoc(n,v.registration_expiry,'استمارة')
+      ;(veh||[]).forEach((v:any)=>{
+        const n=`${v.brand||''} (${v.plate_no||''})`
+        if(v.insurance_expiry) addAlert(n,v.insurance_expiry,'تأمين')
+        if(v.registration_expiry) addAlert(n,v.registration_expiry,'استمارة')
       })
-      ;(docs||[]).forEach((d:any)=>{if(d.expiry_date) addDoc(d.doc_name,d.expiry_date,'وثيقة')})
-      ;(amcs||[]).filter((a:any)=>a.status==='Active').forEach((a:any)=>{if(a.end_date) addDoc(a.clients?.company_name||a.contract_code,a.end_date,'عقد AMC')})
-      setAlerts({expired,expiringSoon,expiringLater})
+      ;(docs||[]).forEach((d:any)=>{if(d.expiry_date) addAlert(d.doc_name,d.expiry_date,'وثيقة')})
+      ;(amcs||[]).filter((a:any)=>a.status==='Active').forEach((a:any)=>{if(a.end_date) addAlert(a.clients?.company_name||a.contract_code,a.end_date,'عقد AMC')})
+      setAlerts({expired,soon,later})
 
-      setData({
-        // Financial
-        totalInvoiced,totalCollected,balanceDue,netProfit,overdueInv,totalAMCValue,retentionValue,totalOhda,
-        // Operations
-        activeProj,sentQuotes,overdueRecurring,overduePunch,openMaint:pendingMaint,overdueOverdue,maintThisMonth,pendingExp,openPOs,
-        // People
-        activeTechs:activeTechCount,activeContractors,lowStock,vehicleViolations,expiredDocs,residencyExpiring,warrantyExpiring,
-        // Recent projects
-        recentProjects:projs||[],
+      // ===== MODULE SUMMARY =====
+      const projPaid=(inv||[]).filter(i=>i.status==='Paid').length
+      const projTotal=(inv||[]).length
+
+      setD({
+        totalInvoiced,totalCollected,balanceDue,overdueCount,contractsValue,netProfit:jobCostingProfit,activeAMCCount,retentionVal,
+        activeProj,openMaint,maintThisMonth,overduePunch,sentQuotes,overdueRecurring,openPOs,pendingExp,
+        activeTechs,residencyExpiring,warrantyExpiring,dueCommissions,lowStock,expiredVehDocs,vehicleViolations,activeContractors,
+        projActive:(proj||[]).filter(p=>p.status==='In Progress').length,
+        projTotal:(proj||[]).length,
+        maintOpen:(maint||[]).filter(m=>m.status==='Open').length,
+        maintTotal:(maint||[]).length,
+        invPaid:projPaid, invTotal:projTotal,
+        invTotalValue:totalInvoiced,
+        recentProjects:(proj||[]).slice(0,5),
       })
       setLoading(false)
     }
@@ -155,157 +189,128 @@ export default function DashboardContent({onNav}:{onNav:(id:string)=>void}) {
   },[])
 
   const fmt=(n:number)=>n!=null?new Intl.NumberFormat('ar-SA',{maximumFractionDigits:0}).format(n)+' ر.س':'—'
-  const totalAlerts=alerts.expired.length+alerts.expiringSoon.length+alerts.expiringLater.length
+  const totalAlerts=alerts.expired.length+alerts.soon.length+alerts.later.length
 
   if(loading) return (
-    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(150px,1fr))',gap:12}}>
-      {[...Array(12)].map((_,i)=><div key={i} className="skeleton" style={{height:80}}/>)}
+    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(140px,1fr))',gap:10}}>
+      {[...Array(24)].map((_,i)=><div key={i} className="skeleton" style={{height:70}}/>)}
     </div>
   )
 
-  const Section=({title,color,children}:any)=>(
-    <div style={{marginBottom:20}}>
-      <div style={{background:color,borderRadius:'8px 8px 0 0',padding:'8px 16px',color:'white',fontFamily:'Cairo,sans-serif',fontWeight:700,fontSize:14,display:'flex',alignItems:'center',gap:8}}>
-        {title}
-      </div>
-      <div style={{background:'white',border:`1px solid ${color}40`,borderRadius:'0 0 8px 8px',padding:'12px',display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(130px,1fr))',gap:8}}>
-        {children}
-      </div>
-    </div>
-  )
+  // Alert bar (row 3 in Excel)
+  const alertText=[]
+  if(d.overdueCount>0) alertText.push(`فواتير متأخرة: ${d.overdueCount}`)
+  if(d.openMaint>0) alertText.push(`صيانة متأخرة: ${d.openMaint}`)
+  if(alerts.expired.length>0) alertText.push(`وثائق منتهية: ${alerts.expired.length}`)
+  if(d.overduePunch>0) alertText.push(`Punch List متأخر: ${d.overduePunch}`)
 
   return (
     <div>
-      <div className="page-header">
-        <div>
-          <div className="page-title">لوحة التحكم</div>
-          <div className="page-subtitle">COOL SEASONS & DARAJA.STORE — نظام إدارة شركة التكييف والتبريد</div>
-        </div>
-        {totalAlerts>0&&(
-          <div style={{background:'#FDECEA',border:'1px solid #C0392B30',borderRadius:8,padding:'8px 14px',display:'flex',alignItems:'center',gap:8,cursor:'pointer'}} onClick={()=>window.scrollTo({top:300,behavior:'smooth'})}>
-            <AlertTriangle size={16} color="#C0392B"/>
-            <span style={{fontSize:13,fontWeight:700,color:'#C0392B'}}>{totalAlerts} تنبيه</span>
-          </div>
-        )}
+      {/* Title row */}
+      <div style={{background:'#2C3E7B',borderRadius:10,padding:'14px 20px',marginBottom:8,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+        <div style={{color:'white',fontFamily:'Cairo,sans-serif',fontWeight:900,fontSize:16}}>🏢 نظام إدارة شركة التكييف والتبريد | HVAC Company ERP System</div>
+        <div style={{color:'rgba(255,255,255,0.8)',fontSize:12}}>{new Date().toLocaleDateString('ar-SA',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}</div>
       </div>
 
-      {/* Alerts */}
-      {totalAlerts>0&&(
-        <div className="card" style={{padding:20,marginBottom:16,borderRight:'4px solid #C0392B'}}>
-          <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12}}><AlertTriangle size={18} color="#C0392B"/><span style={{fontFamily:'Cairo,sans-serif',fontWeight:700,fontSize:16,color:'#C0392B'}}>تنبيهات الوثائق والتراخيص</span></div>
-          <AlertRow type="red" title="منتهية الصلاحية" items={alerts.expired}/>
-          <AlertRow type="amber" title="تنتهي خلال 30 يوم" items={alerts.expiringSoon}/>
-          <AlertRow type="blue" title="تنتهي خلال 60 يوم" items={alerts.expiringLater}/>
-          <div style={{display:'flex',gap:8,marginTop:10,flexWrap:'wrap'}}>
-            {[{id:'technicians',l:'الفنيون'},{id:'vehicles',l:'المركبات'},{id:'company_docs',l:'وثائق الشركة'}].map(b=>(
-              <button key={b.id} onClick={()=>onNav(b.id)} style={{fontSize:12,background:'none',border:'1px solid var(--cs-border)',borderRadius:6,padding:'4px 12px',cursor:'pointer',color:'var(--cs-text-muted)'}}>← {b.l}</button>
-            ))}
-          </div>
+      {/* Alert bar (row 3 in Excel) */}
+      {alertText.length>0&&(
+        <div style={{background:'#C0392B',borderRadius:8,padding:'7px 16px',marginBottom:8,color:'white',fontSize:12,fontWeight:700,display:'flex',alignItems:'center',gap:8}}>
+          <AlertTriangle size={14}/>
+          {alertText.join(' | ')}
         </div>
       )}
 
-      {/* SECTION 1: Financial Overview */}
-      <Section title="💰 الملف المالي | Financial Overview" color="#2C3E7B">
-        <div style={{background:'#2C3E7B',border:'none',borderRadius:10,padding:'12px 14px',textAlign:'center',cursor:'pointer'}} onClick={()=>onNav('invoices')}>
-          <div style={{fontSize:10,color:'rgba(255,255,255,0.8)',fontWeight:600,marginBottom:4}}>إجمالي الفواتير</div>
-          <div style={{fontSize:18,fontWeight:900,color:'white',fontFamily:'Cairo,sans-serif'}}>{fmt(data.totalInvoiced)}</div>
-          <div style={{fontSize:10,color:'rgba(255,255,255,0.6)'}}>Total Invoiced</div>
-        </div>
-        <div style={{background:'#27AE60',borderRadius:10,padding:'12px 14px',textAlign:'center',cursor:'pointer'}} onClick={()=>onNav('invoices')}>
-          <div style={{fontSize:10,color:'rgba(255,255,255,0.8)',fontWeight:600,marginBottom:4}}>المحصّل</div>
-          <div style={{fontSize:18,fontWeight:900,color:'white',fontFamily:'Cairo,sans-serif'}}>{fmt(data.totalCollected)}</div>
-          <div style={{fontSize:10,color:'rgba(255,255,255,0.6)'}}>Collected</div>
-        </div>
-        <div style={{background:data.balanceDue>0?'#C0392B':'#27AE60',borderRadius:10,padding:'12px 14px',textAlign:'center',cursor:'pointer'}} onClick={()=>onNav('invoices')}>
-          <div style={{fontSize:10,color:'rgba(255,255,255,0.8)',fontWeight:600,marginBottom:4}}>الرصيد المستحق</div>
-          <div style={{fontSize:18,fontWeight:900,color:'white',fontFamily:'Cairo,sans-serif'}}>{fmt(data.balanceDue)}</div>
-          <div style={{fontSize:10,color:'rgba(255,255,255,0.6)'}}>Balance Due</div>
-        </div>
-        <div style={{background:data.overdueInv>0?'#C0392B':'#7F8C8D',borderRadius:10,padding:'12px 14px',textAlign:'center',cursor:'pointer'}} onClick={()=>onNav('invoices')}>
-          <div style={{fontSize:10,color:'rgba(255,255,255,0.8)',fontWeight:600,marginBottom:4}}>فواتير متأخرة</div>
-          <div style={{fontSize:20,fontWeight:900,color:'white',fontFamily:'Cairo,sans-serif'}}>{data.overdueInv||0}</div>
-          <div style={{fontSize:10,color:'rgba(255,255,255,0.6)'}}>Overdue</div>
-        </div>
-        <div style={{background:'#8E44AD',borderRadius:10,padding:'12px 14px',textAlign:'center',cursor:'pointer'}} onClick={()=>onNav('contracts')}>
-          <div style={{fontSize:10,color:'rgba(255,255,255,0.8)',fontWeight:600,marginBottom:4}}>عقود AMC نشطة</div>
-          <div style={{fontSize:18,fontWeight:900,color:'white',fontFamily:'Cairo,sans-serif'}}>{fmt(data.totalAMCValue)}</div>
-          <div style={{fontSize:10,color:'rgba(255,255,255,0.6)'}}>Active AMC</div>
-        </div>
-        <div style={{background:data.netProfit>=0?'#1E9CD7':'#C0392B',borderRadius:10,padding:'12px 14px',textAlign:'center',cursor:'pointer'}} onClick={()=>onNav('reports')}>
-          <div style={{fontSize:10,color:'rgba(255,255,255,0.8)',fontWeight:600,marginBottom:4}}>إجمالي الربح</div>
-          <div style={{fontSize:18,fontWeight:900,color:'white',fontFamily:'Cairo,sans-serif'}}>{fmt(data.netProfit)}</div>
-          <div style={{fontSize:10,color:'rgba(255,255,255,0.6)'}}>Net Profit</div>
-        </div>
-        <div style={{background:'#E67E22',borderRadius:10,padding:'12px 14px',textAlign:'center',cursor:'pointer'}} onClick={()=>onNav('retention')}>
-          <div style={{fontSize:10,color:'rgba(255,255,255,0.8)',fontWeight:600,marginBottom:4}}>الضمانات المحجوزة</div>
-          <div style={{fontSize:18,fontWeight:900,color:'white',fontFamily:'Cairo,sans-serif'}}>{fmt(data.retentionValue)}</div>
-          <div style={{fontSize:10,color:'rgba(255,255,255,0.6)'}}>Retention</div>
-        </div>
-        <div style={{background:'#16A085',borderRadius:10,padding:'12px 14px',textAlign:'center',cursor:'pointer'}} onClick={()=>onNav('amc_dashboard')}>
-          <div style={{fontSize:10,color:'rgba(255,255,255,0.8)',fontWeight:600,marginBottom:4}}>عهدة متبقية</div>
-          <div style={{fontSize:18,fontWeight:900,color:'white',fontFamily:'Cairo,sans-serif'}}>{fmt(data.totalOhda)}</div>
-          <div style={{fontSize:10,color:'rgba(255,255,255,0.6)'}}>Pending Ohda</div>
-        </div>
-      </Section>
+      {/* ===== SECTION 1: FINANCIAL ===== */}
+      <Section title="💰  الملف المالي  |  Financial Overview" color="#1E3A5F"/>
+      <Grid8>
+        <KPI label="إجمالي الفواتير" sub="Total Invoiced" value={fmt(d.totalInvoiced)} color="#2C3E7B" onClick={()=>onNav('invoices')}/>
+        <KPI label="المحصّل" sub="Collected" value={fmt(d.totalCollected)} color="#27AE60" onClick={()=>onNav('invoices')}/>
+        <KPI label="الرصيد المتبقي" sub="Balance Due" value={fmt(d.balanceDue)} color={d.balanceDue>0?'#C0392B':'#27AE60'} onClick={()=>onNav('invoices')}/>
+        <KPI label="فواتير متأخرة" sub="Overdue" value={d.overdueCount} color={d.overdueCount>0?'#C0392B':'#7F8C8D'} onClick={()=>onNav('invoices')}/>
+        <KPI label="قيمة العقود" sub="Contracts Value" value={fmt(d.contractsValue)} color="#8E44AD" onClick={()=>onNav('projects')}/>
+        <KPI label="إجمالي الربح ✦" sub="Net Profit" value={fmt(d.netProfit)} color={d.netProfit>=0?'#1E9CD7':'#C0392B'} onClick={()=>onNav('job_costing')}/>
+        <KPI label="عقود AMC نشطة" sub="Active AMC" value={d.activeAMCCount} color="#16A085" onClick={()=>onNav('amc_dashboard')}/>
+        <KPI label="الضمان المحتجز" sub="Retention" value={fmt(d.retentionVal)} color="#E67E22" onClick={()=>onNav('retention')}/>
+      </Grid8>
 
-      {/* SECTION 2: Operations */}
-      <Section title="⚙️ العمليات | Operations" color="#1E5F74">
+      {/* ===== SECTION 2: OPERATIONS ===== */}
+      <Section title="⚙️  العمليات  |  Operations" color="#1A5276"/>
+      <Grid8>
+        <KPI label="مشاريع نشطة" sub="Active Projects" value={d.activeProj} color="#2980B9" onClick={()=>onNav('projects')}/>
+        <KPI label="صيانة مفتوحة" sub="Open Maintenance" value={d.openMaint} color="#8E44AD" onClick={()=>onNav('maintenance')}/>
+        <KPI label="تقارير صيانة/الشهر" sub="Maint Reports/Month" value={d.maintThisMonth} color="#1E9CD7" onClick={()=>onNav('maint_report')}/>
+        <KPI label="Punch List متأخر" sub="Overdue Punch" value={d.overduePunch} color={d.overduePunch>0?'#C0392B':'#7F8C8D'} onClick={()=>onNav('punch_list')}/>
+        <KPI label="عروض مرسلة" sub="Sent Quotes" value={d.sentQuotes} color="#27AE60" onClick={()=>onNav('quotations')}/>
+        <KPI label="أعمال متكررة متأخرة" sub="Overdue Recurring" value={d.overdueRecurring} color={d.overdueRecurring>0?'#E67E22':'#7F8C8D'} onClick={()=>onNav('recurring_jobs')}/>
+        <KPI label="طلبات شراء مفتوحة" sub="Open POs" value={d.openPOs} color="#D35400" onClick={()=>onNav('purchase_orders')}/>
+        <KPI label="مصروفات معلقة" sub="Pending Expenses" value={d.pendingExp} color="#7F8C8D" onClick={()=>onNav('expenses')}/>
+      </Grid8>
+
+      {/* ===== SECTION 3: PEOPLE & ASSETS ===== */}
+      <Section title="👷  الموارد والأصول  |  People & Assets" color="#4A235A"/>
+      <Grid8>
+        <KPI label="فنيون نشطون" sub="Active Techs" value={d.activeTechs} color="#1E9CD7" onClick={()=>onNav('technicians')}/>
+        <KPI label="إقامات تنتهي أسبوعين" sub="Residency Expiring" value={d.residencyExpiring} color={d.residencyExpiring>0?'#E67E22':'#7F8C8D'} onClick={()=>onNav('technicians')}/>
+        <KPI label="ضمانات تنتهي قريباً" sub="Warranty Expiring" value={d.warrantyExpiring} color={d.warrantyExpiring>0?'#E67E22':'#7F8C8D'} onClick={()=>onNav('warranty')}/>
+        <KPI label="عمولات مستحقة" sub="Due Commissions" value={fmt(d.dueCommissions)} color="#8E44AD" onClick={()=>onNav('commissions')}/>
+        <KPI label="مخزون منخفض" sub="Low Stock Items" value={d.lowStock} color={d.lowStock>0?'#C0392B':'#7F8C8D'} onClick={()=>onNav('inventory')}/>
+        <KPI label="وثائق مركبات منتهية" sub="Expired Docs" value={d.expiredVehDocs} color={d.expiredVehDocs>0?'#C0392B':'#7F8C8D'} onClick={()=>onNav('vehicles')}/>
+        <KPI label="إجمالي مخالفات المركبات" sub="Vehicle Violations" value={d.vehicleViolations} color={d.vehicleViolations>0?'#E67E22':'#7F8C8D'} onClick={()=>onNav('vehicles')}/>
+        <KPI label="مقاولون نشطون" sub="Active Contractors" value={d.activeContractors} color="#27AE60" onClick={()=>onNav('contractors')}/>
+      </Grid8>
+
+      {/* Alerts Detail */}
+      {totalAlerts>0&&(
+        <div className="card" style={{padding:16,marginTop:12,borderRight:'4px solid #C0392B'}}>
+          <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:10}}>
+            <AlertTriangle size={16} color="#C0392B"/>
+            <span style={{fontFamily:'Cairo,sans-serif',fontWeight:700,fontSize:14,color:'#C0392B'}}>تنبيهات تفصيلية ({totalAlerts})</span>
+          </div>
+          <AlertRow type="red" title="منتهية الصلاحية" items={alerts.expired}/>
+          <AlertRow type="amber" title="تنتهي خلال 30 يوم" items={alerts.soon}/>
+          <AlertRow type="blue" title="تنتهي خلال 60 يوم" items={alerts.later}/>
+        </div>
+      )}
+
+      {/* ===== QUICK NAVIGATION ===== */}
+      <div style={{marginTop:14,marginBottom:4,background:'#566573',borderRadius:'8px 8px 0 0',padding:'8px 16px',color:'white',fontFamily:'Cairo,sans-serif',fontWeight:700,fontSize:13}}>
+        🗂️ التنقل السريع | Quick Navigation — كافة الصفحات
+      </div>
+      <div style={{background:'white',border:'1px solid var(--cs-border)',borderRadius:'0 0 8px 8px',padding:12,marginBottom:4}}>
         {[
-          {l:'مشاريع نشطة',sub:'Active Projects',v:data.activeProj||0,c:'#2980B9',nav:'projects'},
-          {l:'صيانة مفتوحة',sub:'Open Maintenance',v:data.openMaint||0,c:'#8E44AD',nav:'maintenance'},
-          {l:'عروض مرسلة',sub:'Sent Quotes',v:data.sentQuotes||0,c:'#27AE60',nav:'quotations'},
-          {l:'Punch List متأخر',sub:'Overdue Punch',v:data.overduePunch||0,c:data.overduePunch>0?'#C0392B':'#7F8C8D',nav:'punch_list'},
-          {l:'تقارير صيانة/الشهر',sub:'Maint Reports/Month',v:data.maintThisMonth||0,c:'#1E9CD7',nav:'maint_report'},
-          {l:'صيانة متأخرة',sub:'Overdue Maint',v:data.overdueOverdue||0,c:data.overdueOverdue>0?'#C0392B':'#7F8C8D',nav:'maintenance'},
-          {l:'أعمال متكررة متأخرة',sub:'Overdue Recurring',v:data.overdueRecurring||0,c:data.overdueRecurring>0?'#E67E22':'#7F8C8D',nav:'recurring_jobs'},
-          {l:'مصروفات معلقة',sub:'Pending Expenses',v:data.pendingExp||0,c:'#E67E22',nav:'expenses'},
-        ].map((item,i)=>(
-          <div key={i} style={{background:item.c,borderRadius:10,padding:'12px 14px',textAlign:'center',cursor:'pointer'}} onClick={()=>onNav(item.nav)}>
-            <div style={{fontSize:10,color:'rgba(255,255,255,0.8)',fontWeight:600,marginBottom:4}}>{item.l}</div>
-            <div style={{fontSize:22,fontWeight:900,color:'white',fontFamily:'Cairo,sans-serif'}}>{item.v}</div>
-            <div style={{fontSize:10,color:'rgba(255,255,255,0.6)'}}>{item.sub}</div>
+          {title:'💰 المالية',items:[{l:'💰 الفواتير',n:'invoices'},{l:'📄 عروض الأسعار',n:'quotations'},{l:'📋 عروض متعددة',n:'multi_quotes'},{l:'📊 عروض غير مُباعة',n:'unsold_estimates'},{l:'📑 عقود AMC',n:'contracts'},{l:'📈 لوحة AMC',n:'amc_dashboard'},{l:'🏦 الضمانات',n:'retention'},{l:'💸 المصروفات',n:'expenses'}]},
+          {title:'⚙️ المشاريع والعمليات',items:[{l:'📋 المشاريع',n:'projects'},{l:'🖨️ طباعة مشروع',n:'print_project'},{l:'📅 مخطط جانت',n:'gantt'},{l:'🔄 أوامر التغيير',n:'change_orders'},{l:'🏗️ تقرير WIP',n:'wip'},{l:'✅ Punch List',n:'punch_list'},{l:'📊 تكاليف الوظائف',n:'job_costing'},{l:'📂 وثائق الشركة',n:'company_docs'}]},
+          {title:'🔧 الصيانة والتقارير',items:[{l:'🔧 الصيانة',n:'maintenance'},{l:'📋 تقرير الصيانة',n:'maint_report'},{l:'✅ قوائم التحقق',n:'job_checklists'},{l:'📝 السجل اليومي',n:'daily_logs'},{l:'🔁 أعمال متكررة',n:'recurring_jobs'},{l:'📞 مركز الاتصال',n:'call_center'},{l:'🛡️ الضمانات',n:'warranty'},{l:'📊 التقارير',n:'reports'}]},
+          {title:'👥 العملاء والفريق',items:[{l:'👥 العملاء',n:'clients'},{l:'👷 الفنيون',n:'technicians'},{l:'🏆 ترتيب الفنيين',n:'leaderboard'},{l:'💵 العمولات',n:'commissions'},{l:'📞 متابعة العملاء',n:'customer_followup'},{l:'🔍 كارت العميل',n:'client_card'},{l:'🏗️ المقاولون',n:'contractors'},{l:'👔 الحضور',n:'hr_attendance'}]},
+          {title:'📦 المواد والمخزون',items:[{l:'💲 الأسعار الثابتة',n:'flat_rate'},{l:'📦 المخزون',n:'inventory'},{l:'📖 كتاب الأسعار',n:'pricebook'},{l:'🛒 أوامر الشراء',n:'purchase_orders'},{l:'🌡️ الفريون',n:'freon'},{l:'🔧 مواسير النحاس',n:'copper_pipe'},{l:'💨 أعمال الدكت',n:'duct_works'},{l:'🔌 المعدات',n:'equipment'}]},
+          {title:'🏢 الموارد والإدارة',items:[{l:'🚗 المركبات',n:'vehicles'},{l:'📤 Dispatch Board',n:'dispatch'},{l:'⚙️ الإعدادات',n:'settings_page'},{l:'📊 مقارنة الموردين',n:'supplier_compare'},{l:'💰 التدفق النقدي',n:'cash_flow'},{l:'📅 التقرير الشهري',n:'monthly_report'},{l:'📈 خطة الطاقة',n:'capacity_plan'},{l:'🔮 بطاقة العميل',n:'client_card'}]},
+        ].map((group,gi)=>(
+          <div key={gi} style={{marginBottom:10}}>
+            <div style={{fontSize:11,fontWeight:700,color:'#566573',marginBottom:5}}>{group.title}</div>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(8,1fr)',gap:5}}>
+              {group.items.map((item,i)=><NavBtn key={i} label={item.l} onClick={()=>onNav(item.n)}/>)}
+            </div>
           </div>
         ))}
-      </Section>
+      </div>
 
-      {/* SECTION 3: People & Assets */}
-      <Section title="👷 الموارد والأصول | People & Assets" color="#4A235A">
+      {/* ===== MODULE SUMMARY ===== */}
+      <div style={{marginTop:12,background:'#2C3E50',borderRadius:'8px 8px 0 0',padding:'8px 16px',color:'white',fontFamily:'Cairo,sans-serif',fontWeight:700,fontSize:13}}>
+        📊 ملخص الأقسام | Module Summary
+      </div>
+      <div style={{background:'white',border:'1px solid var(--cs-border)',borderRadius:'0 0 8px 8px',padding:14,display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12}}>
         {[
-          {l:'فنيون نشطون',sub:'Active Techs',v:data.activeTechs||0,c:'#1E9CD7',nav:'technicians'},
-          {l:'مقاولون نشطون',sub:'Active Contractors',v:data.activeContractors||0,c:'#27AE60',nav:'contractors'},
-          {l:'مخزون منخفض',sub:'Low Stock Items',v:data.lowStock||0,c:data.lowStock>0?'#C0392B':'#7F8C8D',nav:'inventory'},
-          {l:'وثائق منتهية',sub:'Expired Docs',v:data.expiredDocs||0,c:data.expiredDocs>0?'#C0392B':'#7F8C8D',nav:'company_docs'},
-          {l:'مخالفات مركبات',sub:'Vehicle Violations',v:data.vehicleViolations||0,c:data.vehicleViolations>0?'#E67E22':'#7F8C8D',nav:'vehicles'},
-          {l:'إقامات تنتهي قريباً',sub:'Residency Expiring',v:data.residencyExpiring||0,c:data.residencyExpiring>0?'#E67E22':'#7F8C8D',nav:'technicians'},
-          {l:'ضمانات تنتهي قريباً',sub:'Warranty Expiring',v:data.warrantyExpiring||0,c:'#8E44AD',nav:'warranty'},
-          {l:'عمولات مستحقة',sub:'Due Commissions',v:0,c:'#16A085',nav:'commissions'},
-        ].map((item,i)=>(
-          <div key={i} style={{background:item.c,borderRadius:10,padding:'12px 14px',textAlign:'center',cursor:'pointer'}} onClick={()=>onNav(item.nav)}>
-            <div style={{fontSize:10,color:'rgba(255,255,255,0.8)',fontWeight:600,marginBottom:4}}>{item.l}</div>
-            <div style={{fontSize:22,fontWeight:900,color:'white',fontFamily:'Cairo,sans-serif'}}>{item.v}</div>
-            <div style={{fontSize:10,color:'rgba(255,255,255,0.6)'}}>{item.sub}</div>
+          {icon:'📋',title:'المشاريع',stat:`${d.projActive} نشط / ${d.projTotal} إجمالي`,value:fmt(d.contractsValue),nav:'projects'},
+          {icon:'🔧',title:'الصيانة',stat:`${d.maintOpen} مفتوح / ${d.maintThisMonth} هذا الشهر`,value:'—',nav:'maintenance'},
+          {icon:'💰',title:'الفواتير',stat:`${d.invPaid} مدفوعة / ${d.invTotal} إجمالي`,value:fmt(d.invTotalValue),nav:'invoices'},
+        ].map((m,i)=>(
+          <div key={i} onClick={()=>onNav(m.nav)} style={{background:'var(--cs-gray-light)',borderRadius:8,padding:14,cursor:'pointer',textAlign:'center'}}>
+            <div style={{fontSize:22,marginBottom:4}}>{m.icon}</div>
+            <div style={{fontFamily:'Cairo,sans-serif',fontWeight:700,fontSize:14,marginBottom:4}}>{m.title}</div>
+            <div style={{fontSize:11,color:'var(--cs-text-muted)',marginBottom:6}}>{m.stat}</div>
+            <div style={{fontSize:15,fontWeight:800,color:'var(--cs-blue)'}}>{m.value}</div>
           </div>
         ))}
-      </Section>
-
-      {/* Recent Projects */}
-      <div className="card" style={{padding:20}}>
-        <div style={{fontFamily:'Cairo,sans-serif',fontWeight:700,fontSize:15,marginBottom:14}}>أحدث المشاريع</div>
-        {data.recentProjects.length===0
-          ?<div style={{textAlign:'center',color:'var(--cs-text-muted)',padding:20}}>لا توجد مشاريع بعد</div>
-          :<div className="table-wrap"><table><thead><tr><th>اسم المشروع</th><th>الحالة</th><th>الإنجاز</th></tr></thead>
-            <tbody>{data.recentProjects.map((p:any,i:number)=>(
-              <tr key={i}>
-                <td style={{fontWeight:600}}>{p.project_name}</td>
-                <td><span className={`badge ${p.status==='Completed'?'badge-green':p.status==='In Progress'?'badge-blue':'badge-gray'}`}>{p.status}</span></td>
-                <td><div style={{display:'flex',alignItems:'center',gap:8,minWidth:120}}>
-                  <div style={{flex:1,background:'var(--cs-border)',borderRadius:4,height:8}}><div style={{width:`${p.completion_pct||0}%`,background:'var(--cs-blue)',height:8,borderRadius:4}}/></div>
-                  <span style={{fontSize:12,fontWeight:700,minWidth:35}}>{p.completion_pct||0}%</span>
-                </div></td>
-              </tr>
-            ))}</tbody>
-          </table></div>
-        }
       </div>
     </div>
   )
