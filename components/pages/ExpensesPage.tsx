@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import { Plus, Search, Edit2, Trash2, X, Save } from 'lucide-react'
+import { Plus, Search, Edit2, Trash2, X, Save, Printer} from 'lucide-react'
 
 const CATEGORIES = ['مواد','نقل','معدات','وقود','اتصالات','طعام','صيانة','مكتبية','أخرى']
 const STATUS_AR:any = {Pending:'معلق',Approved:'معتمد',Rejected:'مرفوض',Paid:'مدفوع'}
@@ -18,6 +18,7 @@ export default function ExpensesPage() {
   const [techs,setTechs]=useState<any[]>([])
   const [projects,setProjects]=useState<any[]>([])
   const [loading,setLoading]=useState(true)
+  const [viewItem,setViewItem]=useState<any>(null)
   const [search,setSearch]=useState('')
   const [filterType,setFilterType]=useState('')
   const [modal,setModal]=useState(false)
@@ -94,21 +95,31 @@ export default function ExpensesPage() {
         <div><div className="page-title">المصروفات والتكاليف</div><div className="page-subtitle">{rows.length} سجل</div></div>
         <button className="btn-primary" onClick={openAdd}><Plus size={16}/>مصروف جديد</button>
       </div>
-      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:14,marginBottom:20}}>
-        <div className="stat-card" style={{borderRight:'3px solid var(--cs-orange)',borderRadius:'0 12px 12px 0'}}>
-          <div style={{fontSize:11,color:'var(--cs-orange)',fontWeight:600,marginBottom:4}}>📋 إجمالي العهد</div>
-          <div style={{fontSize:18,fontWeight:800,color:'var(--cs-orange)'}}>{fmt(totalOhda)} ر.س</div>
-          <div style={{fontSize:11,color:'var(--cs-text-muted)'}}>{rows.filter(r=>r.transaction_type==='عهدة').length} سجل</div>
+      {/* ===== TOTALS BAR ===== */}
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:0,marginBottom:20,borderRadius:12,overflow:'hidden',border:'1px solid var(--cs-border)',boxShadow:'0 2px 8px rgba(0,0,0,0.06)'}}>
+        {/* العهدة */}
+        <div style={{background:'#FEF3E2',padding:'14px 18px',borderLeft:'1px solid var(--cs-border)'}}>
+          <div style={{fontSize:11,color:'#E67E22',fontWeight:700,marginBottom:6}}>📋 إجمالي العهد</div>
+          <div style={{fontSize:22,fontWeight:900,color:'#E67E22',fontFamily:'Cairo,sans-serif'}}>{fmt(totalOhda)}</div>
+          <div style={{fontSize:11,color:'#E67E22',opacity:0.7,marginTop:2}}>{rows.filter(r=>r.transaction_type==='عهدة').length} سجل عهدة</div>
         </div>
-        <div className="stat-card" style={{borderRight:'3px solid var(--cs-red)',borderRadius:'0 12px 12px 0'}}>
-          <div style={{fontSize:11,color:'var(--cs-red)',fontWeight:600,marginBottom:4}}>💸 إجمالي الصرف</div>
-          <div style={{fontSize:18,fontWeight:800,color:'var(--cs-red)'}}>{fmt(totalSarf)} ر.س</div>
-          <div style={{fontSize:11,color:'var(--cs-text-muted)'}}>{rows.filter(r=>r.transaction_type==='صرف').length} سجل</div>
+        {/* الصرف */}
+        <div style={{background:'#FDECEA',padding:'14px 18px',borderLeft:'1px solid var(--cs-border)'}}>
+          <div style={{fontSize:11,color:'var(--cs-red)',fontWeight:700,marginBottom:6}}>💸 إجمالي الصرف</div>
+          <div style={{fontSize:22,fontWeight:900,color:'var(--cs-red)',fontFamily:'Cairo,sans-serif'}}>{fmt(totalSarf)}</div>
+          <div style={{fontSize:11,color:'var(--cs-red)',opacity:0.7,marginTop:2}}>{rows.filter(r=>r.transaction_type==='صرف').length} سجل صرف</div>
         </div>
-        <div className="stat-card" style={{borderRight:'3px solid var(--cs-blue)',borderRadius:'0 12px 12px 0',background:'#EBF5FB'}}>
-          <div style={{fontSize:11,color:'var(--cs-blue)',fontWeight:600,marginBottom:4}}>📊 إجمالي التكاليف (عهدة - صرف)</div>
-          <div style={{fontSize:18,fontWeight:800,color:totalOhda-totalSarf>=0?'var(--cs-green)':'var(--cs-red)'}}>{fmt(totalOhda-totalSarf)} ر.س</div>
-          <div style={{fontSize:11,color:'var(--cs-text-muted)'}}>الفرق المتبقي</div>
+        {/* إجمالي التكاليف = عهدة - صرف */}
+        <div style={{background:totalOhda-totalSarf>=0?'#E8F8EF':'#FDECEA',padding:'14px 18px',position:'relative'}}>
+          <div style={{fontSize:11,color:totalOhda-totalSarf>=0?'var(--cs-green)':'var(--cs-red)',fontWeight:700,marginBottom:6}}>
+            📊 إجمالي التكاليف
+          </div>
+          <div style={{fontSize:22,fontWeight:900,color:totalOhda-totalSarf>=0?'var(--cs-green)':'var(--cs-red)',fontFamily:'Cairo,sans-serif'}}>
+            {fmt(totalOhda-totalSarf)}
+          </div>
+          <div style={{fontSize:10,marginTop:4,color:'var(--cs-text-muted)',background:'white',borderRadius:6,padding:'3px 8px',display:'inline-block',border:'1px solid var(--cs-border)'}}>
+            عهدة ({fmt(totalOhda)}) − صرف ({fmt(totalSarf)})
+          </div>
         </div>
       </div>
       <div className="card" style={{marginBottom:16,padding:'12px 16px'}}>
@@ -139,6 +150,7 @@ export default function ExpensesPage() {
                   <td style={{fontWeight:700}}>{fmt(r.amount)} ر.س</td>
                   <td><span className={`badge ${STATUS_C[r.status]||'badge-gray'}`}>{STATUS_AR[r.status]||r.status}</span></td>
                   <td><div style={{display:'flex',gap:6}}>
+                    <button onClick={()=>setViewItem(r)} title="عرض وطباعة" style={{background:"none",border:"none",cursor:"pointer",color:"var(--cs-green)"}}><Printer size={14}/></button>
                     <button onClick={()=>openEdit(r)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--cs-blue)'}}><Edit2 size={15}/></button>
                     <button onClick={()=>del(r.id)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--cs-red)'}}><Trash2 size={15}/></button>
                   </div></td>
@@ -148,6 +160,33 @@ export default function ExpensesPage() {
           </table></div>
         )}
       </div>
+      
+      {/* View / Print Modal */}
+      {viewItem&&(
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.4)',zIndex:300,display:'flex',alignItems:'center',justifyContent:'center',padding:16}}>
+          <div id="view-print-area" className="card" style={{width:'100%',maxWidth:560,maxHeight:'90vh',overflow:'auto',padding:24}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
+              <div style={{fontFamily:'Cairo,sans-serif',fontWeight:700,fontSize:16}}>تفاصيل السجل</div>
+              <div style={{display:'flex',gap:8}}>
+                <button onClick={()=>window.print()} style={{background:'var(--cs-blue)',color:'white',border:'none',borderRadius:6,padding:'6px 14px',cursor:'pointer',display:'flex',alignItems:'center',gap:5,fontSize:12,fontFamily:'Tajawal,sans-serif'}}><Printer size={14}/>طباعة</button>
+                <button onClick={()=>setViewItem(null)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--cs-text-muted)'}}><X size={20}/></button>
+              </div>
+            </div>
+            <div style={{display:'flex',flexDirection:'column',gap:0}}>
+              {Object.entries(viewItem).filter(([k])=>!['id','created_at','updated_at'].includes(k)&&typeof viewItem[k]!=='object').map(([k,v]:any,i)=>
+                v!=null&&v!==''?(
+                  <div key={i} style={{display:'flex',padding:'8px 0',borderBottom:'1px solid var(--cs-border)'}}>
+                    <span style={{width:160,color:'var(--cs-text-muted)',fontSize:12,fontWeight:600,flexShrink:0}}>{k.replace(/_/g,' ')}</span>
+                    <span style={{fontWeight:600,fontSize:13}}>{String(v)}</span>
+                  </div>
+                ):null
+              )}
+            </div>
+          </div>
+          <style>{`@media print{body *{visibility:hidden}#view-print-area,#view-print-area *{visibility:visible}#view-print-area{position:fixed;top:0;left:0;width:100%;max-height:none!important;overflow:visible!important}}`}</style>
+        </div>
+      )}
+
       {modal&&(
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.4)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center',padding:16}}>
           <div className="card" style={{width:'100%',maxWidth:560,maxHeight:'92vh',overflow:'auto',padding:24}}>
