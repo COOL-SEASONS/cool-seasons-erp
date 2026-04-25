@@ -95,9 +95,21 @@ export default function ExpensesPage() {
         <button className="btn-primary" onClick={openAdd}><Plus size={16}/>مصروف جديد</button>
       </div>
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:14,marginBottom:20}}>
-        <div className="stat-card" style={{borderRight:'3px solid var(--cs-blue)',borderRadius:'0 12px 12px 0'}}><div style={{fontSize:11,color:'var(--cs-text-muted)',fontWeight:600,marginBottom:4}}>إجمالي المصروفات</div><div style={{fontSize:18,fontWeight:800,color:'var(--cs-blue)'}}>{fmt(totalSarf+totalOhda)} ر.س</div></div>
-        <div className="stat-card" style={{borderRight:'3px solid var(--cs-red)',borderRadius:'0 12px 12px 0'}}><div style={{fontSize:11,color:'var(--cs-red)',fontWeight:600,marginBottom:4}}>💸 إجمالي الصرف</div><div style={{fontSize:18,fontWeight:800,color:'var(--cs-red)'}}>{fmt(totalSarf)} ر.س</div><div style={{fontSize:11,color:'var(--cs-text-muted)'}}>{rows.filter(r=>r.transaction_type==='صرف').length} سجل</div></div>
-        <div className="stat-card" style={{borderRight:'3px solid var(--cs-orange)',borderRadius:'0 12px 12px 0'}}><div style={{fontSize:11,color:'var(--cs-orange)',fontWeight:600,marginBottom:4}}>📋 إجمالي العهد</div><div style={{fontSize:18,fontWeight:800,color:'var(--cs-orange)'}}>{fmt(totalOhda)} ر.س</div><div style={{fontSize:11,color:'var(--cs-text-muted)'}}>{rows.filter(r=>r.transaction_type==='عهدة').length} سجل</div></div>
+        <div className="stat-card" style={{borderRight:'3px solid var(--cs-orange)',borderRadius:'0 12px 12px 0'}}>
+          <div style={{fontSize:11,color:'var(--cs-orange)',fontWeight:600,marginBottom:4}}>📋 إجمالي العهد</div>
+          <div style={{fontSize:18,fontWeight:800,color:'var(--cs-orange)'}}>{fmt(totalOhda)} ر.س</div>
+          <div style={{fontSize:11,color:'var(--cs-text-muted)'}}>{rows.filter(r=>r.transaction_type==='عهدة').length} سجل</div>
+        </div>
+        <div className="stat-card" style={{borderRight:'3px solid var(--cs-red)',borderRadius:'0 12px 12px 0'}}>
+          <div style={{fontSize:11,color:'var(--cs-red)',fontWeight:600,marginBottom:4}}>💸 إجمالي الصرف</div>
+          <div style={{fontSize:18,fontWeight:800,color:'var(--cs-red)'}}>{fmt(totalSarf)} ر.س</div>
+          <div style={{fontSize:11,color:'var(--cs-text-muted)'}}>{rows.filter(r=>r.transaction_type==='صرف').length} سجل</div>
+        </div>
+        <div className="stat-card" style={{borderRight:'3px solid var(--cs-blue)',borderRadius:'0 12px 12px 0',background:'#EBF5FB'}}>
+          <div style={{fontSize:11,color:'var(--cs-blue)',fontWeight:600,marginBottom:4}}>📊 إجمالي التكاليف (عهدة - صرف)</div>
+          <div style={{fontSize:18,fontWeight:800,color:totalOhda-totalSarf>=0?'var(--cs-green)':'var(--cs-red)'}}>{fmt(totalOhda-totalSarf)} ر.س</div>
+          <div style={{fontSize:11,color:'var(--cs-text-muted)'}}>الفرق المتبقي</div>
+        </div>
       </div>
       <div className="card" style={{marginBottom:16,padding:'12px 16px'}}>
         <div style={{display:'flex',gap:10}}>
