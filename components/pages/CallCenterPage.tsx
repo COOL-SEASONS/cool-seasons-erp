@@ -7,7 +7,19 @@ const SOURCES = ['Website','Referral','Exhibition','Cold Call','Social Media','W
 const STATUSES = ['New','Contacted','Qualified','Lost','Converted']
 const STATUS_AR:any={New:'جديد',Contacted:'تم التواصل',Qualified:'مؤهل',Lost:'خسرنا',Converted:'تحول لعميل'}
 const RATINGS = ['Hot Lead','Warm Lead','Cold Lead']
-const newForm=()=>({lead_code:'',name:'',phone:'',email:'',city:'',source:'Website',rating:'Warm Lead',status:'New',followup_date:'',notes:''})
+const newForm=()=>({lead_code:`LD-${900+Math.floor(Date.now()/1000)%9000}` as string,name:'',phone:'',email:'',city:'',source:'Website',rating:'Warm Lead',status:'New',followup_date:'',notes:''})
+
+  const generateCode = (rows: any[]) => {
+    if(!rows.length) return 'LD-900'
+    const nums = rows
+      .map((r:any) => r.lead_code?.replace('LD-',''))
+      .filter(Boolean)
+      .map((n:string) => parseInt(n.replace(/\D/g,'')))
+      .filter((n:number) => !isNaN(n))
+    if(!nums.length) return 'LD-900'
+    return 'LD-' + (Math.max(...nums) + 1)
+  }
+
 
 export default function CallCenterPage() {
   const [rows,setRows]=useState<any[]>([])
@@ -66,7 +78,7 @@ export default function CallCenterPage() {
     <div>
       <div className="page-header">
         <div><div className="page-title">Call Center</div><div className="page-subtitle">{rows.length} عميل محتمل</div></div>
-        <button className="btn-primary" onClick={()=>{setForm(newForm());setEditId(null);setModal(true)}}><Plus size={16}/>عميل محتمل جديد</button>
+        <button className="btn-primary" onClick={()=>{setForm({...newForm(), lead_code: generateCode(rows)});setEditId(null);setModal(true)}}><Plus size={16}/>عميل محتمل جديد</button>
       </div>
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(130px,1fr))',gap:12,marginBottom:20}}>
         {[

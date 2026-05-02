@@ -7,11 +7,23 @@ const WARRANTY_TYPES=['ضمان شامل','ضمان عمالة','ضمان قطع
 const DURATIONS=[3,6,12,18,24,36,48,60]
 
 const newForm=()=>({
-  warranty_code:'',project_id:'',client_id:'',
+  warranty_code:`WR-${200+Math.floor(Date.now()/1000)%9000}` as string,project_id:'',client_id:'',
   warranty_type:'ضمان شامل',
   start_date:new Date().toISOString().split('T')[0],
   duration_months:'12',notes:''
 })
+
+  const generateCode = (rows: any[]) => {
+    if(!rows.length) return 'WR-200'
+    const nums = rows
+      .map((r:any) => r.warranty_code?.replace('WR-',''))
+      .filter(Boolean)
+      .map((n:string) => parseInt(n.replace(/\D/g,'')))
+      .filter((n:number) => !isNaN(n))
+    if(!nums.length) return 'WR-200'
+    return 'WR-' + (Math.max(...nums) + 1)
+  }
+
 
 export default function WarrantyPage() {
   const [rows,setRows]=useState<any[]>([])
@@ -98,7 +110,7 @@ export default function WarrantyPage() {
         <div><div className="page-title">سجل الضمانات</div><div className="page-subtitle">{rows.length} ضمان</div></div>
         <div style={{display:'flex',gap:8}}>
           <button onClick={()=>window.print()} style={{display:'flex',alignItems:'center',gap:6,background:'white',color:'var(--cs-blue)',border:'1px solid var(--cs-blue)',borderRadius:8,padding:'8px 14px',cursor:'pointer',fontSize:13,fontFamily:'Tajawal,sans-serif',fontWeight:600}}><Printer size={15}/>طباعة</button>
-          <button className="btn-primary" onClick={()=>{setForm(newForm());setEditId(null);setModal(true)}}><Plus size={16}/>ضمان جديد</button>
+          <button className="btn-primary" onClick={()=>{setForm({...newForm(),warranty_code:'WR-'+(rows.length+101)});setEditId(null);setModal(true)}}><Plus size={16}/>ضمان جديد</button>
         </div>
       </div>
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(140px,1fr))',gap:12,marginBottom:20}}>

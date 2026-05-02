@@ -1,17 +1,26 @@
 'use client'
+const generateCode_PurchaseOrdersPage = (rows: any[]) => {
+  if(!rows || !rows.length) return 'PO-5000'
+  const nums = rows
+    .map((r:any) => r.po_code?.toString().replace('PO-','').replace(/\D/g,''))
+    .filter(Boolean).map(Number).filter(n => !isNaN(n))
+  if(!nums.length) return 'PO-5000'
+  return 'PO-' + (Math.max(...nums) + 1)
+}
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import { Plus, Search, Edit2, Trash2, X, Save } from 'lucide-react'
+import { Plus, Search, Edit2, Trash2, X, Save, Printer} from 'lucide-react'
 
 const UNITS = ['قطعة','كيلو','متر','لفة','وحدة','علبة','لتر']
 const STATUSES = ['Draft','Sent','Confirmed','Received','Partial','Cancelled']
 const STATUS_AR: any = { Draft:'مسودة', Sent:'مرسل', Confirmed:'مؤكد', Received:'مستلم', Partial:'جزئي', Cancelled:'ملغي' }
-const EMPTY = { po_code:'', project_id:'', supplier:'', description:'', qty:1, unit:'قطعة', unit_price:0, order_date: new Date().toISOString().split('T')[0], expected_date:'', status:'Draft', notes:'' }
+const EMPTY = { po_code:`PO-${5000+Math.floor(Date.now()/1000)%9000}` as string, project_id:'', supplier:'', description:'', qty:1, unit:'قطعة', unit_price:0, order_date: new Date().toISOString().split('T')[0], expected_date:'', status:'Draft', notes:'' }
 
 export default function PurchaseOrdersPage() {
   const [rows, setRows] = useState<any[]>([])
   const [projects, setProjects] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [viewItem,setViewItem]=useState<any>(null)
   const [search, setSearch] = useState('')
   const [modal, setModal] = useState(false)
   const [form, setForm] = useState<any>(EMPTY)
@@ -50,7 +59,7 @@ export default function PurchaseOrdersPage() {
     <div>
       <div className="page-header">
         <div><div className="page-title">أوامر الشراء</div><div className="page-subtitle">إجمالي: {fmt(totalValue)} ر.س</div></div>
-        <button className="btn-primary" onClick={()=>{setForm(EMPTY);setEditId(null);setModal(true)}}><Plus size={16}/>أمر شراء جديد</button>
+        <button className="btn-primary" onClick={()=>{setForm({...EMPTY,po_code:'PO-'+(rows.length+5000)});setEditId(null);setModal(true)}}><Plus size={16}/>أمر شراء جديد</button>
       </div>
       <div className="card" style={{marginBottom:16,padding:'12px 16px'}}>
         <div style={{position:'relative'}}><Search size={16} style={{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',color:'var(--cs-text-muted)'}}/><input className="form-input" style={{paddingRight:34}} placeholder="بحث برقم الأمر أو المورد أو المواد..." value={search} onChange={e=>setSearch(e.target.value)}/></div>
@@ -111,6 +120,30 @@ export default function PurchaseOrdersPage() {
               <button className="btn-primary" onClick={save} disabled={saving}><Save size={15}/>{saving?'جاري الحفظ...':'حفظ'}</button>
             </div>
           </div>
+        </div>
+      )}
+      {viewItem&&(
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.4)',zIndex:300,display:'flex',alignItems:'center',justifyContent:'center',padding:16}}>
+          <div id="view-print-area" className="card" style={{width:'100%',maxWidth:560,maxHeight:'90vh',overflow:'auto',padding:24}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
+              <div style={{fontFamily:'Cairo,sans-serif',fontWeight:700,fontSize:16}}>تفاصيل السجل</div>
+              <div style={{display:'flex',gap:8}}>
+                <button onClick={()=>window.print()} style={{background:'var(--cs-blue)',color:'white',border:'none',borderRadius:6,padding:'6px 14px',cursor:'pointer',display:'flex',alignItems:'center',gap:5,fontSize:12,fontFamily:'Tajawal,sans-serif'}}><Printer size={14}/>طباعة</button>
+                <button onClick={()=>setViewItem(null)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--cs-text-muted)'}}><X size={20}/></button>
+              </div>
+            </div>
+            <div>
+              {Object.entries(viewItem).filter(([k])=>!['id','created_at','updated_at'].includes(k)&&typeof viewItem[k]!=='object').map(([k,v]:any,i)=>
+                v!=null&&v!==''?(
+                  <div key={i} style={{display:'flex',padding:'8px 0',borderBottom:'1px solid var(--cs-border)'}}>
+                    <span style={{width:160,color:'var(--cs-text-muted)',fontSize:12,fontWeight:600,flexShrink:0}}>{k.replace(/_/g,' ')}</span>
+                    <span style={{fontWeight:600,fontSize:13}}>{String(v)}</span>
+                  </div>
+                ):null
+              )}
+            </div>
+          </div>
+          <style>{`@media print{body *{visibility:hidden}#view-print-area,#view-print-area *{visibility:visible}#view-print-area{position:fixed;top:0;left:0;width:100%;max-height:none!important}}`}</style>
         </div>
       )}
     </div>

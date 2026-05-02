@@ -1,9 +1,10 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import { Phone, Mail, AlertTriangle, TrendingDown, RefreshCw } from 'lucide-react'
+import { Phone, Mail, AlertTriangle, TrendingDown, RefreshCw, Printer, X} from 'lucide-react'
 
 export default function UnsoldEstimatesPage() {
+  const [viewItem,setViewItem]=useState<any>(null)
   const [rows,setRows] = useState<any[]>([])
   const [loading,setLoading] = useState(true)
   const [filter,setFilter] = useState('all')
@@ -134,6 +135,30 @@ export default function UnsoldEstimatesPage() {
           </div>
         )}
       </div>
+      {viewItem&&(
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.4)',zIndex:300,display:'flex',alignItems:'center',justifyContent:'center',padding:16}}>
+          <div id="view-print-area" className="card" style={{width:'100%',maxWidth:560,maxHeight:'90vh',overflow:'auto',padding:24}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
+              <div style={{fontFamily:'Cairo,sans-serif',fontWeight:700,fontSize:16}}>تفاصيل السجل</div>
+              <div style={{display:'flex',gap:8}}>
+                <button onClick={()=>window.print()} style={{background:'var(--cs-blue)',color:'white',border:'none',borderRadius:6,padding:'6px 14px',cursor:'pointer',display:'flex',alignItems:'center',gap:5,fontSize:12,fontFamily:'Tajawal,sans-serif'}}><Printer size={14}/>طباعة</button>
+                <button onClick={()=>setViewItem(null)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--cs-text-muted)'}}><X size={20}/></button>
+              </div>
+            </div>
+            <div>
+              {Object.entries(viewItem).filter(([k])=>!['id','created_at','updated_at'].includes(k)&&typeof viewItem[k]!=='object').map(([k,v]:any,i)=>
+                v!=null&&v!==''?(
+                  <div key={i} style={{display:'flex',padding:'8px 0',borderBottom:'1px solid var(--cs-border)'}}>
+                    <span style={{width:160,color:'var(--cs-text-muted)',fontSize:12,fontWeight:600,flexShrink:0}}>{k.replace(/_/g,' ')}</span>
+                    <span style={{fontWeight:600,fontSize:13}}>{String(v)}</span>
+                  </div>
+                ):null
+              )}
+            </div>
+          </div>
+          <style>{`@media print{body *{visibility:hidden}#view-print-area,#view-print-area *{visibility:visible}#view-print-area{position:fixed;top:0;left:0;width:100%;max-height:none!important}}`}</style>
+        </div>
+      )}
     </div>
   )
 }

@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import { Plus, Search, Edit2, Trash2, X, Save, AlertTriangle } from 'lucide-react'
+import { Plus, Search, Edit2, Trash2, X, Save, AlertTriangle, Printer} from 'lucide-react'
 
 const EMPTY = {
   plate_no:'', vehicle_type:'', brand:'', model:'', year:'',
@@ -14,6 +14,7 @@ export default function VehiclesPage() {
   const [rows, setRows] = useState<any[]>([])
   const [techs, setTechs] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [viewItem,setViewItem]=useState<any>(null)
   const [search, setSearch] = useState('')
   const [modal, setModal] = useState(false)
   const [form, setForm] = useState<any>(EMPTY)
@@ -82,7 +83,7 @@ export default function VehiclesPage() {
           <div className="page-title">المركبات</div>
           <div className="page-subtitle">{rows.length} مركبة مسجلة</div>
         </div>
-        <button className="btn-primary" onClick={()=>{setForm(EMPTY);setEditId(null);setModal(true)}}><Plus size={16}/>إضافة مركبة</button>
+        <button className="btn-primary" onClick={()=>{setForm({...EMPTY,vehicle_code:'VH-'+(rows.length+101)});setEditId(null);setModal(true)}}><Plus size={16}/>إضافة مركبة</button>
       </div>
 
       {/* Alert summary */}
@@ -178,6 +179,30 @@ export default function VehiclesPage() {
               <button className="btn-primary" onClick={save} disabled={saving}><Save size={15}/>{saving?'جاري الحفظ...':'حفظ'}</button>
             </div>
           </div>
+        </div>
+      )}
+      {viewItem&&(
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.4)',zIndex:300,display:'flex',alignItems:'center',justifyContent:'center',padding:16}}>
+          <div id="view-print-area" className="card" style={{width:'100%',maxWidth:560,maxHeight:'90vh',overflow:'auto',padding:24}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
+              <div style={{fontFamily:'Cairo,sans-serif',fontWeight:700,fontSize:16}}>تفاصيل السجل</div>
+              <div style={{display:'flex',gap:8}}>
+                <button onClick={()=>window.print()} style={{background:'var(--cs-blue)',color:'white',border:'none',borderRadius:6,padding:'6px 14px',cursor:'pointer',display:'flex',alignItems:'center',gap:5,fontSize:12,fontFamily:'Tajawal,sans-serif'}}><Printer size={14}/>طباعة</button>
+                <button onClick={()=>setViewItem(null)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--cs-text-muted)'}}><X size={20}/></button>
+              </div>
+            </div>
+            <div>
+              {Object.entries(viewItem).filter(([k])=>!['id','created_at','updated_at'].includes(k)&&typeof viewItem[k]!=='object').map(([k,v]:any,i)=>
+                v!=null&&v!==''?(
+                  <div key={i} style={{display:'flex',padding:'8px 0',borderBottom:'1px solid var(--cs-border)'}}>
+                    <span style={{width:160,color:'var(--cs-text-muted)',fontSize:12,fontWeight:600,flexShrink:0}}>{k.replace(/_/g,' ')}</span>
+                    <span style={{fontWeight:600,fontSize:13}}>{String(v)}</span>
+                  </div>
+                ):null
+              )}
+            </div>
+          </div>
+          <style>{`@media print{body *{visibility:hidden}#view-print-area,#view-print-area *{visibility:visible}#view-print-area{position:fixed;top:0;left:0;width:100%;max-height:none!important}}`}</style>
         </div>
       )}
     </div>

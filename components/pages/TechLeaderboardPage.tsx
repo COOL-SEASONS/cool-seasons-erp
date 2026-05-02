@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
+import { Printer } from 'lucide-react'
 
 export default function TechLeaderboardPage() {
   const [techs,setTechs] = useState<any[]>([])
@@ -37,8 +38,9 @@ export default function TechLeaderboardPage() {
 
   return (
     <div>
-      <div className="page-header">
+      <div className="page-header" style={{gap:8}}>
         <div><div className="page-title">لوحة أداء الفنيين</div><div className="page-subtitle">Tech Leaderboard</div></div>
+        <button onClick={()=>window.print()} style={{display:"flex",alignItems:"center",gap:6,background:"var(--cs-blue)",color:"white",border:"none",borderRadius:8,padding:"8px 16px",cursor:"pointer",fontSize:13,fontFamily:"Tajawal,sans-serif",fontWeight:600}}><Printer size={15}/>طباعة</button>
       </div>
 
       {/* Top 3 */}

@@ -8,7 +8,7 @@ const STATUS_AR:any = {Pending:'معلق',Approved:'معتمد',Rejected:'مرف
 const STATUS_C:any = {Pending:'badge-amber',Approved:'badge-blue',Rejected:'badge-red',Paid:'badge-green'}
 
 const newForm=()=>({
-  expense_code:'',expense_date:new Date().toISOString().split('T')[0],
+  expense_code:`EXP-${1001+Math.floor(Date.now()/1000)%9000}` as string,expense_date:new Date().toISOString().split('T')[0],
   project_id:'',tech_id:'',category:'مواد',amount:'0',
   description:'',status:'Pending',transaction_type:'صرف'
 })

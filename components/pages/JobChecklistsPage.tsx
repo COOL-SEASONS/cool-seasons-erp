@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import { Plus, Search, Edit2, Trash2, X, Save, CheckCircle, Circle } from 'lucide-react'
+import { Plus, Search, Edit2, Trash2, X, Save, CheckCircle, Circle, Printer} from 'lucide-react'
 
 const DEFAULT_ITEMS = [
   'فحص مستوى الغاز (Freon Level Check)',
@@ -22,12 +22,25 @@ const DEFAULT_ITEMS = [
 ]
 
 const newForm = () => ({
-  checklist_code: '', project_id: '', tech_id: '',
+  checklist_code:`CL-${8700+Math.floor(Date.now()/1000)%9000}` as string, project_id: '', tech_id: '',
   check_date: new Date().toISOString().split('T')[0],
   notes: ''
 })
 
+  const generateCode = (rows: any[]) => {
+    if(!rows.length) return 'CL-8700'
+    const nums = rows
+      .map((r:any) => r.checklist_code?.replace('CL-',''))
+      .filter(Boolean)
+      .map((n:string) => parseInt(n.replace(/\D/g,'')))
+      .filter((n:number) => !isNaN(n))
+    if(!nums.length) return 'CL-8700'
+    return 'CL-' + (Math.max(...nums) + 1)
+  }
+
+
 export default function JobChecklistsPage() {
+  const [viewItem,setViewItem]=useState<any>(null)
   const [rows,setRows] = useState<any[]>([])
   const [projects,setProjects] = useState<any[]>([])
   const [techs,setTechs] = useState<any[]>([])
@@ -148,6 +161,7 @@ export default function JobChecklistsPage() {
                     </div>
                   </td>
                   <td><div style={{display:'flex',gap:6}}>
+                    <button onClick={()=>setViewItem(r)} title="عرض وطباعة" style={{background:'none',border:'none',cursor:'pointer',color:'var(--cs-green)'}}><Printer size={14}/></button>
                     <button onClick={()=>openEdit(r)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--cs-blue)'}}><Edit2 size={15}/></button>
                     <button onClick={()=>del(r.id)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--cs-red)'}}><Trash2 size={15}/></button>
                   </div></td>
@@ -157,6 +171,32 @@ export default function JobChecklistsPage() {
           </table></div>
         )}
       </div>
+
+      
+      {viewItem&&(
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.4)',zIndex:300,display:'flex',alignItems:'center',justifyContent:'center',padding:16}}>
+          <div id="view-print-area" className="card" style={{width:'100%',maxWidth:560,maxHeight:'90vh',overflow:'auto',padding:24}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
+              <div style={{fontFamily:'Cairo,sans-serif',fontWeight:700,fontSize:16}}>تفاصيل السجل</div>
+              <div style={{display:'flex',gap:8}}>
+                <button onClick={()=>window.print()} style={{background:'var(--cs-blue)',color:'white',border:'none',borderRadius:6,padding:'6px 14px',cursor:'pointer',display:'flex',alignItems:'center',gap:5,fontSize:12,fontFamily:'Tajawal,sans-serif'}}><Printer size={14}/>طباعة</button>
+                <button onClick={()=>setViewItem(null)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--cs-text-muted)'}}><X size={20}/></button>
+              </div>
+            </div>
+            <div>
+              {Object.entries(viewItem).filter(([k])=>!['id','created_at','updated_at'].includes(k)&&typeof viewItem[k]!=='object').map(([k,v]:any,i)=>
+                v!=null&&v!==''?(
+                  <div key={i} style={{display:'flex',padding:'8px 0',borderBottom:'1px solid var(--cs-border)'}}>
+                    <span style={{width:160,color:'var(--cs-text-muted)',fontSize:12,fontWeight:600,flexShrink:0}}>{k.replace(/_/g,' ')}</span>
+                    <span style={{fontWeight:600,fontSize:13}}>{String(v)}</span>
+                  </div>
+                ):null
+              )}
+            </div>
+          </div>
+          <style>{`@media print{body *{visibility:hidden}#view-print-area,#view-print-area *{visibility:visible}#view-print-area{position:fixed;top:0;left:0;width:100%;max-height:none!important}}`}</style>
+        </div>
+      )}
 
       {modal&&(
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.4)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center',padding:16}}>

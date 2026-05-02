@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import { AlertTriangle, CheckCircle, Clock, DollarSign } from 'lucide-react'
+import { AlertTriangle, CheckCircle, Clock, DollarSign, Printer} from 'lucide-react'
 
 export default function AMCDashboardPage() {
   const [contracts,setContracts] = useState<any[]>([])
@@ -45,8 +45,9 @@ export default function AMCDashboardPage() {
 
   return (
     <div>
-      <div className="page-header">
+      <div className="page-header" style={{gap:8}}>
         <div><div className="page-title">لوحة عقود AMC</div><div className="page-subtitle">Annual Maintenance Contracts</div></div>
+        <button onClick={()=>window.print()} style={{display:"flex",alignItems:"center",gap:6,background:"var(--cs-blue)",color:"white",border:"none",borderRadius:8,padding:"8px 16px",cursor:"pointer",fontSize:13,fontFamily:"Tajawal,sans-serif",fontWeight:600}}><Printer size={15}/>طباعة</button>
       </div>
 
       {/* KPI cards */}

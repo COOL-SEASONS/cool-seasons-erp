@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import { BarChart2, TrendingUp, DollarSign, Wrench, Users, Package, FileText, Award } from 'lucide-react'
+import { BarChart2, TrendingUp, DollarSign, Wrench, Users, Package, FileText, Award, Printer} from 'lucide-react'
 
 export default function ReportsPage() {
   const [data,setData] = useState<any>(null)
@@ -103,8 +103,9 @@ export default function ReportsPage() {
 
   return (
     <div>
-      <div className="page-header">
+      <div className="page-header" style={{gap:8}}>
         <div><div className="page-title">التقارير والإحصاءات</div><div className="page-subtitle">لمحة شاملة عن أداء الشركة</div></div>
+        <button onClick={()=>window.print()} style={{display:"flex",alignItems:"center",gap:6,background:"var(--cs-blue)",color:"white",border:"none",borderRadius:8,padding:"8px 16px",cursor:"pointer",fontSize:13,fontFamily:"Tajawal,sans-serif",fontWeight:600}}><Printer size={15}/>طباعة</button>
       </div>
 
       {/* Tabs */}

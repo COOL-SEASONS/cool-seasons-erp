@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import { BarChart3, TrendingUp, DollarSign, Wrench, Users, Package } from 'lucide-react'
+import { BarChart3, TrendingUp, DollarSign, Wrench, Users, Package, Printer} from 'lucide-react'
 
 export default function MonthlyReportPage() {
   const [data,setData] = useState<any>({})
@@ -81,7 +81,7 @@ export default function MonthlyReportPage() {
 
   return (
     <div>
-      <div className="page-header">
+      <div className="page-header" style={{gap:8}}>
         <div>
           <div className="page-title">التقرير الشهري</div>
           <div className="page-subtitle">{displayMonth()}</div>

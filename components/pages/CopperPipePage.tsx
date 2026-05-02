@@ -1,18 +1,19 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import { Plus, Search, Edit2, Trash2, X, Save } from 'lucide-react'
+import { Plus, Search, Edit2, Trash2, X, Save, Printer} from 'lucide-react'
 
-const PIPE_SIZES = ['1/4 بوصة (0.75 طن)','3/8-1/4 بوصة (1 طن)','1/2-1/4 بوصة (1.5 طن)','5/8-3/8 بوصة (2 طن)','3/4-1/2 بوصة (2.5 طن)','7/8-1/2 بوصة (3 طن)','1 1/8-5/8 بوصة (5 طن)']
+const PIPE_SIZES = ['1/4','3/8-1/4','1/2-1/4','5/8-3/8','3/4-1/2','7/8-1/2','1 1/8-5/8']
 
 const newForm = () => ({
-  record_id:'', entry_date: new Date().toISOString().split('T')[0],
+  record_id:`CP-${1001+Math.floor(Date.now()/1000)%9000}` as string, entry_date: new Date().toISOString().split('T')[0],
   project_id:'', tech_id:'', pipe_size:'3/8-1/4 بوصة (1 طن)',
   coils_count:'0', meters_per_coil:'15',
   meters_installed:'0', unit_price:'0', notes:''
 })
 
 export default function CopperPipePage() {
+  const [viewItem,setViewItem]=useState<any>(null)
   const [rows,setRows] = useState<any[]>([])
   const [projects,setProjects] = useState<any[]>([])
   const [techs,setTechs] = useState<any[]>([])
@@ -67,7 +68,7 @@ export default function CopperPipePage() {
       meters_installed: installed,
       remaining_meters: remaining,
       unit_price: parseFloat(form.unit_price)||0,
-      notes: `لفات: ${coils} | ${form.notes||''}`.trim()||null,
+      notes: form.notes ? `لفات: ${coils} | ${form.notes}` : `لفات: ${coils}`,
     }
     const {error} = editId
       ? await supabase.from('copper_pipe').update(payload).eq('id',editId)
@@ -92,7 +93,7 @@ export default function CopperPipePage() {
     <div>
       <div className="page-header">
         <div><div className="page-title">مواسير النحاس</div><div className="page-subtitle">Copper Pipe Tracking</div></div>
-        <button className="btn-primary" onClick={()=>{setForm(newForm());setEditId(null);setModal(true)}}><Plus size={16}/>سجل جديد</button>
+        <button className="btn-primary" onClick={()=>{setForm({...newForm(),record_id:'CP-'+(rows.length+1001)});setEditId(null);setModal(true)}}><Plus size={16}/>سجل جديد</button>
       </div>
 
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:12,marginBottom:20}}>
@@ -131,7 +132,8 @@ export default function CopperPipePage() {
                     <td style={{color:'var(--cs-green)',fontWeight:700}}>{fmt(r.meters_installed)} م</td>
                     <td style={{color:(r.remaining_meters||0)>=0?'var(--cs-orange)':'var(--cs-red)',fontWeight:700}}>{fmt(r.remaining_meters)} م</td>
                     <td><div style={{display:'flex',gap:6}}>
-                      <button onClick={()=>openEdit(r)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--cs-blue)'}}><Edit2 size={15}/></button>
+                      <button onClick={()=>setViewItem(r)} title="عرض وطباعة" style={{background:'none',border:'none',cursor:'pointer',color:'var(--cs-green)'}}><Printer size={14}/></button>
+                    <button onClick={()=>openEdit(r)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--cs-blue)'}}><Edit2 size={15}/></button>
                       <button onClick={()=>del(r.id)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--cs-red)'}}><Trash2 size={15}/></button>
                     </div></td>
                   </tr>
@@ -140,6 +142,32 @@ export default function CopperPipePage() {
           </table></div>
         )}
       </div>
+
+      
+      {viewItem&&(
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.4)',zIndex:300,display:'flex',alignItems:'center',justifyContent:'center',padding:16}}>
+          <div id="view-print-area" className="card" style={{width:'100%',maxWidth:560,maxHeight:'90vh',overflow:'auto',padding:24}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
+              <div style={{fontFamily:'Cairo,sans-serif',fontWeight:700,fontSize:16}}>تفاصيل السجل</div>
+              <div style={{display:'flex',gap:8}}>
+                <button onClick={()=>window.print()} style={{background:'var(--cs-blue)',color:'white',border:'none',borderRadius:6,padding:'6px 14px',cursor:'pointer',display:'flex',alignItems:'center',gap:5,fontSize:12,fontFamily:'Tajawal,sans-serif'}}><Printer size={14}/>طباعة</button>
+                <button onClick={()=>setViewItem(null)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--cs-text-muted)'}}><X size={20}/></button>
+              </div>
+            </div>
+            <div>
+              {Object.entries(viewItem).filter(([k])=>!['id','created_at','updated_at'].includes(k)&&typeof viewItem[k]!=='object').map(([k,v]:any,i)=>
+                v!=null&&v!==''?(
+                  <div key={i} style={{display:'flex',padding:'8px 0',borderBottom:'1px solid var(--cs-border)'}}>
+                    <span style={{width:160,color:'var(--cs-text-muted)',fontSize:12,fontWeight:600,flexShrink:0}}>{k.replace(/_/g,' ')}</span>
+                    <span style={{fontWeight:600,fontSize:13}}>{String(v)}</span>
+                  </div>
+                ):null
+              )}
+            </div>
+          </div>
+          <style>{`@media print{body *{visibility:hidden}#view-print-area,#view-print-area *{visibility:visible}#view-print-area{position:fixed;top:0;left:0;width:100%;max-height:none!important}}`}</style>
+        </div>
+      )}
 
       {modal&&(
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.4)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center',padding:16}}>

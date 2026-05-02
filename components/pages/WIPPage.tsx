@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import { Printer } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
 export default function WIPPage() {
@@ -40,7 +41,7 @@ export default function WIPPage() {
 
   return (
     <div>
-      <div className="page-header">
+      <div className="page-header" style={{gap:8}}>
         <div><div className="page-title">تقرير WIP</div><div className="page-subtitle">Work In Progress — الأعمال الجارية</div></div>
       </div>
 

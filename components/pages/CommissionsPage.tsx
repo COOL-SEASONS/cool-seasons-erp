@@ -7,10 +7,22 @@ const STATUS_AR:any={Pending:'معلق',Partial:'جزئي',Paid:'مدفوع'}
 const STATUS_C:any={Pending:'badge-amber',Partial:'badge-blue',Paid:'badge-green'}
 
 const newForm=()=>({
-  broker_name:'', project_id:'', tech_id:'',
+  comm_code:`COM-${1001+Math.floor(Date.now()/1000)%9000}` as string,broker_name:'', project_id:'', tech_id:'',
   sales_amount:'0', commission_pct:'5',
   paid_amount:'0', period_month:'', status:'Pending', notes:''
 })
+
+  const generateCode = (rows: any[]) => {
+    if(!rows.length) return 'COM-101'
+    const nums = rows
+      .map((r:any) => r.commission_code?.replace('COM-',''))
+      .filter(Boolean)
+      .map((n:string) => parseInt(n.replace(/\D/g,'')))
+      .filter((n:number) => !isNaN(n))
+    if(!nums.length) return 'COM-101'
+    return 'COM-' + (Math.max(...nums) + 1)
+  }
+
 
 export default function CommissionsPage() {
   const [rows,setRows]=useState<any[]>([])
@@ -92,7 +104,7 @@ export default function CommissionsPage() {
         <div><div className="page-title">العمولات</div><div className="page-subtitle">{rows.length} سجل عمولة</div></div>
         <div style={{display:'flex',gap:8}}>
           <button onClick={()=>window.print()} style={{display:'flex',alignItems:'center',gap:6,background:'white',color:'var(--cs-blue)',border:'1px solid var(--cs-blue)',borderRadius:8,padding:'8px 14px',cursor:'pointer',fontSize:13,fontFamily:'Tajawal,sans-serif',fontWeight:600}}><Printer size={15}/>طباعة</button>
-          <button className="btn-primary" onClick={()=>{setForm(newForm());setEditId(null);setModal(true)}}><Plus size={16}/>سجل عمولة</button>
+          <button className="btn-primary" onClick={()=>{setForm({...newForm(),commission_code:'COM-'+(rows.length+101)});setEditId(null);setModal(true)}}><Plus size={16}/>سجل عمولة</button>
         </div>
       </div>
 

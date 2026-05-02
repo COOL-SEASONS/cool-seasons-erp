@@ -5,7 +5,19 @@ import { Plus, Search, Edit2, Trash2, X, Save, Printer } from 'lucide-react'
 
 const STATUS_AR:any={Pending:'انتظار موافقة',Approved:'موافق عليها',Rejected:'مرفوضة',Cancelled:'ملغية'}
 const STATUS_C:any={Pending:'badge-amber',Approved:'badge-green',Rejected:'badge-red',Cancelled:'badge-gray'}
-const newForm=()=>({co_code:'',project_id:'',client_id:'',description:'',amount:'0',requested_date:new Date().toISOString().split('T')[0],approved_date:'',status:'Pending',notes:''})
+const newForm=()=>({co_code:`CO-${551+Math.floor(Date.now()/1000)%9000}` as string,project_id:'',client_id:'',description:'',amount:'0',requested_date:new Date().toISOString().split('T')[0],approved_date:'',status:'Pending',notes:''})
+
+  const generateCode = (rows: any[]) => {
+    if(!rows.length) return 'CO-551'
+    const nums = rows
+      .map((r:any) => r.co_code?.replace('CO-',''))
+      .filter(Boolean)
+      .map((n:string) => parseInt(n.replace(/\D/g,'')))
+      .filter((n:number) => !isNaN(n))
+    if(!nums.length) return 'CO-551'
+    return 'CO-' + (Math.max(...nums) + 1)
+  }
+
 
 export default function ChangeOrdersPage() {
   const [rows,setRows]=useState<any[]>([])
@@ -52,7 +64,7 @@ export default function ChangeOrdersPage() {
     <div>
       <div className="page-header">
         <div><div className="page-title">أوامر التغيير</div><div className="page-subtitle">{rows.length} أمر تغيير</div></div>
-        <button className="btn-primary" onClick={()=>{setForm(newForm());setEditId(null);setModal(true)}}><Plus size={16}/>أمر تغيير جديد</button>
+        <button className="btn-primary" onClick={()=>{setForm({...newForm(),co_code:'CO-'+(rows.length+551)});setEditId(null);setModal(true)}}><Plus size={16}/>أمر تغيير جديد</button>
       </div>
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(150px,1fr))',gap:12,marginBottom:20}}>
         {[{l:'الإجمالي',v:fmt(totalApproved+totalPending)+' ر.س',c:'var(--cs-blue)'},{l:'موافق عليها',v:fmt(totalApproved)+' ر.س',c:'var(--cs-green)'},{l:'انتظار موافقة',v:fmt(totalPending)+' ر.س',c:'var(--cs-orange)'},{l:'مرفوضة',v:rows.filter(r=>r.status==='Rejected').length,c:'var(--cs-red)'}].map((s,i)=>(

@@ -14,7 +14,7 @@ export default function GanttPage() {
     supabase.from('projects')
       .select('id,project_code,project_name,start_date,end_date,completion_pct,status,technicians(full_name),clients(company_name)')
       .not('start_date','is',null).not('end_date','is',null)
-      .order('start_date',{ascending:true})
+      .order('start_date',{ascending:false})
       .then(({data})=>{ setProjects(data||[]); setLoading(false) })
   },[])
 

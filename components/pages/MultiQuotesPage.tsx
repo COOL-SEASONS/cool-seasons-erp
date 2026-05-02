@@ -7,11 +7,23 @@ const STATUS_AR:any={Draft:'مسودة',Sent:'مرسل',Accepted:'مقبول',Re
 const STATUS_C:any={Draft:'badge-gray',Sent:'badge-blue',Accepted:'badge-green',Rejected:'badge-red',Expired:'badge-amber'}
 
 const newForm=()=>({
-  quote_code:'',client_id:'',description:'',
+  quote_code:`MQ-${1001+Math.floor(Date.now()/1000)%9000}` as string,client_id:'',description:'',
   quote_date:new Date().toISOString().split('T')[0],expiry_date:'',
   economy_price:'0',standard_price:'0',premium_price:'0',
   status:'Draft',accepted_tier:'',notes:''
 })
+
+  const generateCode = (rows: any[]) => {
+    if(!rows.length) return 'MQ-101'
+    const nums = rows
+      .map((r:any) => r.quote_code?.replace('MQ-',''))
+      .filter(Boolean)
+      .map((n:string) => parseInt(n.replace(/\D/g,'')))
+      .filter((n:number) => !isNaN(n))
+    if(!nums.length) return 'MQ-101'
+    return 'MQ-' + (Math.max(...nums) + 1)
+  }
+
 
 export default function MultiQuotesPage() {
   const [rows,setRows]=useState<any[]>([])
@@ -98,7 +110,7 @@ export default function MultiQuotesPage() {
         <div><div className="page-title">عروض أسعار متعددة الخيارات</div><div className="page-subtitle">Multi-Tier Quotes — {rows.length} عرض</div></div>
         <div style={{display:'flex',gap:8}}>
           <button onClick={()=>window.print()} style={{display:'flex',alignItems:'center',gap:6,background:'white',color:'var(--cs-blue)',border:'1px solid var(--cs-blue)',borderRadius:8,padding:'8px 14px',cursor:'pointer',fontSize:13,fontFamily:'Tajawal,sans-serif',fontWeight:600}}><Printer size={15}/>طباعة</button>
-          <button className="btn-primary" onClick={()=>{setForm(newForm());setEditId(null);setModal(true)}}><Plus size={16}/>عرض جديد</button>
+          <button className="btn-primary" onClick={()=>{setForm({...newForm(), quote_code: generateCode(rows)});setEditId(null);setModal(true)}}><Plus size={16}/>عرض جديد</button>
         </div>
       </div>
       <div className="card" style={{marginBottom:16,padding:'12px 16px'}}>

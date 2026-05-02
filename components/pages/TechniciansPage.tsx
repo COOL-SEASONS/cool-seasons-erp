@@ -1,15 +1,24 @@
 'use client'
+const generateCode_TechniciansPage = (rows: any[]) => {
+  if(!rows || !rows.length) return 'T-50'
+  const nums = rows
+    .map((r:any) => r.tech_code?.toString().replace('T-','').replace(/\D/g,''))
+    .filter(Boolean).map(Number).filter(n => !isNaN(n))
+  if(!nums.length) return 'T-50'
+  return 'T-' + (Math.max(...nums) + 1)
+}
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import { Plus, Search, Edit2, Trash2, X, Save, AlertTriangle, CheckCircle } from 'lucide-react'
+import { Plus, Search, Edit2, Trash2, X, Save, AlertTriangle, CheckCircle, Printer} from 'lucide-react'
 
 const SPECIALTIES = ['تركيب تكييف','صيانة','أعمال كهربائية','ميكانيك مبردات','قنوات هواء','مواسير','فريون','عمل عام']
 const LEVELS = ['Trainee','Mid','Senior','Specialist','Expert']
-const EMPTY = { tech_code:'', full_name:'', specialty:'', phone:'', nationality:'', hire_date:'', status:'Active', level:'', hourly_rate:'', id_number:'', document_type:'هوية وطنية', residence_expiry:'', engineers_membership_exp:'', notes:'' }
+const EMPTY = { tech_code:`T-${50+Math.floor(Date.now()/1000)%9000}` as string, full_name:'', specialty:'', phone:'', nationality:'', hire_date:'', status:'Active', level:'', hourly_rate:'', id_number:'', document_type:'هوية وطنية', residence_expiry:'', engineers_membership_exp:'', notes:'' }
 
 export default function TechniciansPage() {
   const [rows, setRows] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [viewItem,setViewItem]=useState<any>(null)
   const [search, setSearch] = useState('')
   const [modal, setModal] = useState(false)
   const [form, setForm] = useState<any>(EMPTY)
@@ -211,6 +220,30 @@ export default function TechniciansPage() {
               <button className="btn-primary" onClick={save} disabled={saving}><Save size={15}/>{saving?'جاري الحفظ...':'حفظ'}</button>
             </div>
           </div>
+        </div>
+      )}
+      {viewItem&&(
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.4)',zIndex:300,display:'flex',alignItems:'center',justifyContent:'center',padding:16}}>
+          <div id="view-print-area" className="card" style={{width:'100%',maxWidth:560,maxHeight:'90vh',overflow:'auto',padding:24}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
+              <div style={{fontFamily:'Cairo,sans-serif',fontWeight:700,fontSize:16}}>تفاصيل السجل</div>
+              <div style={{display:'flex',gap:8}}>
+                <button onClick={()=>window.print()} style={{background:'var(--cs-blue)',color:'white',border:'none',borderRadius:6,padding:'6px 14px',cursor:'pointer',display:'flex',alignItems:'center',gap:5,fontSize:12,fontFamily:'Tajawal,sans-serif'}}><Printer size={14}/>طباعة</button>
+                <button onClick={()=>setViewItem(null)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--cs-text-muted)'}}><X size={20}/></button>
+              </div>
+            </div>
+            <div>
+              {Object.entries(viewItem).filter(([k])=>!['id','created_at','updated_at'].includes(k)&&typeof viewItem[k]!=='object').map(([k,v]:any,i)=>
+                v!=null&&v!==''?(
+                  <div key={i} style={{display:'flex',padding:'8px 0',borderBottom:'1px solid var(--cs-border)'}}>
+                    <span style={{width:160,color:'var(--cs-text-muted)',fontSize:12,fontWeight:600,flexShrink:0}}>{k.replace(/_/g,' ')}</span>
+                    <span style={{fontWeight:600,fontSize:13}}>{String(v)}</span>
+                  </div>
+                ):null
+              )}
+            </div>
+          </div>
+          <style>{`@media print{body *{visibility:hidden}#view-print-area,#view-print-area *{visibility:visible}#view-print-area{position:fixed;top:0;left:0;width:100%;max-height:none!important}}`}</style>
         </div>
       )}
     </div>

@@ -1,24 +1,37 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import { Plus, Search, Edit2, Trash2, X, Save } from 'lucide-react'
+import { Plus, Search, Edit2, Trash2, X, Save, Printer} from 'lucide-react'
 
 const INVOICE_TYPES = ['مشروع','صيانة','AMC','توريد','استشارة','أخرى']
 const STATUS_AR:any = {Draft:'مسودة',Sent:'مرسلة',Paid:'مدفوعة',Partial:'جزئي',Overdue:'متأخرة',Cancelled:'ملغية'}
 const STATUS_C:any = {Draft:'badge-gray',Sent:'badge-blue',Paid:'badge-green',Partial:'badge-amber',Overdue:'badge-red',Cancelled:'badge-gray'}
 
 const newForm = () => ({
-  invoice_code:'', project_id:'', client_id:'',
+  invoice_code:`INV-${1001+Math.floor(Date.now()/1000)%9000}` as string, project_id:'', client_id:'',
   invoice_date: new Date().toISOString().split('T')[0],
   due_date:'', amount:'0', paid_amount:'0',
   status:'Draft', invoice_type:'مشروع', notes:''
 })
+
+  const generateCode = (rows: any[]) => {
+    if(!rows.length) return 'INV-1001'
+    const nums = rows
+      .map((r:any) => r.invoice_code?.replace('INV-',''))
+      .filter(Boolean)
+      .map((n:string) => parseInt(n.replace(/\D/g,'')))
+      .filter((n:number) => !isNaN(n))
+    if(!nums.length) return 'INV-1001'
+    return 'INV-' + (Math.max(...nums) + 1)
+  }
+
 
 export default function InvoicesPage() {
   const [rows,setRows]=useState<any[]>([])
   const [clients,setClients]=useState<any[]>([])
   const [projects,setProjects]=useState<any[]>([])
   const [loading,setLoading]=useState(true)
+  const [viewItem,setViewItem]=useState<any>(null)
   const [search,setSearch]=useState('')
   const [modal,setModal]=useState(false)
   const [saving,setSaving]=useState(false)
@@ -28,7 +41,7 @@ export default function InvoicesPage() {
   const load=async()=>{
     setLoading(true)
     const [{data:inv},{data:c},{data:p}]=await Promise.all([
-      supabase.from('invoices').select('*,clients(company_name),projects(project_name)').order('created_at',{ascending:false}),
+      supabase.from('invoices').select('*,clients(company_name),projects(project_name)').order('invoice_date',{ascending:false}),
       supabase.from('clients').select('id,company_name'),
       supabase.from('projects').select('id,project_name,client_id'),
     ])
@@ -37,7 +50,7 @@ export default function InvoicesPage() {
   }
   useEffect(()=>{load()},[])
 
-  const openAdd=()=>{setForm(newForm());setEditId(null);setModal(true)}
+  const openAdd=()=>{setForm({...newForm(), invoice_code: generateCode(rows)});setEditId(null);setModal(true)}
   const openEdit=(r:any)=>{
     setForm({
       invoice_code:r.invoice_code||'',
@@ -124,6 +137,7 @@ export default function InvoicesPage() {
                   <td style={{color:(r.balance||0)>0?'var(--cs-red)':'var(--cs-green)',fontWeight:700}}>{fmt(r.balance||0)} ر.س</td>
                   <td><span className={`badge ${STATUS_C[r.status]||'badge-gray'}`}>{STATUS_AR[r.status]||r.status}</span></td>
                   <td><div style={{display:'flex',gap:6}}>
+                    <button onClick={()=>setViewItem(r)} title="عرض وطباعة" style={{background:"none",border:"none",cursor:"pointer",color:"var(--cs-green)"}}><Printer size={14}/></button>
                     <button onClick={()=>openEdit(r)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--cs-blue)'}}><Edit2 size={15}/></button>
                     <button onClick={()=>del(r.id)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--cs-red)'}}><Trash2 size={15}/></button>
                   </div></td>
@@ -133,6 +147,33 @@ export default function InvoicesPage() {
           </table></div>
         )}
       </div>
+      
+      {/* View / Print Modal */}
+      {viewItem&&(
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.4)',zIndex:300,display:'flex',alignItems:'center',justifyContent:'center',padding:16}}>
+          <div id="view-print-area" className="card" style={{width:'100%',maxWidth:560,maxHeight:'90vh',overflow:'auto',padding:24}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
+              <div style={{fontFamily:'Cairo,sans-serif',fontWeight:700,fontSize:16}}>تفاصيل السجل</div>
+              <div style={{display:'flex',gap:8}}>
+                <button onClick={()=>window.print()} style={{background:'var(--cs-blue)',color:'white',border:'none',borderRadius:6,padding:'6px 14px',cursor:'pointer',display:'flex',alignItems:'center',gap:5,fontSize:12,fontFamily:'Tajawal,sans-serif'}}><Printer size={14}/>طباعة</button>
+                <button onClick={()=>setViewItem(null)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--cs-text-muted)'}}><X size={20}/></button>
+              </div>
+            </div>
+            <div style={{display:'flex',flexDirection:'column',gap:0}}>
+              {Object.entries(viewItem).filter(([k])=>!['id','created_at','updated_at'].includes(k)&&typeof viewItem[k]!=='object').map(([k,v]:any,i)=>
+                v!=null&&v!==''?(
+                  <div key={i} style={{display:'flex',padding:'8px 0',borderBottom:'1px solid var(--cs-border)'}}>
+                    <span style={{width:160,color:'var(--cs-text-muted)',fontSize:12,fontWeight:600,flexShrink:0}}>{k.replace(/_/g,' ')}</span>
+                    <span style={{fontWeight:600,fontSize:13}}>{String(v)}</span>
+                  </div>
+                ):null
+              )}
+            </div>
+          </div>
+          <style>{`@media print{body *{visibility:hidden}#view-print-area,#view-print-area *{visibility:visible}#view-print-area{position:fixed;top:0;left:0;width:100%;max-height:none!important;overflow:visible!important}}`}</style>
+        </div>
+      )}
+
       {modal&&(
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.4)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center',padding:16}}>
           <div className="card" style={{width:'100%',maxWidth:560,maxHeight:'92vh',overflow:'auto',padding:24}}>

@@ -6,10 +6,22 @@ import { Plus, Edit2, Trash2, X, Save, Search, Printer} from 'lucide-react'
 const QUALITY_OPTIONS = ['ممتازة','جيدة جداً','جيدة','مقبولة','ضعيفة']
 const RELIABILITY_OPTIONS = ['موثوق جداً','موثوق','أحياناً يتأخر','تأخير متكرر','غير موثوق']
 const newForm = () => ({
-  ref_no:'', item_name:'', supplier:'', qty:'1', unit_price:'0',
+  ref_no:`SC-${150+Math.floor(Date.now()/1000)%9000}` as string, item_name:'', supplier:'', qty:'1', unit_price:'0',
   order_date:'', delivery_date:'', quality:'ممتازة',
   delivery_days:'', reliability:'موثوق', notes:''
 })
+
+  const generateCode = (rows: any[]) => {
+    if(!rows.length) return 'SC-150'
+    const nums = rows
+      .map((r:any) => r.ref_no?.replace('SC-',''))
+      .filter(Boolean)
+      .map((n:string) => parseInt(n.replace(/\D/g,'')))
+      .filter((n:number) => !isNaN(n))
+    if(!nums.length) return 'SC-150'
+    return 'SC-' + (Math.max(...nums) + 1)
+  }
+
 
 export default function SupplierComparePage() {
   const [viewItem,setViewItem]=useState<any>(null)
@@ -96,7 +108,7 @@ export default function SupplierComparePage() {
     <div>
       <div className="page-header">
         <div><div className="page-title">مقارنة الموردين</div><div className="page-subtitle">Supplier Performance — {suppliers.length} مورد</div></div>
-        <button className="btn-primary" onClick={()=>{setForm(newForm());setEditId(null);setModal(true)}}><Plus size={16}/>إضافة سجل</button>
+        <button className="btn-primary" onClick={()=>{setForm({...newForm(),ref_no:'SC-'+(rows.length+150)});setEditId(null);setModal(true)}}><Plus size={16}/>إضافة سجل</button>
       </div>
 
       {/* Supplier summary cards */}

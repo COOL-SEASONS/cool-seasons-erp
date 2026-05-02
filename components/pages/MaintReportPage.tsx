@@ -23,7 +23,19 @@ const PROBLEMS = [
 const STATUSES=['Open','In Progress','Completed']
 const STATUS_AR:any={Open:'مفتوح','In Progress':'جاري',Completed:'مكتمل'}
 const STATUS_C:any={Open:'badge-blue','In Progress':'badge-amber',Completed:'badge-green'}
-const newForm=()=>({report_no:'',report_date:new Date().toISOString().split('T')[0],client_id:'',tech_id:'',customer:'',section:'',unit_type:'SPLIT',equipment:'',model:'',serial_no:'',complaint:'',problem:'',call_time:'',attend_time:'',done_time:'',parts_used:'',cost:'0',status:'Open',notes:''})
+const newForm=()=>({report_no:`MS-${10280+Math.floor(Date.now()/1000)%9000}` as string,report_date:new Date().toISOString().split('T')[0],client_id:'',tech_id:'',customer:'',section:'',unit_type:'SPLIT',equipment:'',model:'',serial_no:'',complaint:'',problem:'',call_time:'',attend_time:'',done_time:'',parts_used:'',cost:'0',status:'Open',notes:''})
+
+  const generateCode = (rows: any[]) => {
+    if(!rows.length) return 'MS-10280'
+    const nums = rows
+      .map((r:any) => r.report_no?.replace('MS-',''))
+      .filter(Boolean)
+      .map((n:string) => parseInt(n.replace(/\D/g,'')))
+      .filter((n:number) => !isNaN(n))
+    if(!nums.length) return 'MS-10280'
+    return 'MS-' + (Math.max(...nums) + 1)
+  }
+
 
 export default function MaintReportPage() {
   const [rows,setRows]=useState<any[]>([])
@@ -86,7 +98,7 @@ export default function MaintReportPage() {
         <div><div className="page-title">تقارير الصيانة</div><div className="page-subtitle">{rows.length} تقرير</div></div>
         <div style={{display:'flex',gap:8}}>
           <button onClick={()=>window.print()} style={{display:'flex',alignItems:'center',gap:6,background:'white',color:'var(--cs-blue)',border:'1px solid var(--cs-blue)',borderRadius:8,padding:'8px 14px',cursor:'pointer',fontSize:13,fontFamily:'Tajawal,sans-serif',fontWeight:600}}><Printer size={15}/>طباعة</button>
-          <button className="btn-primary" onClick={()=>{setForm(newForm());setEditId(null);setModal(true)}}><Plus size={16}/>تقرير جديد</button>
+          <button className="btn-primary" onClick={()=>{setForm({...newForm(),report_no:'MR-'+(rows.length+1000)});setEditId(null);setModal(true)}}><Plus size={16}/>تقرير جديد</button>
         </div>
       </div>
       <div className="card" style={{marginBottom:16,padding:'12px 16px'}}>

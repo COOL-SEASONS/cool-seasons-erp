@@ -5,7 +5,19 @@ import { Plus, Search, Edit2, Trash2, X, Save, Printer } from 'lucide-react'
 
 const CATEGORIES = ['كهرباء','ميكانيكا','مدني','دهانات','تشطيبات','توثيق','فحص واختبار','أخرى']
 const STATUSES = ['لم يبدأ','قيد التنفيذ','مكتمل','متأخر','ملغي']
-const newForm=()=>({punch_code:'',project_id:'',description:'',category:'',responsible:'',due_date:'',status:'لم يبدأ',notes:''})
+const newForm=()=>({punch_code:`PL-${777+Math.floor(Date.now()/1000)%9000}` as string,project_id:'',description:'',category:'',responsible:'',due_date:'',status:'لم يبدأ',notes:''})
+
+  const generateCode = (rows: any[]) => {
+    if(!rows.length) return 'PL-777'
+    const nums = rows
+      .map((r:any) => r.punch_code?.replace('PL-',''))
+      .filter(Boolean)
+      .map((n:string) => parseInt(n.replace(/\D/g,'')))
+      .filter((n:number) => !isNaN(n))
+    if(!nums.length) return 'PL-777'
+    return 'PL-' + (Math.max(...nums) + 1)
+  }
+
 
 export default function PunchListPage() {
   const [rows,setRows]=useState<any[]>([])
@@ -68,7 +80,7 @@ export default function PunchListPage() {
     <div>
       <div className="page-header">
         <div><div className="page-title">Punch List — قائمة التشطيبات</div><div className="page-subtitle">{pct}% مكتمل</div></div>
-        <button className="btn-primary" onClick={()=>{setForm(newForm());setEditId(null);setModal(true)}}><Plus size={16}/>بند جديد</button>
+        <button className="btn-primary" onClick={()=>{setForm({...newForm(),punch_code:'PL-'+(rows.length+777)});setEditId(null);setModal(true)}}><Plus size={16}/>بند جديد</button>
       </div>
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(130px,1fr))',gap:12,marginBottom:20}}>
         {[{l:'إجمالي',v:total,c:'var(--cs-blue)'},{l:'مكتملة',v:done,c:'var(--cs-green)'},{l:'جارية',v:rows.filter(r=>r.status==='قيد التنفيذ').length,c:'var(--cs-orange)'},{l:'متأخرة',v:late,c:'var(--cs-red)'},{l:'نسبة الإنجاز',v:pct+'%',c:'var(--cs-blue)'}].map((s,i)=>(

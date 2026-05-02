@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import { Plus, Search, Edit2, Trash2, X, Save } from 'lucide-react'
+import { Plus, Search, Edit2, Trash2, X, Save, Printer} from 'lucide-react'
 
 const CATEGORIES = ['قطعة غيار','خدمة','مواد','معدات','فريون','مواسير','كهرباء','أخرى']
 const UNITS = ['قطعة','كيلو','متر','لفة','وحدة','ساعة','خدمة']
@@ -10,6 +10,7 @@ const EMPTY = { item_code:'', description:'', category:'', unit:'قطعة', cost
 export default function PricebookPage() {
   const [rows, setRows] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [viewItem,setViewItem]=useState<any>(null)
   const [search, setSearch] = useState('')
   const [filterCat, setFilterCat] = useState('')
   const [modal, setModal] = useState(false)
@@ -51,7 +52,7 @@ export default function PricebookPage() {
     <div>
       <div className="page-header">
         <div><div className="page-title">كتالوج الأسعار</div><div className="page-subtitle">{rows.length} صنف</div></div>
-        <button className="btn-primary" onClick={()=>{setForm(EMPTY);setEditId(null);setModal(true)}}><Plus size={16}/>إضافة صنف</button>
+        <button className="btn-primary" onClick={()=>{setForm({...EMPTY,item_code:'BP-'+(rows.length+300)});setEditId(null);setModal(true)}}><Plus size={16}/>إضافة صنف</button>
       </div>
       <div className="card" style={{marginBottom:16,padding:'12px 16px'}}>
         <div style={{display:'flex',gap:10}}>
@@ -119,6 +120,30 @@ export default function PricebookPage() {
               <button className="btn-primary" onClick={save} disabled={saving}><Save size={15}/>{saving?'جاري الحفظ...':'حفظ'}</button>
             </div>
           </div>
+        </div>
+      )}
+      {viewItem&&(
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.4)',zIndex:300,display:'flex',alignItems:'center',justifyContent:'center',padding:16}}>
+          <div id="view-print-area" className="card" style={{width:'100%',maxWidth:560,maxHeight:'90vh',overflow:'auto',padding:24}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
+              <div style={{fontFamily:'Cairo,sans-serif',fontWeight:700,fontSize:16}}>تفاصيل السجل</div>
+              <div style={{display:'flex',gap:8}}>
+                <button onClick={()=>window.print()} style={{background:'var(--cs-blue)',color:'white',border:'none',borderRadius:6,padding:'6px 14px',cursor:'pointer',display:'flex',alignItems:'center',gap:5,fontSize:12,fontFamily:'Tajawal,sans-serif'}}><Printer size={14}/>طباعة</button>
+                <button onClick={()=>setViewItem(null)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--cs-text-muted)'}}><X size={20}/></button>
+              </div>
+            </div>
+            <div>
+              {Object.entries(viewItem).filter(([k])=>!['id','created_at','updated_at'].includes(k)&&typeof viewItem[k]!=='object').map(([k,v]:any,i)=>
+                v!=null&&v!==''?(
+                  <div key={i} style={{display:'flex',padding:'8px 0',borderBottom:'1px solid var(--cs-border)'}}>
+                    <span style={{width:160,color:'var(--cs-text-muted)',fontSize:12,fontWeight:600,flexShrink:0}}>{k.replace(/_/g,' ')}</span>
+                    <span style={{fontWeight:600,fontSize:13}}>{String(v)}</span>
+                  </div>
+                ):null
+              )}
+            </div>
+          </div>
+          <style>{`@media print{body *{visibility:hidden}#view-print-area,#view-print-area *{visibility:visible}#view-print-area{position:fixed;top:0;left:0;width:100%;max-height:none!important}}`}</style>
         </div>
       )}
     </div>
