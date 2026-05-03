@@ -1,205 +1,355 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import { Plus, Search, Edit2, Trash2, X, Save, Printer } from 'lucide-react'
+import { Plus, Search, Edit2, Trash2, X, Save, Printer, Cylinder, ArrowDownCircle, ArrowUpCircle, AlertTriangle } from 'lucide-react'
 
 const FREON_TYPES=['R-22','R-32','R-410A','R-404A','R-407C','R-134A','R-507A']
 const BRANDS=['Honeywell','SRF','Dupont / Chemours','Mexichem','Daikin','Linde','فريون محلي','أخرى']
-const REASONS=['تعبئة وحدة','تسريب غاز','صيانة دورية','تغيير نوع الغاز','مخزون','أخرى']
 const ORIGINS=['مكسيكي','أمريكي','صيني','كوري','هندي','أخرى']
+const REASONS_IN=['شراء جديد','مرتجع للمخزون','نقل من فني آخر']
+const REASONS_OUT=['تعبئة وحدة عميل','تسريب','صيانة دورية','تالف','مفقود']
 
-const newCode=()=>`FR-${6000+Math.floor(Date.now()/1000)%9000}`
-const newForm=()=>({
-  record_id:newCode(),entry_date:new Date().toISOString().split('T')[0],
-  freon_type:'R-32',brand:'Honeywell',origin:'مكسيكي',
-  tech_id:'',client_id:'',project_id:'',
-  kg_received:'0',kg_used:'0',reason:'تعبئة وحدة',
-  cylinders_count:'0',notes:''
-})
+const newCylCode=()=>`CYL-${1000+Math.floor(Date.now()/1000)%9000}`
+const newTransCode=()=>`FT-${5000+Math.floor(Date.now()/1000)%9000}`
+
+const newCyl=()=>({cylinder_code:newCylCode(),freon_type:'R-32',brand:'Honeywell',origin:'مكسيكي',total_weight_kg:'13',tare_weight_kg:'8',initial_freon_kg:'5',purchase_date:new Date().toISOString().split('T')[0],purchase_price:'0',custody_tech_id:'',status:'Active',notes:''})
+
+const newTrans=(cylId='')=>({trans_code:newTransCode(),cylinder_id:cylId,trans_date:new Date().toISOString().split('T')[0],trans_type:'OUT',weight_before:'',weight_after:'',tech_id:'',client_id:'',project_id:'',unit_serial:'',reason:'تعبئة وحدة عميل',notes:''})
 
 export default function FreonPage() {
-  const [rows,setRows]=useState<any[]>([])
+  const [tab,setTab]=useState<'cylinders'|'transactions'>('cylinders')
+  const [cylinders,setCylinders]=useState<any[]>([])
+  const [transactions,setTransactions]=useState<any[]>([])
   const [techs,setTechs]=useState<any[]>([])
   const [clients,setClients]=useState<any[]>([])
   const [projects,setProjects]=useState<any[]>([])
   const [loading,setLoading]=useState(true)
   const [search,setSearch]=useState('')
-  const [modal,setModal]=useState(false)
+  const [cylModal,setCylModal]=useState(false)
+  const [transModal,setTransModal]=useState(false)
   const [saving,setSaving]=useState(false)
   const [editId,setEditId]=useState<string|null>(null)
-  const [form,setForm]=useState<any>(newForm())
-  const [viewItem,setViewItem]=useState<any>(null)
+  const [cylForm,setCylForm]=useState<any>(newCyl())
+  const [transForm,setTransForm]=useState<any>(newTrans())
+  const [viewCyl,setViewCyl]=useState<any>(null)
 
   const load=async()=>{
     setLoading(true)
-    const [{data:r},{data:t},{data:c},{data:p}]=await Promise.all([
-      supabase.from('freon_tracking').select('*,technicians(full_name),clients(company_name),projects(project_name)').order('created_at',{ascending:false}),
+    const [{data:c},{data:tr},{data:t},{data:cl},{data:p}]=await Promise.all([
+      supabase.from('freon_cylinders').select('*,technicians:custody_tech_id(full_name)').order('created_at',{ascending:false}),
+      supabase.from('freon_transactions').select('*,freon_cylinders(cylinder_code,freon_type),technicians(full_name),clients(company_name),projects(project_name)').order('trans_date',{ascending:false,nullsFirst:false}),
       supabase.from('technicians').select('id,full_name').eq('status','Active'),
       supabase.from('clients').select('id,company_name'),
       supabase.from('projects').select('id,project_name'),
     ])
-    setRows(r||[]); setTechs(t||[]); setClients(c||[]); setProjects(p||[])
+    setCylinders(c||[]); setTransactions(tr||[]); setTechs(t||[]); setClients(cl||[]); setProjects(p||[])
     setLoading(false)
   }
   useEffect(()=>{load()},[])
 
-  const openEdit=(r:any)=>{
-    setForm({
-      record_id:r.record_id||'',entry_date:r.entry_date?.split('T')[0]||'',
-      freon_type:r.freon_type||'R-32',brand:r.brand||'Honeywell',origin:r.origin||'مكسيكي',
-      tech_id:r.tech_id||'',client_id:r.client_id||'',project_id:r.project_id||'',
-      kg_received:String(r.kg_received||0),kg_used:String(r.kg_used||0),
-      reason:r.reason||'تعبئة وحدة',cylinders_count:String(r.cylinders_count||0),notes:r.notes||''
-    })
-    setEditId(r.id); setModal(true)
-  }
+  const fmt=(n:number)=>new Intl.NumberFormat('ar-SA',{maximumFractionDigits:2}).format(n||0)
 
-  const save=async()=>{
-    if(!form.record_id.trim()) return alert('رقم السجل مطلوب')
+  // ════════════════════ Cylinder ops ════════════════════
+  const openEditCyl=(c:any)=>{
+    setCylForm({cylinder_code:c.cylinder_code,freon_type:c.freon_type,brand:c.brand||'Honeywell',origin:c.origin||'مكسيكي',total_weight_kg:String(c.total_weight_kg),tare_weight_kg:String(c.tare_weight_kg),initial_freon_kg:String(c.initial_freon_kg),purchase_date:c.purchase_date?.split('T')[0]||'',purchase_price:String(c.purchase_price||0),custody_tech_id:c.custody_tech_id||'',status:c.status||'Active',notes:c.notes||''})
+    setEditId(c.id); setCylModal(true)
+  }
+  const saveCyl=async()=>{
+    if(!cylForm.cylinder_code.trim()) return alert('كود الأسطوانة مطلوب')
     setSaving(true)
-    const kr=parseFloat(form.kg_received)||0
-    const ku=parseFloat(form.kg_used)||0
-    const payload={
-      record_id:form.record_id.trim(),
-      entry_date:form.entry_date||null,
-      freon_type:form.freon_type||null,
-      brand:form.brand||null,
-      origin:form.origin||null,
-      tech_id:form.tech_id||null,
-      client_id:form.client_id||null,
-      project_id:form.project_id||null,
-      kg_received:kr,
-      kg_used:ku,
-      kg_remaining:kr-ku,
-      reason:form.reason||null,
-      cylinders_count:parseInt(form.cylinders_count)||0,
-      notes:form.notes||null,
-    }
-    const {error}=editId
-      ? await supabase.from('freon_tracking').update(payload).eq('id',editId)
-      : await supabase.from('freon_tracking').insert(payload)
-    if(error){
-      // Try without kg_remaining if it's a generated column
-      if(error.message?.includes('kg_remaining')||error.message?.includes('non-DEFAULT')){
-        const {kg_remaining:_,...safe}=payload as any
-        const {error:e2}=editId
-          ? await supabase.from('freon_tracking').update(safe).eq('id',editId)
-          : await supabase.from('freon_tracking').insert(safe)
-        if(e2) alert('خطأ: '+e2.message)
-        else{setModal(false);load()}
-      } else alert('خطأ: '+error.message)
-    } else{setModal(false);load()}
+    const initial=parseFloat(cylForm.initial_freon_kg)||0
+    const total=parseFloat(cylForm.total_weight_kg)||0
+    const tare=parseFloat(cylForm.tare_weight_kg)||0
+    const price=parseFloat(cylForm.purchase_price)||0
+    const payload:any={cylinder_code:cylForm.cylinder_code.trim(),freon_type:cylForm.freon_type,brand:cylForm.brand||null,origin:cylForm.origin||null,total_weight_kg:total,tare_weight_kg:tare,initial_freon_kg:initial,current_freon_kg:initial,purchase_date:cylForm.purchase_date||null,purchase_price:price,unit_cost_per_kg:initial>0?Math.round(price/initial*100)/100:0,custody_tech_id:cylForm.custody_tech_id||null,status:cylForm.status,notes:cylForm.notes||null}
+    if(editId) delete payload.current_freon_kg // don't overwrite current balance on edit
+    const {error}=editId?await supabase.from('freon_cylinders').update(payload).eq('id',editId):await supabase.from('freon_cylinders').insert(payload)
+    if(error) alert('خطأ: '+error.message); else{setCylModal(false);load()}
     setSaving(false)
   }
+  const delCyl=async(id:string)=>{
+    if(!confirm('حذف الأسطوانة وجميع حركاتها؟'))return
+    await supabase.from('freon_cylinders').delete().eq('id',id);load()
+  }
 
-  const del=async(id:string)=>{if(!confirm('حذف؟'))return;await supabase.from('freon_tracking').delete().eq('id',id);load()}
-  const fmt=(n:number)=>new Intl.NumberFormat('ar-SA',{maximumFractionDigits:1}).format(n||0)
-  const totalRec=rows.reduce((s,r)=>s+(r.kg_received||0),0)
-  const totalUsed=rows.reduce((s,r)=>s+(r.kg_used||0),0)
-  const filtered=rows.filter(r=>r.record_id?.includes(search)||r.freon_type?.includes(search)||r.technicians?.full_name?.toLowerCase().includes(search.toLowerCase()))
+  // ════════════════════ Transaction ops ════════════════════
+  const openTransForCyl=(c:any)=>{
+    const f=newTrans(c.id)
+    f.weight_before=String(c.tare_weight_kg+c.current_freon_kg) // current total weight
+    f.tech_id=c.custody_tech_id||''
+    setTransForm(f); setEditId(null); setTransModal(true)
+  }
+  const saveTrans=async()=>{
+    if(!transForm.cylinder_id) return alert('اختر الأسطوانة')
+    if(!transForm.weight_before||!transForm.weight_after) return alert('الوزن قبل وبعد مطلوبان')
+    const wb=parseFloat(transForm.weight_before)
+    const wa=parseFloat(transForm.weight_after)
+    if(transForm.trans_type==='OUT'&&wa>=wb) return alert('في حالة الاستخدام: الوزن بعد يجب أن يكون أقل من الوزن قبل')
+    if(transForm.trans_type==='IN'&&wa<=wb) return alert('في حالة الاستلام: الوزن بعد يجب أن يكون أكبر من الوزن قبل')
+    setSaving(true)
+    const cyl=cylinders.find(c=>c.id===transForm.cylinder_id)
+    const netKg=Math.abs(wa-wb)
+    const cost=cyl?Math.round(netKg*(cyl.unit_cost_per_kg||0)*100)/100:0
+    const payload={trans_code:transForm.trans_code.trim(),cylinder_id:transForm.cylinder_id,trans_date:transForm.trans_date,trans_type:transForm.trans_type,weight_before:wb,weight_after:wa,tech_id:transForm.tech_id||null,client_id:transForm.client_id||null,project_id:transForm.project_id||null,unit_serial:transForm.unit_serial||null,cost,reason:transForm.reason||null,notes:transForm.notes||null}
+    const {error}=editId?await supabase.from('freon_transactions').update(payload).eq('id',editId):await supabase.from('freon_transactions').insert(payload)
+    if(error) alert('خطأ: '+error.message); else{setTransModal(false);load()}
+    setSaving(false)
+  }
+  const delTrans=async(id:string)=>{if(!confirm('حذف الحركة؟'))return;await supabase.from('freon_transactions').delete().eq('id',id);load()}
+
+  // ════════════════════ Stats ════════════════════
+  const totalStock=cylinders.reduce((s,c)=>s+(c.current_freon_kg||0),0)
+  const initialTotal=cylinders.reduce((s,c)=>s+(c.initial_freon_kg||0),0)
+  const totalUsed=initialTotal-totalStock
+  const totalValue=cylinders.reduce((s,c)=>s+(c.current_freon_kg||0)*(c.unit_cost_per_kg||0),0)
+  const lowStock=cylinders.filter(c=>c.current_freon_kg!=null&&c.current_freon_kg<2&&c.status==='Active')
+  const cylSearch=cylinders.filter(c=>c.cylinder_code?.includes(search)||c.freon_type?.includes(search)||c.technicians?.full_name?.toLowerCase().includes(search.toLowerCase()))
+  const transSearch=transactions.filter(t=>t.trans_code?.includes(search)||t.freon_cylinders?.cylinder_code?.includes(search)||t.clients?.company_name?.toLowerCase().includes(search.toLowerCase()))
+
+  // Form computed values
+  const wb=parseFloat(transForm.weight_before)||0
+  const wa=parseFloat(transForm.weight_after)||0
+  const netKg=Math.abs(wa-wb)
+  const selectedCyl=cylinders.find(c=>c.id===transForm.cylinder_id)
+  const transCost=selectedCyl?netKg*(selectedCyl.unit_cost_per_kg||0):0
 
   return (
     <div>
       <div className="page-header">
-        <div><div className="page-title">سجل الفريون</div><div className="page-subtitle">{rows.length} سجل</div></div>
+        <div>
+          <div className="page-title">سجل الفريون — Cylinder Tracking</div>
+          <div className="page-subtitle">{cylinders.length} أسطوانة | {transactions.length} حركة</div>
+        </div>
         <div style={{display:'flex',gap:8}}>
           <button onClick={()=>window.print()} style={{display:'flex',alignItems:'center',gap:6,background:'white',color:'var(--cs-blue)',border:'1px solid var(--cs-blue)',borderRadius:8,padding:'8px 14px',cursor:'pointer',fontSize:13,fontFamily:'Tajawal,sans-serif',fontWeight:600}}><Printer size={15}/>طباعة</button>
-          <button className="btn-primary" onClick={()=>{setForm(newForm());setEditId(null);setModal(true)}}><Plus size={16}/>سجل جديد</button>
+          {tab==='cylinders'?
+            <button className="btn-primary" onClick={()=>{setCylForm(newCyl());setEditId(null);setCylModal(true)}}><Plus size={16}/>أسطوانة جديدة</button>
+            :<button className="btn-primary" onClick={()=>{setTransForm(newTrans());setEditId(null);setTransModal(true)}}><Plus size={16}/>حركة جديدة</button>
+          }
         </div>
       </div>
-      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(150px,1fr))',gap:12,marginBottom:20}}>
-        {[{l:'إجمالي كغ مستلم',v:fmt(totalRec)+' كغ',c:'var(--cs-blue)'},{l:'إجمالي كغ مستخدم',v:fmt(totalUsed)+' كغ',c:'var(--cs-red)'},{l:'الرصيد المتبقي',v:fmt(totalRec-totalUsed)+' كغ',c:(totalRec-totalUsed)>=0?'var(--cs-green)':'var(--cs-red)'}].map((s,i)=>(
-          <div key={i} className="stat-card"><div style={{fontSize:11,color:'var(--cs-text-muted)',fontWeight:600,marginBottom:4}}>{s.l}</div><div style={{fontSize:18,fontWeight:800,color:s.c}}>{s.v}</div></div>
-        ))}
-      </div>
-      <div className="card" style={{marginBottom:16,padding:'12px 16px'}}>
-        <div style={{position:'relative'}}><Search size={16} style={{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',color:'var(--cs-text-muted)'}}/><input className="form-input" style={{paddingRight:34}} placeholder="بحث بالكود أو النوع أو الفني..." value={search} onChange={e=>setSearch(e.target.value)}/></div>
-      </div>
-      <div className="card">
-        {loading?<div style={{padding:40,textAlign:'center',color:'var(--cs-text-muted)'}}>جاري التحميل...</div>:(
-          <div className="table-wrap"><table>
-            <thead><tr><th>الكود</th><th>التاريخ</th><th>النوع</th><th>الماركة</th><th>الفني</th><th>كغ مستلم</th><th>كغ مستخدم</th><th>الباقي</th><th>السبب</th><th>إجراءات</th></tr></thead>
-            <tbody>
-              {filtered.length===0?<tr><td colSpan={10} style={{textAlign:'center',padding:40,color:'var(--cs-text-muted)'}}>لا توجد سجلات</td></tr>
-              :filtered.map(r=>(
-                <tr key={r.id}>
-                  <td style={{fontFamily:'monospace',fontSize:12}}>{r.record_id}</td>
-                  <td style={{fontSize:12}}>{r.entry_date?.split('T')[0]||'—'}</td>
-                  <td><span className="badge badge-blue">{r.freon_type}</span></td>
-                  <td>{r.brand}</td>
-                  <td>{r.technicians?.full_name||'—'}</td>
-                  <td style={{color:'var(--cs-blue)',fontWeight:700}}>{fmt(r.kg_received)} كغ</td>
-                  <td style={{color:'var(--cs-red)'}}>{fmt(r.kg_used)} كغ</td>
-                  <td style={{color:(r.kg_remaining??r.kg_received-r.kg_used)>=0?'var(--cs-green)':'var(--cs-red)',fontWeight:700}}>{fmt(r.kg_remaining??r.kg_received-r.kg_used)} كغ</td>
-                  <td style={{fontSize:12}}>{r.reason}</td>
-                  <td><div style={{display:'flex',gap:4}}>
-                    <button onClick={()=>setViewItem(r)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--cs-green)'}}><Printer size={14}/></button>
-                    <button onClick={()=>openEdit(r)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--cs-blue)'}}><Edit2 size={14}/></button>
-                    <button onClick={()=>del(r.id)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--cs-red)'}}><Trash2 size={14}/></button>
-                  </div></td>
-                </tr>
-              ))}
-            </tbody>
-          </table></div>
-        )}
+
+      {/* KPIs */}
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(170px,1fr))',gap:12,marginBottom:16}}>
+        <div className="stat-card"><div style={{fontSize:11,color:'var(--cs-text-muted)',fontWeight:600,marginBottom:4}}>📦 المخزون الحالي</div><div style={{fontSize:22,fontWeight:800,color:'var(--cs-blue)'}}>{fmt(totalStock)} كغ</div></div>
+        <div className="stat-card"><div style={{fontSize:11,color:'var(--cs-text-muted)',fontWeight:600,marginBottom:4}}>📊 إجمالي مستخدم</div><div style={{fontSize:22,fontWeight:800,color:'var(--cs-orange)'}}>{fmt(totalUsed)} كغ</div></div>
+        <div className="stat-card"><div style={{fontSize:11,color:'var(--cs-text-muted)',fontWeight:600,marginBottom:4}}>💰 قيمة المخزون</div><div style={{fontSize:18,fontWeight:800,color:'var(--cs-green)'}}>{fmt(totalValue)} ر.س</div></div>
+        <div className="stat-card"><div style={{fontSize:11,color:'var(--cs-text-muted)',fontWeight:600,marginBottom:4}}>⚠️ مخزون منخفض</div><div style={{fontSize:22,fontWeight:800,color:lowStock.length>0?'var(--cs-red)':'var(--cs-text-muted)'}}>{lowStock.length}</div></div>
       </div>
 
-      {viewItem&&(
-        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.4)',zIndex:300,display:'flex',alignItems:'center',justifyContent:'center',padding:16}}>
-          <div id="fr-print" className="card" style={{width:'100%',maxWidth:480,padding:24}}>
-            <div style={{display:'flex',justifyContent:'space-between',marginBottom:16}}>
-              <div style={{fontFamily:'Cairo,sans-serif',fontWeight:700,fontSize:18}}>سجل فريون — {viewItem.record_id}</div>
-              <div style={{display:'flex',gap:8}}>
-                <button onClick={()=>window.print()} style={{background:'var(--cs-blue)',color:'white',border:'none',borderRadius:6,padding:'5px 12px',cursor:'pointer',display:'flex',alignItems:'center',gap:4,fontSize:12}}><Printer size={13}/>طباعة</button>
-                <button onClick={()=>setViewItem(null)} style={{background:'none',border:'none',cursor:'pointer'}}><X size={18}/></button>
-              </div>
-            </div>
-            {[{l:'الكود',v:viewItem.record_id},{l:'التاريخ',v:viewItem.entry_date?.split('T')[0]},{l:'نوع الفريون',v:viewItem.freon_type},{l:'الماركة',v:viewItem.brand},{l:'بلد المنشأ',v:viewItem.origin},{l:'الفني',v:viewItem.technicians?.full_name},{l:'العميل',v:viewItem.clients?.company_name},{l:'كغ مستلم',v:fmt(viewItem.kg_received)+' كغ'},{l:'كغ مستخدم',v:fmt(viewItem.kg_used)+' كغ'},{l:'الرصيد',v:fmt((viewItem.kg_remaining??viewItem.kg_received-viewItem.kg_used))+' كغ'},{l:'السبب',v:viewItem.reason},{l:'ملاحظات',v:viewItem.notes}].map(({l,v},i)=>v?(
-              <div key={i} style={{display:'flex',padding:'7px 0',borderBottom:'1px solid var(--cs-border)'}}>
-                <span style={{width:130,color:'var(--cs-text-muted)',fontSize:13}}>{l}:</span>
-                <span style={{fontWeight:600,fontSize:13}}>{v}</span>
-              </div>
-            ):null)}
-          </div>
-          <style>{`@media print{body *{visibility:hidden}#fr-print,#fr-print *{visibility:visible}#fr-print{position:fixed;top:0;left:0;width:100%}}`}</style>
+      {lowStock.length>0&&(
+        <div style={{background:'#FFF5F5',border:'1px solid #C0392B30',borderRadius:8,padding:'10px 14px',marginBottom:14,display:'flex',alignItems:'center',gap:8}}>
+          <AlertTriangle size={16} color="var(--cs-red)"/>
+          <span style={{fontSize:13,color:'var(--cs-red)',fontWeight:700}}>أسطوانات قاربت على النفاد: {lowStock.map(c=>`${c.cylinder_code} (${fmt(c.current_freon_kg)}كغ)`).join('، ')}</span>
         </div>
       )}
 
-      {modal&&(
+      {/* Tabs */}
+      <div style={{display:'flex',gap:0,marginBottom:16,borderRadius:10,overflow:'hidden',border:'1px solid var(--cs-border)',background:'white'}}>
+        {[{k:'cylinders',l:'📦 الأسطوانات',c:cylinders.length},{k:'transactions',l:'📝 الحركات',c:transactions.length}].map(t=>(
+          <button key={t.k} onClick={()=>setTab(t.k as any)} style={{flex:1,padding:'12px 16px',border:'none',cursor:'pointer',fontFamily:'Tajawal,sans-serif',fontWeight:700,fontSize:14,background:tab===t.k?'var(--cs-blue)':'white',color:tab===t.k?'white':'var(--cs-text-muted)',transition:'0.2s'}}>
+            {t.l} <span style={{background:tab===t.k?'rgba(255,255,255,0.25)':'var(--cs-blue-light)',color:tab===t.k?'white':'var(--cs-blue)',borderRadius:10,padding:'1px 8px',fontSize:11,marginRight:4}}>{t.c}</span>
+          </button>
+        ))}
+      </div>
+
+      <div className="card" style={{marginBottom:14,padding:'12px 16px'}}>
+        <div style={{position:'relative'}}><Search size={16} style={{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',color:'var(--cs-text-muted)'}}/><input className="form-input" style={{paddingRight:34}} placeholder="بحث..." value={search} onChange={e=>setSearch(e.target.value)}/></div>
+      </div>
+
+      {/* Tab content */}
+      {tab==='cylinders'&&(
+        <div className="card">
+          {loading?<div style={{padding:40,textAlign:'center',color:'var(--cs-text-muted)'}}>جاري التحميل...</div>:(
+            <div className="table-wrap"><table>
+              <thead><tr><th>الكود</th><th>النوع</th><th>الماركة</th><th>وزن إجمالي</th><th>وزن فارغ</th><th>الفريون الحالي</th><th>التكلفة/كغ</th><th>في عهدة</th><th>الحالة</th><th>إجراءات</th></tr></thead>
+              <tbody>
+                {cylSearch.length===0?<tr><td colSpan={10} style={{textAlign:'center',padding:40,color:'var(--cs-text-muted)'}}>لا توجد أسطوانات</td></tr>
+                :cylSearch.map(c=>{
+                  const isLow=c.current_freon_kg<2
+                  const isEmpty=c.current_freon_kg<=0
+                  return (
+                    <tr key={c.id} style={{background:isEmpty?'#FFF5F5':isLow?'#FFFBF0':'inherit'}}>
+                      <td><span style={{fontFamily:'monospace',background:'var(--cs-blue-light)',padding:'2px 8px',borderRadius:4,fontSize:12,fontWeight:700}}>{c.cylinder_code}</span></td>
+                      <td><span className="badge badge-blue">{c.freon_type}</span></td>
+                      <td>{c.brand||'—'}</td>
+                      <td style={{fontSize:12}}>{fmt(c.total_weight_kg)} كغ</td>
+                      <td style={{fontSize:12}}>{fmt(c.tare_weight_kg)} كغ</td>
+                      <td style={{fontWeight:800,color:isEmpty?'var(--cs-red)':isLow?'var(--cs-orange)':'var(--cs-green)',fontSize:14}}>{fmt(c.current_freon_kg)} كغ</td>
+                      <td>{fmt(c.unit_cost_per_kg)} ر.س</td>
+                      <td style={{fontSize:12}}>{c.technicians?.full_name||'—'}</td>
+                      <td><span className={`badge ${c.status==='Active'?'badge-green':c.status==='Empty'?'badge-red':'badge-gray'}`}>{c.status==='Active'?'نشطة':c.status==='Empty'?'فارغة':c.status}</span></td>
+                      <td><div style={{display:'flex',gap:4}}>
+                        <button onClick={()=>openTransForCyl(c)} title="حركة جديدة" style={{background:'var(--cs-green)',color:'white',border:'none',cursor:'pointer',borderRadius:4,padding:'3px 6px',fontSize:11}}>+حركة</button>
+                        <button onClick={()=>setViewCyl(c)} title="تفاصيل" style={{background:'none',border:'none',cursor:'pointer',color:'var(--cs-blue)'}}><Cylinder size={14}/></button>
+                        <button onClick={()=>openEditCyl(c)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--cs-blue)'}}><Edit2 size={14}/></button>
+                        <button onClick={()=>delCyl(c.id)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--cs-red)'}}><Trash2 size={14}/></button>
+                      </div></td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table></div>
+          )}
+        </div>
+      )}
+
+      {tab==='transactions'&&(
+        <div className="card">
+          {loading?<div style={{padding:40,textAlign:'center',color:'var(--cs-text-muted)'}}>جاري التحميل...</div>:(
+            <div className="table-wrap"><table>
+              <thead><tr><th>الكود</th><th>التاريخ</th><th>النوع</th><th>الأسطوانة</th><th>الفريون</th><th>قبل</th><th>بعد</th><th>الكمية</th><th>التكلفة</th><th>الفني</th><th>العميل</th><th>السبب</th><th>إجراءات</th></tr></thead>
+              <tbody>
+                {transSearch.length===0?<tr><td colSpan={13} style={{textAlign:'center',padding:40,color:'var(--cs-text-muted)'}}>لا توجد حركات</td></tr>
+                :transSearch.map(t=>(
+                  <tr key={t.id} style={{background:t.trans_type==='IN'?'#F0FFF4':'#FFF5F5'}}>
+                    <td style={{fontFamily:'monospace',fontSize:11}}>{t.trans_code}</td>
+                    <td style={{fontSize:11}}>{t.trans_date?.split('T')[0]||'—'}</td>
+                    <td>{t.trans_type==='IN'?<span style={{color:'var(--cs-green)',fontWeight:800,fontSize:11}}><ArrowDownCircle size={11} style={{display:'inline',verticalAlign:-1}}/> استلام</span>:<span style={{color:'var(--cs-red)',fontWeight:800,fontSize:11}}><ArrowUpCircle size={11} style={{display:'inline',verticalAlign:-1}}/> استخدام</span>}</td>
+                    <td style={{fontFamily:'monospace',fontSize:11}}>{t.freon_cylinders?.cylinder_code||'—'}</td>
+                    <td><span className="badge badge-blue">{t.freon_cylinders?.freon_type||'—'}</span></td>
+                    <td style={{fontSize:11}}>{fmt(t.weight_before)}</td>
+                    <td style={{fontSize:11}}>{fmt(t.weight_after)}</td>
+                    <td style={{fontWeight:800,color:t.trans_type==='IN'?'var(--cs-green)':'var(--cs-red)',fontSize:13}}>{t.trans_type==='IN'?'+':'−'}{fmt(t.net_kg)} كغ</td>
+                    <td style={{fontSize:11,fontWeight:600,color:'var(--cs-orange)'}}>{fmt(t.cost)} ر.س</td>
+                    <td style={{fontSize:11}}>{t.technicians?.full_name||'—'}</td>
+                    <td style={{fontSize:11,maxWidth:120,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{t.clients?.company_name||'—'}</td>
+                    <td style={{fontSize:11}}>{t.reason||'—'}</td>
+                    <td><button onClick={()=>delTrans(t.id)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--cs-red)'}}><Trash2 size={14}/></button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table></div>
+          )}
+        </div>
+      )}
+
+      {/* ═══════════════════ CYLINDER MODAL ═══════════════════ */}
+      {cylModal&&(
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.4)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center',padding:16}}>
-          <div className="card" style={{width:'100%',maxWidth:560,maxHeight:'92vh',overflow:'auto',padding:24}}>
-            <div style={{display:'flex',justifyContent:'space-between',marginBottom:20}}>
-              <div style={{fontFamily:'Cairo,sans-serif',fontWeight:700,fontSize:18}}>{editId?'تعديل':'سجل فريون جديد'}</div>
-              <button onClick={()=>setModal(false)} style={{background:'none',border:'none',cursor:'pointer'}}><X size={20}/></button>
-            </div>
-            {/* نوع السجل */}
-            <div style={{display:'flex',gap:0,marginBottom:16,borderRadius:8,overflow:'hidden',border:'2px solid var(--cs-border)'}}>
-              {['استلام أسطوانة','استخدام لدى عميل'].map((t,i)=>(
-                <button key={i} style={{flex:1,padding:10,border:'none',cursor:'pointer',fontFamily:'Tajawal,sans-serif',fontWeight:600,fontSize:13,background:i===0?'var(--cs-blue)':'white',color:i===0?'white':'var(--cs-text-muted)'}}>{i===0?'🔴 ':''}{t}</button>
-              ))}
-            </div>
+          <div className="card" style={{width:'100%',maxWidth:600,maxHeight:'92vh',overflow:'auto',padding:24}}>
+            <div style={{display:'flex',justifyContent:'space-between',marginBottom:18}}><div style={{fontFamily:'Cairo,sans-serif',fontWeight:700,fontSize:18}}>📦 {editId?'تعديل أسطوانة':'أسطوانة جديدة (Cylinder)'}</div><button onClick={()=>setCylModal(false)} style={{background:'none',border:'none',cursor:'pointer'}}><X size={20}/></button></div>
+            <div style={{background:'#E8F6FC',borderRadius:8,padding:'10px 14px',marginBottom:14,fontSize:12,color:'var(--cs-blue)'}}>💡 الأسطوانة تُسجّل مرة واحدة عند الشراء. كل عملية بعد ذلك تكون "حركة" منفصلة.</div>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
-              <div><label className="form-label">رقم السجل *</label><input className="form-input" value={form.record_id} onChange={e=>setForm({...form,record_id:e.target.value})}/></div>
-              <div><label className="form-label">التاريخ</label><input type="date" className="form-input" value={form.entry_date} onChange={e=>setForm({...form,entry_date:e.target.value})}/></div>
-              <div><label className="form-label">نوع الفريون</label><select className="form-input" value={form.freon_type} onChange={e=>setForm({...form,freon_type:e.target.value})}>{FREON_TYPES.map(t=><option key={t}>{t}</option>)}</select></div>
-              <div><label className="form-label">الماركة / Brand</label><select className="form-input" value={form.brand} onChange={e=>setForm({...form,brand:e.target.value})}>{BRANDS.map(b=><option key={b}>{b}</option>)}</select></div>
-              <div><label className="form-label">بلد المنشأ</label><select className="form-input" value={form.origin} onChange={e=>setForm({...form,origin:e.target.value})}>{ORIGINS.map(o=><option key={o}>{o}</option>)}</select></div>
-              <div><label className="form-label">السبب</label><select className="form-input" value={form.reason} onChange={e=>setForm({...form,reason:e.target.value})}>{REASONS.map(r=><option key={r}>{r}</option>)}</select></div>
-              <div><label className="form-label">كغ مستلم</label><input type="number" min="0" step="0.1" className="form-input" value={form.kg_received} onChange={e=>setForm({...form,kg_received:e.target.value})}/></div>
-              <div><label className="form-label">كغ مستخدم</label><input type="number" min="0" step="0.1" className="form-input" value={form.kg_used} onChange={e=>setForm({...form,kg_used:e.target.value})}/></div>
-              <div style={{background:'#E8F6FC',borderRadius:8,padding:'10px 14px',gridColumn:'1/-1',display:'flex',justifyContent:'space-between'}}>
-                <span style={{fontSize:13,color:'var(--cs-text-muted)'}}>الرصيد المتبقي:</span>
-                <span style={{fontWeight:800,color:(parseFloat(form.kg_received)||0)-(parseFloat(form.kg_used)||0)>=0?'var(--cs-green)':'var(--cs-red)',fontSize:16}}>{((parseFloat(form.kg_received)||0)-(parseFloat(form.kg_used)||0)).toFixed(1)} كغ</span>
+              <div><label className="form-label">كود الأسطوانة *</label><input className="form-input" value={cylForm.cylinder_code} onChange={e=>setCylForm({...cylForm,cylinder_code:e.target.value})}/></div>
+              <div><label className="form-label">نوع الفريون</label><select className="form-input" value={cylForm.freon_type} onChange={e=>setCylForm({...cylForm,freon_type:e.target.value})}>{FREON_TYPES.map(t=><option key={t}>{t}</option>)}</select></div>
+              <div><label className="form-label">الماركة</label><select className="form-input" value={cylForm.brand} onChange={e=>setCylForm({...cylForm,brand:e.target.value})}>{BRANDS.map(b=><option key={b}>{b}</option>)}</select></div>
+              <div><label className="form-label">بلد المنشأ</label><select className="form-input" value={cylForm.origin} onChange={e=>setCylForm({...cylForm,origin:e.target.value})}>{ORIGINS.map(o=><option key={o}>{o}</option>)}</select></div>
+              <div style={{gridColumn:'1/-1',background:'#FFFBF0',borderRadius:8,padding:12}}>
+                <div style={{fontSize:13,fontWeight:700,marginBottom:8,color:'#B7950B'}}>⚖️ الأوزان</div>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10}}>
+                  <div><label className="form-label" style={{fontSize:11}}>الوزن الكلي (مع الفريون) كغ</label><input type="number" min="0" step="0.1" className="form-input" value={cylForm.total_weight_kg} onChange={e=>setCylForm({...cylForm,total_weight_kg:e.target.value})}/></div>
+                  <div><label className="form-label" style={{fontSize:11}}>وزن الأسطوانة فارغة (Tare) كغ</label><input type="number" min="0" step="0.1" className="form-input" value={cylForm.tare_weight_kg} onChange={e=>setCylForm({...cylForm,tare_weight_kg:e.target.value})}/></div>
+                  <div><label className="form-label" style={{fontSize:11}}>صافي الفريون كغ</label><input type="number" min="0" step="0.1" className="form-input" style={{background:'#FFFDE7',fontWeight:700}} value={cylForm.initial_freon_kg} onChange={e=>setCylForm({...cylForm,initial_freon_kg:e.target.value})}/></div>
+                </div>
+                <div style={{fontSize:11,color:'var(--cs-text-muted)',marginTop:6}}>صافي الفريون = الوزن الكلي − وزن الأسطوانة فارغة. تأكد من المعادلة بنفسك.</div>
               </div>
-              <div><label className="form-label">الفني</label><select className="form-input" value={form.tech_id} onChange={e=>setForm({...form,tech_id:e.target.value})}><option value="">— اختر —</option>{techs.map(t=><option key={t.id} value={t.id}>{t.full_name}</option>)}</select></div>
-              <div><label className="form-label">العميل</label><select className="form-input" value={form.client_id} onChange={e=>setForm({...form,client_id:e.target.value})}><option value="">— اختر —</option>{clients.map(c=><option key={c.id} value={c.id}>{c.company_name}</option>)}</select></div>
-              <div><label className="form-label">المشروع</label><select className="form-input" value={form.project_id} onChange={e=>setForm({...form,project_id:e.target.value})}><option value="">— اختر —</option>{projects.map(p=><option key={p.id} value={p.id}>{p.project_name}</option>)}</select></div>
-              <div><label className="form-label">عدد الأسطوانات</label><input type="number" min="0" className="form-input" value={form.cylinders_count} onChange={e=>setForm({...form,cylinders_count:e.target.value})}/></div>
-              <div style={{gridColumn:'1/-1'}}><label className="form-label">ملاحظات</label><textarea className="form-input" rows={2} value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})}/></div>
+              <div><label className="form-label">تاريخ الشراء</label><input type="date" className="form-input" value={cylForm.purchase_date} onChange={e=>setCylForm({...cylForm,purchase_date:e.target.value})}/></div>
+              <div><label className="form-label">سعر الشراء (للأسطوانة كاملة)</label><input type="number" min="0" className="form-input" value={cylForm.purchase_price} onChange={e=>setCylForm({...cylForm,purchase_price:e.target.value})}/></div>
+              <div style={{gridColumn:'1/-1',background:'#E8F6FC',borderRadius:8,padding:'8px 14px',display:'flex',justifyContent:'space-between',fontSize:13}}>
+                <span style={{color:'var(--cs-text-muted)'}}>تكلفة الكيلو الواحد:</span>
+                <span style={{fontWeight:800,color:'var(--cs-blue)'}}>{(parseFloat(cylForm.initial_freon_kg)>0)?fmt(parseFloat(cylForm.purchase_price)/parseFloat(cylForm.initial_freon_kg)):'0.00'} ر.س/كغ</span>
+              </div>
+              <div><label className="form-label">في عهدة الفني</label><select className="form-input" value={cylForm.custody_tech_id} onChange={e=>setCylForm({...cylForm,custody_tech_id:e.target.value})}><option value="">— مخزن الشركة —</option>{techs.map(t=><option key={t.id} value={t.id}>{t.full_name}</option>)}</select></div>
+              <div><label className="form-label">الحالة</label><select className="form-input" value={cylForm.status} onChange={e=>setCylForm({...cylForm,status:e.target.value})}><option value="Active">نشطة</option><option value="Empty">فارغة</option><option value="Returned">مُرتجعة</option><option value="Damaged">تالفة</option></select></div>
+              <div style={{gridColumn:'1/-1'}}><label className="form-label">ملاحظات</label><textarea className="form-input" rows={2} value={cylForm.notes} onChange={e=>setCylForm({...cylForm,notes:e.target.value})}/></div>
             </div>
-            <div style={{display:'flex',gap:10,marginTop:20,justifyContent:'flex-end'}}>
-              <button className="btn-secondary" onClick={()=>setModal(false)}>إلغاء</button>
-              <button className="btn-primary" onClick={save} disabled={saving}><Save size={15}/>{saving?'جاري الحفظ...':'حفظ'}</button>
+            <div style={{display:'flex',gap:10,marginTop:20,justifyContent:'flex-end'}}><button className="btn-secondary" onClick={()=>setCylModal(false)}>إلغاء</button><button className="btn-primary" onClick={saveCyl} disabled={saving}><Save size={15}/>{saving?'جاري...':'حفظ الأسطوانة'}</button></div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══════════════════ TRANSACTION MODAL ═══════════════════ */}
+      {transModal&&(
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.4)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center',padding:16}}>
+          <div className="card" style={{width:'100%',maxWidth:620,maxHeight:'92vh',overflow:'auto',padding:24}}>
+            <div style={{display:'flex',justifyContent:'space-between',marginBottom:18}}><div style={{fontFamily:'Cairo,sans-serif',fontWeight:700,fontSize:18}}>📝 حركة فريون جديدة</div><button onClick={()=>setTransModal(false)} style={{background:'none',border:'none',cursor:'pointer'}}><X size={20}/></button></div>
+            
+            {/* Transaction Type Toggle */}
+            <div style={{display:'flex',gap:0,marginBottom:14,borderRadius:10,overflow:'hidden',border:'2px solid var(--cs-border)'}}>
+              <button onClick={()=>setTransForm({...transForm,trans_type:'OUT',reason:'تعبئة وحدة عميل'})} style={{flex:1,padding:14,border:'none',cursor:'pointer',fontFamily:'Tajawal,sans-serif',fontWeight:800,fontSize:14,background:transForm.trans_type==='OUT'?'var(--cs-red)':'white',color:transForm.trans_type==='OUT'?'white':'var(--cs-text-muted)'}}>
+                <ArrowUpCircle size={18} style={{display:'inline',verticalAlign:-3,marginLeft:6}}/>
+                استخدام (نقص فريون)
+              </button>
+              <button onClick={()=>setTransForm({...transForm,trans_type:'IN',reason:'شراء جديد'})} style={{flex:1,padding:14,border:'none',cursor:'pointer',fontFamily:'Tajawal,sans-serif',fontWeight:800,fontSize:14,background:transForm.trans_type==='IN'?'var(--cs-green)':'white',color:transForm.trans_type==='IN'?'white':'var(--cs-text-muted)'}}>
+                <ArrowDownCircle size={18} style={{display:'inline',verticalAlign:-3,marginLeft:6}}/>
+                استلام (إضافة فريون)
+              </button>
+            </div>
+
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
+              <div><label className="form-label">رقم الحركة *</label><input className="form-input" value={transForm.trans_code} onChange={e=>setTransForm({...transForm,trans_code:e.target.value})}/></div>
+              <div><label className="form-label">التاريخ</label><input type="date" className="form-input" value={transForm.trans_date} onChange={e=>setTransForm({...transForm,trans_date:e.target.value})}/></div>
+              <div style={{gridColumn:'1/-1'}}>
+                <label className="form-label">الأسطوانة *</label>
+                <select className="form-input" value={transForm.cylinder_id} onChange={e=>{
+                  const cyl=cylinders.find(c=>c.id===e.target.value)
+                  setTransForm({...transForm,cylinder_id:e.target.value,weight_before:cyl?String(cyl.tare_weight_kg+cyl.current_freon_kg):''})
+                }}>
+                  <option value="">— اختر —</option>
+                  {cylinders.filter(c=>c.status==='Active').map(c=><option key={c.id} value={c.id}>{c.cylinder_code} | {c.freon_type} | متبقي: {fmt(c.current_freon_kg)} كغ</option>)}
+                </select>
+              </div>
+              {selectedCyl&&(
+                <div style={{gridColumn:'1/-1',background:'#F8FAFC',borderRadius:8,padding:'8px 14px',fontSize:12,display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8}}>
+                  <div><span style={{color:'var(--cs-text-muted)'}}>وزن فارغ:</span> <strong>{fmt(selectedCyl.tare_weight_kg)} كغ</strong></div>
+                  <div><span style={{color:'var(--cs-text-muted)'}}>الفريون الحالي:</span> <strong style={{color:'var(--cs-blue)'}}>{fmt(selectedCyl.current_freon_kg)} كغ</strong></div>
+                  <div><span style={{color:'var(--cs-text-muted)'}}>تكلفة/كغ:</span> <strong style={{color:'var(--cs-orange)'}}>{fmt(selectedCyl.unit_cost_per_kg)} ر.س</strong></div>
+                </div>
+              )}
+              <div style={{gridColumn:'1/-1',background:transForm.trans_type==='OUT'?'#FFF5F5':'#F0FFF4',borderRadius:8,padding:14,border:`2px solid ${transForm.trans_type==='OUT'?'#C0392B30':'#27AE6030'}`}}>
+                <div style={{fontSize:13,fontWeight:700,marginBottom:10,color:transForm.trans_type==='OUT'?'var(--cs-red)':'var(--cs-green)'}}>⚖️ الوزن الفعلي</div>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+                  <div><label className="form-label" style={{fontSize:12}}>الوزن قبل (كغ) — قراءة الميزان</label><input type="number" min="0" step="0.01" className="form-input" placeholder="مثلاً: 13.0" value={transForm.weight_before} onChange={e=>setTransForm({...transForm,weight_before:e.target.value})}/></div>
+                  <div><label className="form-label" style={{fontSize:12}}>الوزن بعد (كغ) — قراءة الميزان</label><input type="number" min="0" step="0.01" className="form-input" placeholder="مثلاً: 11.5" value={transForm.weight_after} onChange={e=>setTransForm({...transForm,weight_after:e.target.value})}/></div>
+                </div>
+                {wb>0&&wa>0&&(
+                  <div style={{marginTop:10,padding:'8px 12px',background:'white',borderRadius:6,display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+                    <div><span style={{fontSize:11,color:'var(--cs-text-muted)'}}>الكمية {transForm.trans_type==='OUT'?'المستخدمة':'المضافة'}:</span> <strong style={{fontSize:16,color:transForm.trans_type==='OUT'?'var(--cs-red)':'var(--cs-green)'}}>{fmt(netKg)} كغ</strong></div>
+                    <div><span style={{fontSize:11,color:'var(--cs-text-muted)'}}>التكلفة:</span> <strong style={{fontSize:16,color:'var(--cs-orange)'}}>{fmt(transCost)} ر.س</strong></div>
+                  </div>
+                )}
+              </div>
+              <div><label className="form-label">السبب</label><select className="form-input" value={transForm.reason} onChange={e=>setTransForm({...transForm,reason:e.target.value})}>{(transForm.trans_type==='IN'?REASONS_IN:REASONS_OUT).map(r=><option key={r}>{r}</option>)}</select></div>
+              <div><label className="form-label">الفني المنفّذ</label><select className="form-input" value={transForm.tech_id} onChange={e=>setTransForm({...transForm,tech_id:e.target.value})}><option value="">— اختر —</option>{techs.map(t=><option key={t.id} value={t.id}>{t.full_name}</option>)}</select></div>
+              {transForm.trans_type==='OUT'&&(
+                <>
+                  <div><label className="form-label">العميل</label><select className="form-input" value={transForm.client_id} onChange={e=>setTransForm({...transForm,client_id:e.target.value})}><option value="">— اختر —</option>{clients.map(c=><option key={c.id} value={c.id}>{c.company_name}</option>)}</select></div>
+                  <div><label className="form-label">المشروع (اختياري)</label><select className="form-input" value={transForm.project_id} onChange={e=>setTransForm({...transForm,project_id:e.target.value})}><option value="">— اختر —</option>{projects.map(p=><option key={p.id} value={p.id}>{p.project_name}</option>)}</select></div>
+                  <div style={{gridColumn:'1/-1'}}><label className="form-label">رقم الوحدة (Serial)</label><input className="form-input" dir="ltr" placeholder="رقم المكيف المُعبّأ" value={transForm.unit_serial} onChange={e=>setTransForm({...transForm,unit_serial:e.target.value})}/></div>
+                </>
+              )}
+              <div style={{gridColumn:'1/-1'}}><label className="form-label">ملاحظات</label><textarea className="form-input" rows={2} value={transForm.notes} onChange={e=>setTransForm({...transForm,notes:e.target.value})}/></div>
+            </div>
+            <div style={{display:'flex',gap:10,marginTop:20,justifyContent:'flex-end'}}><button className="btn-secondary" onClick={()=>setTransModal(false)}>إلغاء</button><button className="btn-primary" onClick={saveTrans} disabled={saving}><Save size={15}/>{saving?'جاري...':'حفظ الحركة'}</button></div>
+          </div>
+        </div>
+      )}
+
+      {/* CYLINDER VIEW MODAL */}
+      {viewCyl&&(
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.4)',zIndex:300,display:'flex',alignItems:'center',justifyContent:'center',padding:16}}>
+          <div className="card" style={{width:'100%',maxWidth:560,maxHeight:'92vh',overflow:'auto',padding:24}}>
+            <div style={{display:'flex',justifyContent:'space-between',marginBottom:16}}>
+              <div style={{fontFamily:'Cairo,sans-serif',fontWeight:700,fontSize:18}}>📦 {viewCyl.cylinder_code}</div>
+              <button onClick={()=>setViewCyl(null)} style={{background:'none',border:'none',cursor:'pointer'}}><X size={18}/></button>
+            </div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:16}}>
+              <div className="stat-card" style={{textAlign:'center'}}><div style={{fontSize:11,color:'var(--cs-text-muted)'}}>الفريون الحالي</div><div style={{fontSize:24,fontWeight:800,color:'var(--cs-green)'}}>{fmt(viewCyl.current_freon_kg)} كغ</div></div>
+              <div className="stat-card" style={{textAlign:'center'}}><div style={{fontSize:11,color:'var(--cs-text-muted)'}}>الكمية الأولية</div><div style={{fontSize:24,fontWeight:800,color:'var(--cs-blue)'}}>{fmt(viewCyl.initial_freon_kg)} كغ</div></div>
+            </div>
+            <div style={{fontSize:13,fontWeight:700,marginBottom:8}}>📋 سجل الحركات</div>
+            <div style={{maxHeight:300,overflowY:'auto'}}>
+              {transactions.filter(t=>t.cylinder_id===viewCyl.id).map(t=>(
+                <div key={t.id} style={{padding:'8px 12px',background:t.trans_type==='IN'?'#F0FFF4':'#FFF5F5',borderRadius:6,marginBottom:6,borderRight:`3px solid ${t.trans_type==='IN'?'var(--cs-green)':'var(--cs-red)'}`,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                  <div>
+                    <div style={{fontSize:12,fontWeight:700}}>{t.trans_date?.split('T')[0]} — {t.reason}</div>
+                    <div style={{fontSize:11,color:'var(--cs-text-muted)'}}>{t.clients?.company_name||t.technicians?.full_name||'—'}</div>
+                  </div>
+                  <div style={{fontWeight:800,fontSize:14,color:t.trans_type==='IN'?'var(--cs-green)':'var(--cs-red)'}}>{t.trans_type==='IN'?'+':'−'}{fmt(t.net_kg)} كغ</div>
+                </div>
+              ))}
+              {transactions.filter(t=>t.cylinder_id===viewCyl.id).length===0&&<div style={{textAlign:'center',padding:20,color:'var(--cs-text-muted)',fontSize:12}}>لا توجد حركات بعد</div>}
             </div>
           </div>
         </div>
