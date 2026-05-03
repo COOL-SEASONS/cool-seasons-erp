@@ -13,7 +13,7 @@ import { Plus, Search, Edit2, Trash2, X, Save, AlertTriangle, CheckCircle, Print
 
 const SPECIALTIES = ['تركيب تكييف','صيانة','أعمال كهربائية','ميكانيك مبردات','قنوات هواء','مواسير','فريون','عمل عام']
 const LEVELS = ['Trainee','Mid','Senior','Specialist','Expert']
-const EMPTY = { tech_code:`T-${50+Math.floor(Date.now()/1000)%9000}` as string, full_name:'', specialty:'', phone:'', nationality:'', hire_date:'', status:'Active', level:'', hourly_rate:'', id_number:'', document_type:'هوية وطنية', residence_expiry:'', engineers_membership_exp:'', notes:'' }
+const EMPTY = {passport_no:'',passport_expiry:'', tech_code:`T-${50+Math.floor(Date.now()/1000)%9000}` as string, full_name:'', specialty:'', phone:'', nationality:'', hire_date:'', status:'Active', level:'', hourly_rate:'', id_number:'', document_type:'هوية وطنية', residence_expiry:'', engineers_membership_exp:'', notes:'' }
 
 export default function TechniciansPage() {
   const [rows, setRows] = useState<any[]>([])

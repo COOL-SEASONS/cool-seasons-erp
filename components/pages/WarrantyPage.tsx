@@ -39,7 +39,7 @@ export default function WarrantyPage() {
   const load=async()=>{
     setLoading(true)
     const [{data:w},{data:c},{data:p}]=await Promise.all([
-      supabase.from('warranty_tracking').select('*,clients(company_name),projects(project_name)').order('created_at',{ascending:false}),
+      supabase.from('warranty_tracking').select('*,clients(company_name),projects(project_name)').order('start_date',{ascending:false,nullsFirst:false}),
       supabase.from('clients').select('id,company_name'),
       supabase.from('projects').select('id,project_name'),
     ])

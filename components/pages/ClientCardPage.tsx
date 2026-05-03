@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import { Search, Phone, Mail, MapPin, Building2, FileText, Wrench, DollarSign } from 'lucide-react'
+import { Search, Phone, Mail, MapPin, Building2, FileText, Wrench, DollarSign, Printer } from 'lucide-react'
 
 export default function ClientCardPage() {
   const [clients,setClients] = useState<any[]>([])

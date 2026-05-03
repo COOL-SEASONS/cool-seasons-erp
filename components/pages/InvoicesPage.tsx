@@ -1,4 +1,5 @@
 'use client'
+// COOL SEASONS — مواسم البرودة ودرجة للتكييف
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { Plus, Search, Edit2, Trash2, X, Save, Printer} from 'lucide-react'
@@ -152,8 +153,13 @@ export default function InvoicesPage() {
       {viewItem&&(
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.4)',zIndex:300,display:'flex',alignItems:'center',justifyContent:'center',padding:16}}>
           <div id="view-print-area" className="card" style={{width:'100%',maxWidth:560,maxHeight:'90vh',overflow:'auto',padding:24}}>
+            <div style={{borderBottom:'3px solid var(--cs-blue)',paddingBottom:14,marginBottom:16,textAlign:'center'}}>
+              <div style={{fontFamily:'Cairo,sans-serif',fontWeight:900,fontSize:24,color:'var(--cs-blue)',letterSpacing:0.5}}>🏢 COOL SEASONS</div>
+              <div style={{fontSize:13,color:'#1E9CD7',fontWeight:700,marginTop:2}}>مواسم البرودة ودرجة للتكييف والتبريد</div>
+              <div style={{fontSize:11,color:'var(--cs-text-muted)',marginTop:1}}>HVAC & Refrigeration Solutions | DARAJA.STORE</div>
+            </div>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
-              <div style={{fontFamily:'Cairo,sans-serif',fontWeight:700,fontSize:16}}>تفاصيل السجل</div>
+              <div style={{fontFamily:'Cairo,sans-serif',fontWeight:700,fontSize:16}}>تفاصيل الفاتورة</div>
               <div style={{display:'flex',gap:8}}>
                 <button onClick={()=>window.print()} style={{background:'var(--cs-blue)',color:'white',border:'none',borderRadius:6,padding:'6px 14px',cursor:'pointer',display:'flex',alignItems:'center',gap:5,fontSize:12,fontFamily:'Tajawal,sans-serif'}}><Printer size={14}/>طباعة</button>
                 <button onClick={()=>setViewItem(null)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--cs-text-muted)'}}><X size={20}/></button>

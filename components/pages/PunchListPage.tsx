@@ -35,7 +35,7 @@ export default function PunchListPage() {
   const load=async()=>{
     setLoading(true)
     const [{data:p},{data:pr},{data:t}]=await Promise.all([
-      supabase.from('punch_list').select('*,projects(project_name)').order('created_at',{ascending:false}),
+      supabase.from('punch_list').select('*,projects(project_name)').order('due_date',{ascending:false,nullsFirst:false}),
       supabase.from('projects').select('id,project_name'),
       supabase.from('technicians').select('id,full_name').eq('status','Active'),
     ])

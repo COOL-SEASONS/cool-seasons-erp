@@ -5,21 +5,34 @@ import { Plus, Search, Edit2, Trash2, X, Save, Printer } from 'lucide-react'
 
 const UNIT_TYPES = ['SPLIT','D.SPLIT','PACKAGED','VRF','CHILLER','FCU','AHU','أخرى']
 const PROBLEMS = [
-  'عطل كهربائي - Electrical Fault',
-  'نقص غاز - Gas Leak/Low Gas',
-  'كمبروسر معطل - Compressor Failure',
-  'مروحة معطلة - Fan Motor Fault',
-  'فلتر متسخ - Dirty Filter',
-  'تسريب مياه - Water Leak',
-  'ضعف تبريد - Poor Cooling',
-  'ضوضاء - Noise Issue',
-  'بورد تحكم - Control Board',
-  'كابيستر - Capacitor Fault',
-  'صمام تمدد - Expansion Valve',
-  'ريموت - Remote Control',
-  'صيانة دورية - Routine Maintenance',
-  'أخرى - Other',
+  'COMP.NOT WORK','COIL LEAK','FAN BLOWER','BCP','COPMP.WIRE','COMP.WEAK','COMP.F',
+  'LEAK COPPER PIPE','CON.LEAK','DRAIN LEAK','BLOWER FAN M','OUT FAN M',
+  'COPPER PIPE INSULATION','DUCT INSULATION','CAPACITOR','PCP','REMOT',
+  'EXP.VALVE','TXP.VALVE','FILL FERION'
 ]
+
+// قائمة الوحدات السكنية - 150+ خيار
+const UNITS_LIST = (() => {
+  const list:string[] = []
+  // مباني A و B من 1 إلى 6
+  for(let bldg=1; bldg<=6; bldg++) {
+    for(const wing of ['A','B']) {
+      // طوابق 1-4: 3 شقق لكل طابق (101-103, 201-203...)
+      for(let floor=1; floor<=4; floor++) {
+        for(let unit=1; unit<=3; unit++) {
+          list.push(`${bldg}${wing}-${floor}0${unit}`)
+        }
+      }
+      // طوابق 5-6: شقة واحدة (501, 601)
+      list.push(`${bldg}${wing}-501`)
+      list.push(`${bldg}${wing}-601`)
+    }
+  }
+  // RB1-RB6 و GRDB1-GRDB6
+  for(let i=1; i<=6; i++) list.push(`RB${i}`)
+  for(let i=1; i<=6; i++) list.push(`GRDB${i}`)
+  return list
+})()
 const STATUSES=['Open','In Progress','Completed']
 const STATUS_AR:any={Open:'مفتوح','In Progress':'جاري',Completed:'مكتمل'}
 const STATUS_C:any={Open:'badge-blue','In Progress':'badge-amber',Completed:'badge-green'}
@@ -52,7 +65,7 @@ export default function MaintReportPage() {
   const load=async()=>{
     setLoading(true)
     const [{data:r},{data:c},{data:t}]=await Promise.all([
-      supabase.from('maint_reports').select('*,clients(company_name),technicians(full_name)').order('created_at',{ascending:false}),
+      supabase.from('maint_reports').select('*,clients(company_name),technicians(full_name)').order('report_date',{ascending:false,nullsFirst:false}),
       supabase.from('clients').select('id,company_name'),
       supabase.from('technicians').select('id,full_name').eq('status','Active'),
     ])
@@ -109,14 +122,15 @@ export default function MaintReportPage() {
           <div className="table-wrap"><table>
             <thead><tr><th>رقم التقرير</th><th>التاريخ</th><th>العميل</th><th>الفني</th><th>نوع الوحدة</th><th>المشكلة</th><th>التكلفة</th><th>الحالة</th><th>إجراءات</th></tr></thead>
             <tbody>
-              {filtered.length===0?<tr><td colSpan={9} style={{textAlign:'center',padding:40,color:'var(--cs-text-muted)'}}>لا توجد تقارير</td></tr>
+              {filtered.length===0?<tr><td colSpan={10} style={{textAlign:'center',padding:40,color:'var(--cs-text-muted)'}}>لا توجد تقارير</td></tr>
               :filtered.map(r=>(
                 <tr key={r.id}>
                   <td><span style={{fontFamily:'monospace',background:'var(--cs-blue-light)',padding:'2px 8px',borderRadius:4,fontSize:12}}>{r.report_no}</span></td>
                   <td style={{fontSize:12}}>{r.report_date?.split('T')[0]||'—'}</td>
                   <td style={{fontWeight:600}}>{r.clients?.company_name||r.customer||'—'}</td>
                   <td>{r.technicians?.full_name||'—'}</td>
-                  <td><span className="badge badge-gray">{r.unit_type||'—'}</span></td>
+                  <td style={{fontWeight:600,fontSize:12}}>{r.unit_no||'—'}</td>
+                    <td><span className="badge badge-gray">{r.unit_type||'—'}</span></td>
                   <td style={{maxWidth:180,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:12}}>{r.problem||'—'}</td>
                   <td style={{fontWeight:700,color:'var(--cs-blue)'}}>{fmt(r.cost)} ر.س</td>
                   <td><span className={`badge ${STATUS_C[r.status]||'badge-gray'}`}>{STATUS_AR[r.status]||r.status}</span></td>
@@ -143,7 +157,7 @@ export default function MaintReportPage() {
               </div>
             </div>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:0}}>
-              {[{l:'رقم التقرير',v:viewItem.report_no},{l:'التاريخ',v:viewItem.report_date?.split('T')[0]},{l:'العميل',v:viewItem.clients?.company_name||viewItem.customer},{l:'الفني',v:viewItem.technicians?.full_name},{l:'القسم',v:viewItem.section},{l:'نوع الوحدة',v:viewItem.unit_type},{l:'المعدة',v:viewItem.equipment},{l:'الموديل',v:viewItem.model},{l:'الرقم التسلسلي',v:viewItem.serial_no},{l:'الشكوى',v:viewItem.complaint},{l:'المشكلة',v:viewItem.problem},{l:'القطع المستخدمة',v:viewItem.parts_used},{l:'وقت البلاغ',v:viewItem.call_time},{l:'وقت الوصول',v:viewItem.attend_time},{l:'وقت الإنجاز',v:viewItem.done_time},{l:'التكلفة',v:viewItem.cost?fmt(viewItem.cost)+' ر.س':null},{l:'الحالة',v:STATUS_AR[viewItem.status]||viewItem.status},{l:'ملاحظات',v:viewItem.notes}].map(({l,v},i)=>(
+              {[{l:'رقم التقرير',v:viewItem.report_no},{l:'التاريخ',v:viewItem.report_date?.split('T')[0]},{l:'العميل',v:viewItem.clients?.company_name||viewItem.customer},{l:'الفني',v:viewItem.technicians?.full_name},{l:'القسم',v:viewItem.section},{l:'الوحدة السكنية',v:viewItem.unit_no},{l:'نوع الوحدة',v:viewItem.unit_type},{l:'المعدة',v:viewItem.equipment},{l:'الموديل',v:viewItem.model},{l:'الرقم التسلسلي',v:viewItem.serial_no},{l:'الشكوى',v:viewItem.complaint},{l:'المشكلة',v:viewItem.problem},{l:'القطع المستخدمة',v:viewItem.parts_used},{l:'وقت البلاغ',v:viewItem.call_time},{l:'وقت الوصول',v:viewItem.attend_time},{l:'وقت الإنجاز',v:viewItem.done_time},{l:'التكلفة',v:viewItem.cost?fmt(viewItem.cost)+' ر.س':null},{l:'الحالة',v:STATUS_AR[viewItem.status]||viewItem.status},{l:'ملاحظات',v:viewItem.notes}].map(({l,v},i)=>(
                 <div key={i} style={{padding:'7px 10px',borderBottom:'1px solid var(--cs-border)',borderLeft:i%2===0?'none':'1px solid var(--cs-border)'}}>
                   <span style={{fontSize:11,color:'var(--cs-text-muted)',display:'block',marginBottom:2}}>{l}</span>
                   <span style={{fontSize:13,fontWeight:600}}>{v||'—'}</span>
@@ -173,6 +187,7 @@ export default function MaintReportPage() {
               <div><label className="form-label">العميل</label><select className="form-input" value={form.client_id} onChange={e=>setForm({...form,client_id:e.target.value,customer:clients.find(c=>c.id===e.target.value)?.company_name||form.customer})}><option value="">— اختر —</option>{clients.map(c=><option key={c.id} value={c.id}>{c.company_name}</option>)}</select></div>
               <div><label className="form-label">الفني</label><select className="form-input" value={form.tech_id} onChange={e=>setForm({...form,tech_id:e.target.value})}><option value="">— اختر —</option>{techs.map(t=><option key={t.id} value={t.id}>{t.full_name}</option>)}</select></div>
               <div><label className="form-label">القسم / الموقع</label><input className="form-input" value={form.section} onChange={e=>setForm({...form,section:e.target.value})}/></div>
+              <div><label className="form-label">الوحدة السكنية</label><input className="form-input" list="units-list" placeholder="اختر أو اكتب..." value={form.unit_no||''} onChange={e=>setForm({...form,unit_no:e.target.value})}/><datalist id="units-list">{UNITS_LIST.map(u=><option key={u} value={u}/>)}</datalist></div>
               <div><label className="form-label">نوع الوحدة</label><select className="form-input" value={form.unit_type} onChange={e=>setForm({...form,unit_type:e.target.value})}>{UNIT_TYPES.map(u=><option key={u}>{u}</option>)}</select></div>
               <div><label className="form-label">المعدة / Equipment</label><input className="form-input" value={form.equipment} onChange={e=>setForm({...form,equipment:e.target.value})}/></div>
               <div><label className="form-label">الموديل</label><input className="form-input" value={form.model} onChange={e=>setForm({...form,model:e.target.value})}/></div>

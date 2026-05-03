@@ -9,12 +9,25 @@ export default function TechLeaderboardPage() {
 
   useEffect(()=>{
     async function load() {
-      const [{data:t},{data:proj},{data:maint},{data:att}] = await Promise.all([
+      const [{data:t},{data:proj},{data:maint},{data:att},{data:followups}] = await Promise.all([
         supabase.from('technicians').select('id,tech_code,full_name,specialty,level').eq('status','Active'),
         supabase.from('projects').select('tech_id,status'),
         supabase.from('maintenance').select('tech_id,status'),
         supabase.from('hr_attendance').select('tech_id,status'),
+        supabase.from('customer_followup').select('assigned_to,rating'),
       ])
+
+      // ratingScore: راضٍ جداً=5, راضٍ=4, محايد=3, غير راضٍ=2, شكوى=1
+      const rateMap:any = {'راضٍ جداً':5,'راضٍ':4,'محايد':3,'غير راضٍ':2,'شكوى':1}
+      const ratingFor = (techName:string) => {
+        const matches = (followups||[]).filter(f=>f.assigned_to===techName && f.rating)
+        if(!matches.length) return 0
+        const sum = matches.reduce((s:number,f:any)=>{
+          const key = Object.keys(rateMap).find(k=>f.rating?.includes(k))
+          return s + (key ? rateMap[key] : 0)
+        }, 0)
+        return Math.round((sum/matches.length)*20) // out of 100
+      }
 
       const data = (t||[]).map(tech => {
         const activeProjects = (proj||[]).filter(p=>p.tech_id===tech.id&&p.status==='In Progress').length
@@ -24,8 +37,15 @@ export default function TechLeaderboardPage() {
         const presentDays = (att||[]).filter(a=>a.tech_id===tech.id&&a.status==='Present').length
         const attendance = totalDays>0 ? Math.round(presentDays/totalDays*100) : 0
         const completionRate = totalMaint>0 ? Math.round(doneMaint/totalMaint*100) : 0
-        const score = activeProjects*10 + doneMaint*5 + attendance/10
-        return { ...tech, activeProjects, totalMaint, doneMaint, attendance, completionRate, score }
+        const customerRating = ratingFor(tech.full_name) // out of 100
+        // معادلة الأداء الشاملة: مشاريع 30% + صيانة 25% + حضور 20% + رضا العميل 25%
+        const score = Math.round(
+          (activeProjects*10)*0.30 +
+          (completionRate)*0.25 +
+          (attendance)*0.20 +
+          (customerRating)*0.25
+        )
+        return { ...tech, activeProjects, totalMaint, doneMaint, attendance, completionRate, customerRating, score }
       }).sort((a,b)=>b.score-a.score)
 
       setTechs(data); setLoading(false)

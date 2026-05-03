@@ -30,7 +30,7 @@ export default function PurchaseOrdersPage() {
   const load = async () => {
     setLoading(true)
     const [{ data: po }, { data: p }] = await Promise.all([
-      supabase.from('purchase_orders').select('*, projects(project_name)').order('created_at',{ascending:false}),
+      supabase.from('purchase_orders').select('*, projects(project_name)').order('order_date',{ascending:false,nullsFirst:false}),
       supabase.from('projects').select('id,project_name'),
     ])
     setRows(po||[]); setProjects(p||[])

@@ -31,7 +31,7 @@ export default function EquipmentPage() {
   const load=async()=>{
     setLoading(true)
     const [{data:e},{data:c},{data:p},{data:t}]=await Promise.all([
-      supabase.from('equipment_assets').select('*,clients(company_name),projects(project_name),technicians(full_name)').order('created_at',{ascending:false}),
+      supabase.from('equipment_assets').select('*,clients(company_name),projects(project_name),technicians(full_name)').order('install_date',{ascending:false,nullsFirst:false}),
       supabase.from('clients').select('id,company_name'),
       supabase.from('projects').select('id,project_name'),
       supabase.from('technicians').select('id,full_name').eq('status','Active'),

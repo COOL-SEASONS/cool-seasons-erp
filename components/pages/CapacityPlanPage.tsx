@@ -1,4 +1,5 @@
 'use client'
+import { Printer } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 
@@ -48,6 +49,7 @@ export default function CapacityPlanPage() {
     <div>
       <div className="page-header">
         <div><div className="page-title">خطة الطاقة الإنتاجية</div><div className="page-subtitle">Capacity Planning — {MONTHS[month]} {year}</div></div>
+        <button onClick={()=>window.print()} style={{display:'flex',alignItems:'center',gap:6,background:'white',color:'var(--cs-blue)',border:'1px solid var(--cs-blue)',borderRadius:8,padding:'8px 14px',cursor:'pointer',fontSize:13,fontFamily:'Tajawal,sans-serif',fontWeight:600}}><Printer size={15}/>طباعة</button>
       </div>
 
       {/* Settings */}

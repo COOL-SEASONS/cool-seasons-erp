@@ -13,7 +13,12 @@ import { Plus, Search, Edit2, Trash2, X, Save, AlertTriangle, CheckCircle, Print
 
 const EMPTY = { doc_name:'', doc_type:'', doc_number:'', issue_date:'', expiry_date:'', file_url:'', notes:'' }
 
-const DOC_TYPES = ['سجل تجاري','رخصة بلدية','شهادة زكاة وضريبة','تأمين','وثيقة عمل','ترخيص مهني','عضوية غرفة','شهادة ISO','رخصة سائق','أخرى']
+const DOC_TYPES = [
+  'السجل التجاري','الرخصة البلدية','شهادة الزكاة','شهادة الانتساب للغرفة',
+  'شهادة الجودة ISO','شهادة السلامة','رخصة المنشأة',
+  'عضوية هيئة المهندسين','اشتراك قوى','اشتراك ابشر اعمال','التأمينات الاجتماعية',
+  'أخرى'
+]
 
 export default function CompanyDocsPage() {
   const [rows, setRows] = useState<any[]>([])
@@ -27,7 +32,7 @@ export default function CompanyDocsPage() {
 
   const load = async () => {
     setLoading(true)
-    const { data } = await supabase.from('company_docs').select('*').order('expiry_date', { ascending: true })
+    const { data } = await supabase.from('company_docs').select('*').order('created_at', { ascending: false })
     setRows(data || [])
     setLoading(false)
   }

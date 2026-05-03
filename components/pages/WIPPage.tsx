@@ -43,6 +43,7 @@ export default function WIPPage() {
     <div>
       <div className="page-header" style={{gap:8}}>
         <div><div className="page-title">تقرير WIP</div><div className="page-subtitle">Work In Progress — الأعمال الجارية</div></div>
+        <button onClick={()=>window.print()} style={{display:'flex',alignItems:'center',gap:6,background:'white',color:'var(--cs-blue)',border:'1px solid var(--cs-blue)',borderRadius:8,padding:'8px 14px',cursor:'pointer',fontSize:13,fontFamily:'Tajawal,sans-serif',fontWeight:600,marginBottom:12}}><Printer size={15}/>طباعة</button>
       </div>
 
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(150px,1fr))',gap:12,marginBottom:20}}>

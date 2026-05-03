@@ -34,7 +34,7 @@ export default function ChangeOrdersPage() {
   const load=async()=>{
     setLoading(true)
     const [{data:c},{data:p},{data:cl}]=await Promise.all([
-      supabase.from('change_orders').select('*,projects(project_name),clients(company_name)').order('created_at',{ascending:false}),
+      supabase.from('change_orders').select('*,projects(project_name),clients(company_name)').order('requested_date',{ascending:false,nullsFirst:false}),
       supabase.from('projects').select('id,project_name,client_id'),
       supabase.from('clients').select('id,company_name'),
     ])

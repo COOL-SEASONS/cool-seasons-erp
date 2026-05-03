@@ -13,6 +13,8 @@ import { Plus, Search, Edit2, Trash2, X, Save, Printer} from 'lucide-react'
 
 const EMPTY = { contract_code:`AMC-${201+Math.floor(Date.now()/1000)%9000}` as string, client_id:'', tech_id:'', start_date:'', end_date:'', annual_value:0, units_count:'', visit_frequency:'', status:'Active', paid_amount:0, notes:'' }
 
+const SECTORS=['قطاع حكومي','قطاع خاص','مطور عقاري','شركة مقاولات','قطاع فندقي','مطاعم','شركة هندسية وديكور','مدارس','قاعات مناسبات','مسجد','فردي']
+
 export default function ContractsPage() {
   const [rows, setRows] = useState<any[]>([])
   const [clients, setClients] = useState<any[]>([])

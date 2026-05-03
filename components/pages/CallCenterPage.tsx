@@ -34,7 +34,7 @@ export default function CallCenterPage() {
 
   const load=async()=>{
     setLoading(true)
-    const {data}=await supabase.from('call_center').select('*').order('created_at',{ascending:false})
+    const {data}=await supabase.from('call_center').select('*').order('followup_date',{ascending:false,nullsFirst:false})
     setRows(data||[]); setLoading(false)
   }
   useEffect(()=>{load()},[])

@@ -11,7 +11,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { Plus, Search, Edit2, Trash2, X, Save, Printer} from 'lucide-react'
 
-const EMPTY = { item_code:'', description:'', category:'', unit:'', qty:0, min_stock:0, max_stock:'', unit_price:'', supplier:'', location:'', notes:'' }
+const EMPTY = { item_code:`FR-${100+Math.floor(Date.now()/1000)%9000}`, description:'', category:'', unit:'', qty:0, min_stock:0, max_stock:'', unit_price:'', supplier:'', location:'', notes:'' }
 
 export default function InventoryPage() {
   const [rows, setRows] = useState<any[]>([])

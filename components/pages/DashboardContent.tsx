@@ -208,7 +208,7 @@ export default function DashboardContent({onNav}:{onNav:(id:string)=>void}) {
     <div>
       {/* Title row */}
       <div style={{background:'#2C3E7B',borderRadius:10,padding:'14px 20px',marginBottom:8,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-        <div style={{color:'white',fontFamily:'Cairo,sans-serif',fontWeight:900,fontSize:16}}>🏢 نظام إدارة شركة التكييف والتبريد | HVAC Company ERP System</div>
+        <div style={{color:'white',fontFamily:'Cairo,sans-serif',fontWeight:900,fontSize:16}}>🏢 نظام إدارة مواسم البرودة ودرجة للتكييف | COOL SEASONS & DARAJA ERP System</div>
         <div style={{color:'rgba(255,255,255,0.8)',fontSize:12}}>{new Date().toLocaleDateString('ar-SA',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}</div>
       </div>
 

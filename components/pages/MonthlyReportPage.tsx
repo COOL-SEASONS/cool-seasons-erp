@@ -86,6 +86,7 @@ export default function MonthlyReportPage() {
           <div className="page-title">التقرير الشهري</div>
           <div className="page-subtitle">{displayMonth()}</div>
         </div>
+        <button onClick={()=>window.print()} style={{display:'flex',alignItems:'center',gap:6,background:'white',color:'var(--cs-blue)',border:'1px solid var(--cs-blue)',borderRadius:8,padding:'8px 14px',cursor:'pointer',fontSize:13,fontFamily:'Tajawal,sans-serif',fontWeight:600,marginBottom:12}}><Printer size={15}/>طباعة</button>
         <select className="form-input" style={{width:180}} value={selectedMonth} onChange={e=>setSelectedMonth(e.target.value)}>
           {months.map(m=>{
             const [y,mo] = m.split('-')

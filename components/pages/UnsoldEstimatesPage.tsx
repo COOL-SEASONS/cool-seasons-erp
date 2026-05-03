@@ -1,162 +1,140 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import { Phone, Mail, AlertTriangle, TrendingDown, RefreshCw, Printer, X} from 'lucide-react'
+import { Search, Edit2, X, Save, Printer, AlertTriangle } from 'lucide-react'
+
+const REJECTION_REASONS=[
+  'السعر مرتفع','المدة طويلة','عدم توفر الميزانية','اختار منافساً',
+  'تأجيل المشروع','تغيير المتطلبات','عدم الرضا عن الشركة','أسباب أخرى'
+]
 
 export default function UnsoldEstimatesPage() {
-  const [viewItem,setViewItem]=useState<any>(null)
-  const [rows,setRows] = useState<any[]>([])
-  const [loading,setLoading] = useState(true)
-  const [filter,setFilter] = useState('all')
+  const [rows,setRows]=useState<any[]>([])
+  const [loading,setLoading]=useState(true)
+  const [search,setSearch]=useState('')
+  const [editing,setEditing]=useState<any>(null)
+  const [reason,setReason]=useState('')
+  const [reasonText,setReasonText]=useState('')
+  const [followupDate,setFollowupDate]=useState('')
 
-  const load = async () => {
+  const load=async()=>{
     setLoading(true)
-    const { data } = await supabase
-      .from('quotations')
-      .select('*,clients(company_name,phone,email)')
-      .in('status',['Sent','Draft','Expired'])
-      .order('quote_date',{ascending:false})
+    const {data}=await supabase.from('quotations').select('*,clients(company_name)').in('status',['Rejected','Expired','Lost']).order('quote_date',{ascending:false,nullsFirst:false})
     setRows(data||[])
     setLoading(false)
   }
-  useEffect(()=>{ load() },[])
+  useEffect(()=>{load()},[])
 
-  const today = new Date()
-  const fmt = (n:number) => new Intl.NumberFormat('ar-SA',{maximumFractionDigits:0}).format(n||0)
-
-  const enrich = rows.map(r => {
-    const daysSince = r.quote_date ? Math.ceil((today.getTime()-new Date(r.quote_date).getTime())/86400000) : 0
-    const isExpired = r.expiry_date && new Date(r.expiry_date) < today
-    const priority = (r.amount||0)>200000 ? '🔴 عاجل جداً' : (r.amount||0)>100000 ? '🟠 عاجل' : (r.amount||0)>50000 ? '🟡 متوسط' : '🟢 عادي'
-    return { ...r, daysSince, isExpired, priority }
-  })
-
-  const filtered = enrich.filter(r => {
-    if(filter==='sent') return r.status==='Sent'
-    if(filter==='expired') return r.isExpired
-    if(filter==='urgent') return r.amount>100000
-    return true
-  })
-
-  const totalPending = enrich.filter(r=>r.status==='Sent').reduce((s,r)=>s+(r.total_amount||0),0)
-  const totalExpired = enrich.filter(r=>r.isExpired).reduce((s,r)=>s+(r.total_amount||0),0)
-  const conversionRate = rows.length > 0 ? 0 : 0
-
-  const priorityColor:any = {'🔴 عاجل جداً':'var(--cs-red)','🟠 عاجل':'var(--cs-orange)','🟡 متوسط':'#B7950B','🟢 عادي':'var(--cs-green)'}
-
-  const updateStatus = async (id:string, status:string) => {
-    await supabase.from('quotations').update({status}).eq('id',id)
-    load()
+  const startEdit=(r:any)=>{
+    setEditing(r)
+    setReason(r.rejection_reason||'السعر مرتفع')
+    setReasonText(r.rejection_notes||'')
+    setFollowupDate(r.followup_date?.split('T')[0]||'')
   }
+  const saveReason=async()=>{
+    if(!editing) return
+    const payload={rejection_reason:reason,rejection_notes:reasonText||null,followup_date:followupDate||null}
+    const {error}=await supabase.from('quotations').update(payload).eq('id',editing.id)
+    if(error){
+      // Try without new columns if they don't exist
+      if(error.message?.includes('column')){
+        const {error:e2}=await supabase.from('quotations').update({notes:`سبب الرفض: ${reason} | ${reasonText}`}).eq('id',editing.id)
+        if(e2) alert('خطأ: '+e2.message)
+        else{setEditing(null);load()}
+      } else alert('خطأ: '+error.message)
+    } else{setEditing(null);load()}
+  }
+  const fmt=(n:number)=>new Intl.NumberFormat('ar-SA',{maximumFractionDigits:0}).format(n||0)
+  const filtered=rows.filter(r=>r.clients?.company_name?.toLowerCase().includes(search.toLowerCase())||r.quote_no?.includes(search))
+
+  // إحصائيات أسباب الرفض
+  const reasonStats=REJECTION_REASONS.map(r=>({reason:r,count:rows.filter(x=>x.rejection_reason===r).length})).filter(x=>x.count>0).sort((a,b)=>b.count-a.count)
 
   return (
     <div>
       <div className="page-header">
-        <div><div className="page-title">العروض غير المقبولة</div><div className="page-subtitle">Unsold Estimates — متابعة المبيعات</div></div>
-        <button className="btn-secondary" onClick={load} style={{display:'flex',alignItems:'center',gap:6}}><RefreshCw size={14}/>تحديث</button>
+        <div><div className="page-title">العروض غير المقبولة</div><div className="page-subtitle">{rows.length} عرض — لا تُحذف للتحليل لاحقاً</div></div>
+        <button onClick={()=>window.print()} style={{display:'flex',alignItems:'center',gap:6,background:'white',color:'var(--cs-blue)',border:'1px solid var(--cs-blue)',borderRadius:8,padding:'8px 14px',cursor:'pointer',fontSize:13,fontFamily:'Tajawal,sans-serif',fontWeight:600}}><Printer size={15}/>طباعة</button>
       </div>
 
-      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:12,marginBottom:20}}>
-        {[
-          {l:'إجمالي قيمة المعلقة',v:fmt(totalPending)+' ر.س',c:'var(--cs-orange)',icon:TrendingDown},
-          {l:'عروض منتهية',v:enrich.filter(r=>r.isExpired).length,c:'var(--cs-red)',icon:AlertTriangle},
-          {l:'قيمة المنتهية',v:fmt(totalExpired)+' ر.س',c:'var(--cs-red)',icon:TrendingDown},
-          {l:'عروض مرسلة',v:enrich.filter(r=>r.status==='Sent').length,c:'var(--cs-blue)',icon:Mail},
-        ].map((s,i)=>(
-          <div key={i} className="stat-card">
-            <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
-              <div><div style={{fontSize:11,color:'var(--cs-text-muted)',fontWeight:600,marginBottom:4}}>{s.l}</div><div style={{fontSize:16,fontWeight:800,color:s.c}}>{s.v}</div></div>
-              <s.icon size={20} color={s.c} style={{opacity:0.5}}/>
-            </div>
+      <div style={{background:'#FFF3CD',border:'1px solid #FFE69C',borderRadius:8,padding:'10px 14px',marginBottom:16,display:'flex',alignItems:'center',gap:8}}>
+        <AlertTriangle size={16} color="#856404"/>
+        <span style={{fontSize:13,color:'#856404'}}>العروض المرفوضة لا يتم حذفها لتحليل أسباب الرفض وتحسين العروض المستقبلية</span>
+      </div>
+
+      {reasonStats.length>0&&(
+        <div className="card" style={{marginBottom:16,padding:16}}>
+          <div style={{fontWeight:700,marginBottom:10,fontSize:14}}>📊 أسباب الرفض الأكثر شيوعاً</div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))',gap:8}}>
+            {reasonStats.map(({reason,count})=>(
+              <div key={reason} style={{background:'#FFF5F5',borderRight:'3px solid var(--cs-red)',borderRadius:6,padding:'8px 12px'}}>
+                <div style={{fontSize:11,color:'var(--cs-text-muted)'}}>{reason}</div>
+                <div style={{fontSize:18,fontWeight:800,color:'var(--cs-red)'}}>{count}</div>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </div>
+      )}
 
-      {/* Filter tabs */}
-      <div style={{display:'flex',gap:8,marginBottom:16,flexWrap:'wrap'}}>
-        {[
-          {k:'all',l:`الكل (${enrich.length})`},
-          {k:'sent',l:`مرسلة (${enrich.filter(r=>r.status==='Sent').length})`},
-          {k:'expired',l:`منتهية (${enrich.filter(r=>r.isExpired).length})`},
-          {k:'urgent',l:`قيمة عالية (${enrich.filter(r=>r.amount>100000).length})`},
-        ].map(tab=>(
-          <button key={tab.k} onClick={()=>setFilter(tab.k)}
-            style={{padding:'7px 16px',borderRadius:8,border:'none',cursor:'pointer',fontFamily:'Tajawal,sans-serif',fontWeight:600,fontSize:13,
-              background:filter===tab.k?'var(--cs-blue)':'var(--cs-gray-light)',
-              color:filter===tab.k?'white':'var(--cs-text-muted)'}}>
-            {tab.l}
-          </button>
-        ))}
+      <div className="card" style={{marginBottom:16,padding:'12px 16px'}}>
+        <div style={{position:'relative'}}><Search size={16} style={{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',color:'var(--cs-text-muted)'}}/><input className="form-input" style={{paddingRight:34}} placeholder="بحث..." value={search} onChange={e=>setSearch(e.target.value)}/></div>
       </div>
 
       <div className="card">
         {loading?<div style={{padding:40,textAlign:'center',color:'var(--cs-text-muted)'}}>جاري التحميل...</div>:(
-          filtered.length===0
-          ? <div style={{padding:60,textAlign:'center',color:'var(--cs-text-muted)'}}>🎉 لا توجد عروض معلقة!</div>
-          : <div style={{display:'flex',flexDirection:'column',gap:12,padding:16}}>
-            {filtered.map(r=>(
-              <div key={r.id} style={{border:'1px solid var(--cs-border)',borderRadius:12,padding:16,
-                background:r.isExpired?'#FFF5F5':r.daysSince>30?'#FFFBF0':'white',
-                borderRight:r.priority.includes('🔴')?'4px solid var(--cs-red)':r.priority.includes('🟠')?'4px solid var(--cs-orange)':'1px solid var(--cs-border)'}}>
-                <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',flexWrap:'wrap',gap:8}}>
-                  <div style={{flex:1}}>
-                    <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}>
-                      <span style={{fontFamily:'monospace',background:'var(--cs-blue-light)',padding:'2px 8px',borderRadius:4,fontSize:12}}>{r.quote_code}</span>
-                      <span style={{fontWeight:700,fontSize:15}}>{r.clients?.company_name||'—'}</span>
-                      <span style={{fontSize:12,color:priorityColor[r.priority]||'var(--cs-text)',fontWeight:600}}>{r.priority}</span>
-                    </div>
-                    <div style={{fontSize:13,color:'var(--cs-text-muted)',marginBottom:6}}>{r.description}</div>
-                    <div style={{display:'flex',gap:16,flexWrap:'wrap'}}>
-                      <span style={{fontSize:12,color:'var(--cs-text-muted)'}}>📅 تاريخ العرض: {r.quote_date}</span>
-                      <span style={{fontSize:12,color:r.isExpired?'var(--cs-red)':'var(--cs-text-muted)'}}>⏰ {r.isExpired?'منتهي':'ينتهي'}: {r.expiry_date||'—'}</span>
-                      <span style={{fontSize:12,color:r.daysSince>30?'var(--cs-orange)':'var(--cs-text-muted)'}}>🕐 منذ {r.daysSince} يوم</span>
-                    </div>
-                  </div>
-                  <div style={{textAlign:'left'}}>
-                    <div style={{fontSize:22,fontWeight:800,color:'var(--cs-blue)',fontFamily:'Cairo,sans-serif',marginBottom:4}}>{fmt(r.total_amount||r.amount)} ر.س</div>
-                    <div style={{fontSize:11,color:'var(--cs-text-muted)'}}>شامل VAT 15%</div>
-                  </div>
-                </div>
-                <div style={{display:'flex',gap:8,marginTop:12,flexWrap:'wrap',alignItems:'center'}}>
-                  {r.clients?.phone&&<a href={`tel:${r.clients.phone}`} style={{display:'flex',alignItems:'center',gap:4,fontSize:12,color:'var(--cs-blue)',textDecoration:'none',background:'var(--cs-blue-light)',padding:'4px 10px',borderRadius:6}}><Phone size={13}/>اتصال</a>}
-                  {r.clients?.email&&<a href={`mailto:${r.clients.email}`} style={{display:'flex',alignItems:'center',gap:4,fontSize:12,color:'var(--cs-green)',textDecoration:'none',background:'#E8F8EF',padding:'4px 10px',borderRadius:6}}><Mail size={13}/>بريد</a>}
-                  <div style={{flex:1}}/>
-                  <select style={{fontSize:12,border:'1px solid var(--cs-border)',borderRadius:6,padding:'4px 8px',fontFamily:'Tajawal,sans-serif',cursor:'pointer'}}
-                    value={r.status} onChange={e=>updateStatus(r.id,e.target.value)}>
-                    <option value="Draft">مسودة</option>
-                    <option value="Sent">مرسل</option>
-                    <option value="Accepted">✅ مقبول</option>
-                    <option value="Rejected">❌ مرفوض</option>
-                    <option value="Expired">منتهي</option>
-                  </select>
-                </div>
-              </div>
-            ))}
-          </div>
+          <div className="table-wrap"><table>
+            <thead><tr><th>رقم العرض</th><th>العميل</th><th>القيمة</th><th>تاريخ العرض</th><th>الحالة</th><th>سبب الرفض</th><th>متابعة</th><th>إجراء</th></tr></thead>
+            <tbody>
+              {filtered.length===0?<tr><td colSpan={8} style={{textAlign:'center',padding:40,color:'var(--cs-text-muted)'}}>لا توجد عروض غير مقبولة</td></tr>
+              :filtered.map(r=>(
+                <tr key={r.id}>
+                  <td style={{fontFamily:'monospace',fontSize:12}}>{r.quote_no}</td>
+                  <td style={{fontWeight:600}}>{r.clients?.company_name||'—'}</td>
+                  <td style={{color:'var(--cs-orange)',fontWeight:700}}>{fmt(r.total_amount||0)} ر.س</td>
+                  <td style={{fontSize:12}}>{r.quote_date?.split('T')[0]||'—'}</td>
+                  <td><span className={`badge ${r.status==='Rejected'?'badge-red':r.status==='Expired'?'badge-amber':'badge-gray'}`}>{r.status}</span></td>
+                  <td style={{fontSize:12,maxWidth:160,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{r.rejection_reason||<span style={{color:'var(--cs-text-muted)',fontStyle:'italic'}}>لم يُحدد</span>}</td>
+                  <td style={{fontSize:12,color:r.followup_date?'var(--cs-blue)':'var(--cs-text-muted)'}}>{r.followup_date?.split('T')[0]||'—'}</td>
+                  <td>
+                    <button onClick={()=>startEdit(r)} style={{background:'var(--cs-blue)',color:'white',border:'none',borderRadius:6,padding:'4px 10px',cursor:'pointer',fontSize:12,display:'flex',alignItems:'center',gap:4,fontFamily:'Tajawal,sans-serif',fontWeight:600}}><Edit2 size={12}/>تحديد السبب</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table></div>
         )}
       </div>
-      {viewItem&&(
-        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.4)',zIndex:300,display:'flex',alignItems:'center',justifyContent:'center',padding:16}}>
-          <div id="view-print-area" className="card" style={{width:'100%',maxWidth:560,maxHeight:'90vh',overflow:'auto',padding:24}}>
-            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
-              <div style={{fontFamily:'Cairo,sans-serif',fontWeight:700,fontSize:16}}>تفاصيل السجل</div>
-              <div style={{display:'flex',gap:8}}>
-                <button onClick={()=>window.print()} style={{background:'var(--cs-blue)',color:'white',border:'none',borderRadius:6,padding:'6px 14px',cursor:'pointer',display:'flex',alignItems:'center',gap:5,fontSize:12,fontFamily:'Tajawal,sans-serif'}}><Printer size={14}/>طباعة</button>
-                <button onClick={()=>setViewItem(null)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--cs-text-muted)'}}><X size={20}/></button>
-              </div>
+
+      {editing&&(
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.4)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center',padding:16}}>
+          <div className="card" style={{width:'100%',maxWidth:500,padding:24}}>
+            <div style={{display:'flex',justifyContent:'space-between',marginBottom:16}}>
+              <div style={{fontFamily:'Cairo,sans-serif',fontWeight:700,fontSize:17}}>سبب رفض العرض — {editing.quote_no}</div>
+              <button onClick={()=>setEditing(null)} style={{background:'none',border:'none',cursor:'pointer'}}><X size={20}/></button>
             </div>
-            <div>
-              {Object.entries(viewItem).filter(([k])=>!['id','created_at','updated_at'].includes(k)&&typeof viewItem[k]!=='object').map(([k,v]:any,i)=>
-                v!=null&&v!==''?(
-                  <div key={i} style={{display:'flex',padding:'8px 0',borderBottom:'1px solid var(--cs-border)'}}>
-                    <span style={{width:160,color:'var(--cs-text-muted)',fontSize:12,fontWeight:600,flexShrink:0}}>{k.replace(/_/g,' ')}</span>
-                    <span style={{fontWeight:600,fontSize:13}}>{String(v)}</span>
-                  </div>
-                ):null
-              )}
+            <div style={{background:'#F8FAFC',borderRadius:8,padding:'10px 14px',marginBottom:14,fontSize:13}}>
+              <div><strong>العميل:</strong> {editing.clients?.company_name}</div>
+              <div><strong>القيمة:</strong> {fmt(editing.total_amount||0)} ر.س</div>
+            </div>
+            <div style={{marginBottom:14}}>
+              <label className="form-label">سبب الرفض</label>
+              <select className="form-input" value={reason} onChange={e=>setReason(e.target.value)}>
+                {REJECTION_REASONS.map(r=><option key={r}>{r}</option>)}
+              </select>
+            </div>
+            <div style={{marginBottom:14}}>
+              <label className="form-label">تفاصيل إضافية</label>
+              <textarea className="form-input" rows={3} value={reasonText} onChange={e=>setReasonText(e.target.value)} placeholder="ملاحظات إضافية (اختياري)..."/>
+            </div>
+            <div style={{marginBottom:18}}>
+              <label className="form-label">تاريخ المتابعة (اختياري)</label>
+              <input type="date" className="form-input" value={followupDate} onChange={e=>setFollowupDate(e.target.value)}/>
+            </div>
+            <div style={{display:'flex',gap:10,justifyContent:'flex-end'}}>
+              <button className="btn-secondary" onClick={()=>setEditing(null)}>إلغاء</button>
+              <button className="btn-primary" onClick={saveReason}><Save size={15}/>حفظ السبب</button>
             </div>
           </div>
-          <style>{`@media print{body *{visibility:hidden}#view-print-area,#view-print-area *{visibility:visible}#view-print-area{position:fixed;top:0;left:0;width:100%;max-height:none!important}}`}</style>
         </div>
       )}
     </div>

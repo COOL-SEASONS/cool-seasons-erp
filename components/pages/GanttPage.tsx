@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import { ChevronRight, ChevronLeft } from 'lucide-react'
+import { ChevronRight, ChevronLeft , Printer } from 'lucide-react'
 
 export default function GanttPage() {
   const [projects,setProjects] = useState<any[]>([])
@@ -66,6 +66,7 @@ export default function GanttPage() {
     <div>
       <div className="page-header">
         <div><div className="page-title">مخطط جانت</div><div className="page-subtitle">Gantt Chart — جدولة المشاريع</div></div>
+        <button onClick={()=>window.print()} style={{display:'flex',alignItems:'center',gap:6,background:'white',color:'var(--cs-blue)',border:'1px solid var(--cs-blue)',borderRadius:8,padding:'8px 14px',cursor:'pointer',fontSize:13,fontFamily:'Tajawal,sans-serif',fontWeight:600}}><Printer size={15}/>طباعة</button>
         <div style={{display:'flex',gap:8,alignItems:'center'}}>
           <button onClick={prevPeriod} style={{background:'none',border:'1px solid var(--cs-border)',borderRadius:8,padding:'6px 10px',cursor:'pointer'}}><ChevronRight size={16}/></button>
           <button onClick={goToday} style={{background:'var(--cs-blue)',color:'white',border:'none',borderRadius:8,padding:'6px 14px',cursor:'pointer',fontSize:13,fontFamily:'Tajawal,sans-serif',fontWeight:600}}>اليوم</button>

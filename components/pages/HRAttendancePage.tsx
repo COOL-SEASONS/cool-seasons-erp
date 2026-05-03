@@ -13,7 +13,7 @@ import { Plus, Search, Edit2, Trash2, X, Save, Printer} from 'lucide-react'
 
 const ATT_STATUSES = ['Present','Absent','Half Day','Leave','Holiday']
 const ATT_AR: any = { Present:'حاضر', Absent:'غائب', 'Half Day':'نصف يوم', Leave:'إجازة', Holiday:'إجازة رسمية' }
-const EMPTY = { record_code:'', tech_id:'', att_date: new Date().toISOString().split('T')[0], status:'Present', check_in:'', check_out:'', project_id:'', notes:'' }
+const EMPTY = { record_code:`ATT-${20000+Math.floor(Date.now()/1000)%9000}`, tech_id:'', att_date: new Date().toISOString().split('T')[0], status:'Present', check_in:'', check_out:'', project_id:'', notes:'' }
 
 export default function HRAttendancePage() {
   const [rows, setRows] = useState<any[]>([])

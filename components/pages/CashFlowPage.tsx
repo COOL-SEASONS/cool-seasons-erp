@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import { Save } from 'lucide-react'
+import { Save , Printer } from 'lucide-react'
 
 const MONTHS = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر']
 const INCOME_ITEMS = [
@@ -99,6 +99,7 @@ export default function CashFlowPage() {
           <div className="page-title">التدفق النقدي</div>
           <div className="page-subtitle">Cash Flow — السنة الحالية</div>
         </div>
+        <button onClick={()=>window.print()} style={{display:'flex',alignItems:'center',gap:6,background:'white',color:'var(--cs-blue)',border:'1px solid var(--cs-blue)',borderRadius:8,padding:'8px 14px',cursor:'pointer',fontSize:13,fontFamily:'Tajawal,sans-serif',fontWeight:600}}><Printer size={15}/>طباعة</button>
         <button className="btn-primary" onClick={save} disabled={saving}>
           <Save size={16} />{saving ? 'جاري الحفظ...' : 'حفظ'}
         </button>

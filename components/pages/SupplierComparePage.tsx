@@ -36,7 +36,7 @@ export default function SupplierComparePage() {
 
   const load = async () => {
     setLoading(true)
-    const { data } = await supabase.from('supplier_compare').select('*').order('created_at',{ascending:false})
+    const { data } = await supabase.from('supplier_compare').select('*').order('order_date',{ascending:false,nullsFirst:false})
     setRows(data||[])
     setLoading(false)
   }
