@@ -24,7 +24,7 @@ const REASONS_OUT=['تركيب وحدة جديدة','تمديد توصيلات',
 const newCoilCode=()=>`COIL-${1000+Math.floor(Date.now()/1000)%9000}`
 const newTransCode=()=>`CT-${5000+Math.floor(Date.now()/1000)%9000}`
 
-const newCoil=()=>({coil_code:newCoilCode(),liquid_size:'3/8"',suction_size:'5/8"',capacity_btu:'24,000-30,000',brand:'Halcor',origin:'يوناني',custody_tech_id:'',status:'Active',notes:''})
+const newCoil=()=>({coil_code:newCoilCode(),liquid_size:'3/8"',suction_size:'5/8"',capacity_btu:'24,000-30,000',brand:'Halcor',origin:'يوناني',custody_tech_id:'',status:'Active',notes:'',number_of_coils:'1',length_per_coil:'15',total_purchase_cost:'',purchase_date:new Date().toISOString().split('T')[0]})
 
 const newTrans=(coilId='')=>({trans_code:newTransCode(),coil_id:coilId,trans_date:new Date().toISOString().split('T')[0],trans_type:'OUT',meters_before:'',meters_after:'',waste_meters:'0',tech_id:'',client_id:'',project_id:'',unit_serial:'',unit_capacity_btu:'',reason:'تركيب وحدة جديدة',purchase_total_cost:'',notes:''})
 
@@ -68,13 +68,79 @@ export default function CopperPipePage() {
   const saveCoil=async()=>{
     if(!coilForm.coil_code.trim()) return alert('كود اللفة مطلوب')
     setSaving(true)
-    const payload:any={coil_code:coilForm.coil_code.trim(),liquid_size:coilForm.liquid_size,suction_size:coilForm.suction_size,capacity_btu:coilForm.capacity_btu||null,brand:coilForm.brand||null,origin:coilForm.origin||null,initial_meters:0,current_meters:0,custody_tech_id:coilForm.custody_tech_id||null,status:coilForm.status,notes:coilForm.notes||null}
-    if(editId) { delete payload.current_meters; delete payload.initial_meters }
-    const {error}=editId?await supabase.from('copper_coils').update(payload).eq('id',editId):await supabase.from('copper_coils').insert(payload)
-    if(error) alert('خطأ: '+error.message); else{
-      const wasCreating = !editId
-      setCoilModal(false);load()
-      if(wasCreating) setTimeout(()=>alert('✅ تم إنشاء اللفة بنجاح\n\n📌 الخطوة التالية: اضغط زر "+حركة" بجانب اللفة لتسجيل أول استلام (الطول الفعلي + التكلفة الإجمالية)'),300)
+
+    if (editId) {
+      // وضع التعديل: تحديث لفة واحدة فقط
+      const payload:any={coil_code:coilForm.coil_code.trim(),liquid_size:coilForm.liquid_size,suction_size:coilForm.suction_size,capacity_btu:coilForm.capacity_btu||null,brand:coilForm.brand||null,origin:coilForm.origin||null,custody_tech_id:coilForm.custody_tech_id||null,status:coilForm.status,notes:coilForm.notes||null}
+      const {error}=await supabase.from('copper_coils').update(payload).eq('id',editId)
+      if(error) alert('خطأ: '+error.message); else{setCoilModal(false);load()}
+      setSaving(false)
+      return
+    }
+
+    // وضع الإنشاء: استلام جماعي
+    const numCoils = parseInt(coilForm.number_of_coils)||1
+    const lengthPer = parseFloat(coilForm.length_per_coil)||0
+    const totalCost = parseFloat(coilForm.total_purchase_cost)||0
+    
+    if (numCoils < 1 || numCoils > 50) { alert('عدد اللفات يجب أن يكون بين 1 و 50'); setSaving(false); return }
+    if (lengthPer <= 0) { alert('طول اللفة الواحدة مطلوب'); setSaving(false); return }
+    if (totalCost <= 0) { alert('إجمالي تكلفة الشراء مطلوب'); setSaving(false); return }
+    
+    const costPerCoil = totalCost / numCoils
+    const baseCode = coilForm.coil_code.trim().replace(/-\d+$/, '') // إزالة آخر رقم إن وجد
+    
+    let createdCount = 0
+    let failedCount = 0
+    
+    for (let i = 0; i < numCoils; i++) {
+      const coilCode = numCoils === 1 ? coilForm.coil_code.trim() : `${baseCode}-${String(i+1).padStart(2,'0')}`
+      
+      // إنشاء اللفة
+      const coilPayload:any={coil_code:coilCode,liquid_size:coilForm.liquid_size,suction_size:coilForm.suction_size,capacity_btu:coilForm.capacity_btu||null,brand:coilForm.brand||null,origin:coilForm.origin||null,initial_meters:0,current_meters:0,custody_tech_id:coilForm.custody_tech_id||null,status:coilForm.status,notes:coilForm.notes||null}
+      const {data:newCoilData,error:coilError}=await supabase.from('copper_coils').insert(coilPayload).select().single()
+      
+      if (coilError) { failedCount++; continue }
+      
+      // إنشاء حركة استلام تلقائياً
+      const transPayload={
+        trans_code: `CT-${5000+Math.floor(Date.now()/1000)%9000}-${i}`,
+        coil_id: newCoilData.id,
+        trans_date: coilForm.purchase_date || new Date().toISOString().split('T')[0],
+        trans_type: 'IN',
+        meters_before: 0,
+        meters_after: lengthPer,
+        waste_meters: 0,
+        cost: Math.round(costPerCoil*100)/100,
+        reason: 'شراء جديد',
+        notes: numCoils > 1 ? `استلام جماعي: لفة ${i+1} من ${numCoils}` : null
+      }
+      const {error:transError}=await supabase.from('copper_transactions').insert(transPayload)
+      
+      if (transError) {
+        // فشل تسجيل الحركة، احذف اللفة لتجنب الفوضى
+        await supabase.from('copper_coils').delete().eq('id',newCoilData.id)
+        failedCount++
+      } else {
+        createdCount++
+      }
+    }
+    
+    setCoilModal(false)
+    load()
+    
+    if (createdCount > 0) {
+      setTimeout(()=>{
+        if (failedCount > 0) {
+          alert(`⚠️ تم إنشاء ${createdCount} لفة بنجاح\nفشل في إنشاء ${failedCount} لفة`)
+        } else if (numCoils === 1) {
+          alert(`✅ تم إنشاء اللفة وتسجيل الاستلام\nالطول: ${lengthPer} م | التكلفة: ${totalCost} ر.س`)
+        } else {
+          alert(`✅ تم إنشاء ${createdCount} لفة بنجاح!\n\nالطول لكل لفة: ${lengthPer} م\nإجمالي الطول: ${(lengthPer*createdCount).toFixed(1)} م\nتكلفة كل لفة: ${costPerCoil.toFixed(2)} ر.س\nإجمالي التكلفة: ${totalCost} ر.س`)
+        }
+      },300)
+    } else {
+      alert('❌ فشل في إنشاء اللفات')
     }
     setSaving(false)
   }
@@ -279,7 +345,7 @@ export default function CopperPipePage() {
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.4)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center',padding:16}}>
           <div className="card" style={{width:'100%',maxWidth:600,maxHeight:'92vh',overflow:'auto',padding:24}}>
             <div style={{display:'flex',justifyContent:'space-between',marginBottom:18}}><div style={{fontFamily:'Cairo,sans-serif',fontWeight:700,fontSize:18}}>📦 {editId?'تعديل لفة':'لفة نحاس جديدة'}</div><button onClick={()=>setCoilModal(false)} style={{background:'none',border:'none',cursor:'pointer'}}><X size={20}/></button></div>
-            <div style={{background:'#E8F6FC',borderRadius:8,padding:'10px 14px',marginBottom:14,fontSize:12,color:'var(--cs-blue)'}}>💡 <strong>خطوتان:</strong> (١) أنشئ اللفة هنا بمعلوماتها الأساسية فقط (الزوج، المصنع، المنشأ) · (٢) ثم سجّل أول حركة استلام لتحديد الطول الفعلي والتكلفة الإجمالية.<br/><br/>📐 ملاحظة: لفة السبليت = ماسورتان (Liquid + Suction) كقطعة واحدة. الطول 15م يعني 15م للزوج كاملاً.</div>
+            <div style={{background:'#E8F6FC',borderRadius:8,padding:'10px 14px',marginBottom:14,fontSize:12,color:'var(--cs-blue)'}}>💡 <strong>الاستلام الجماعي:</strong> أدخل عدد اللفات + طول كل لفة + إجمالي تكلفة الشراء، والنظام ينشئ كل اللفات بأكوادها وحركات الاستلام تلقائياً.<br/><br/>📐 لفة السبليت = ماسورتان (Liquid + Suction) كقطعة واحدة. الطول 15م يعني 15م للزوج كاملاً.</div>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
               <div><label className="form-label">كود اللفة *</label><input className="form-input" value={coilForm.coil_code} onChange={e=>setCoilForm({...coilForm,coil_code:e.target.value})}/></div>
               <div style={{gridColumn:'1/-1',background:'#FFFBF0',borderRadius:8,padding:12,border:'1px solid #FFD70040'}}>
@@ -323,9 +389,48 @@ export default function CopperPipePage() {
 
               <div><label className="form-label">في عهدة الفني</label><select className="form-input" value={coilForm.custody_tech_id} onChange={e=>setCoilForm({...coilForm,custody_tech_id:e.target.value})}><option value="">— مخزن الشركة —</option>{techs.map(t=><option key={t.id} value={t.id}>{t.full_name}</option>)}</select></div>
               <div><label className="form-label">الحالة</label><select className="form-input" value={coilForm.status} onChange={e=>setCoilForm({...coilForm,status:e.target.value})}><option value="Active">نشطة</option><option value="Empty">فارغة</option><option value="Returned">مُرتجعة</option><option value="Damaged">تالفة</option></select></div>
+              {!editId && (
+                <>
+                  <div style={{gridColumn:'1/-1',background:'#F0FFF4',borderRadius:8,padding:14,border:'1px solid #4ADE8030',marginTop:8}}>
+                    <div style={{fontSize:13,fontWeight:700,marginBottom:10,color:'#16A34A'}}>📦 الاستلام الجماعي (الشراء)</div>
+                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
+                      <div>
+                        <label className="form-label" style={{fontSize:11}}>عدد اللفات *</label>
+                        <input type="number" min="1" max="50" className="form-input" style={{background:'white',fontWeight:700,fontSize:18,textAlign:'center'}} value={coilForm.number_of_coils} onChange={e=>setCoilForm({...coilForm,number_of_coils:e.target.value})}/>
+                      </div>
+                      <div>
+                        <label className="form-label" style={{fontSize:11}}>طول كل لفة (متر) *</label>
+                        <input type="number" min="0.1" step="0.1" className="form-input" style={{background:'white',fontWeight:700,fontSize:18,textAlign:'center'}} value={coilForm.length_per_coil} onChange={e=>setCoilForm({...coilForm,length_per_coil:e.target.value})}/>
+                      </div>
+                    </div>
+                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+                      <div>
+                        <label className="form-label" style={{fontSize:11}}>إجمالي تكلفة الشراء (ر.س) *</label>
+                        <input type="number" min="0" step="0.01" className="form-input" style={{background:'white',fontWeight:700}} placeholder="مثلاً: 7500" value={coilForm.total_purchase_cost} onChange={e=>setCoilForm({...coilForm,total_purchase_cost:e.target.value})}/>
+                      </div>
+                      <div>
+                        <label className="form-label" style={{fontSize:11}}>تاريخ الشراء</label>
+                        <input type="date" className="form-input" value={coilForm.purchase_date} onChange={e=>setCoilForm({...coilForm,purchase_date:e.target.value})}/>
+                      </div>
+                    </div>
+                    {parseInt(coilForm.number_of_coils)>0 && parseFloat(coilForm.length_per_coil)>0 && parseFloat(coilForm.total_purchase_cost)>0 && (
+                      <div style={{marginTop:10,padding:'10px 14px',background:'white',borderRadius:6,display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8,fontSize:12}}>
+                        <div><span style={{color:'var(--cs-text-muted)'}}>إجمالي الطول:</span> <strong style={{color:'#16A34A'}}>{(parseInt(coilForm.number_of_coils)*parseFloat(coilForm.length_per_coil)).toFixed(1)} م</strong></div>
+                        <div><span style={{color:'var(--cs-text-muted)'}}>تكلفة لفة:</span> <strong style={{color:'var(--cs-orange)'}}>{(parseFloat(coilForm.total_purchase_cost)/parseInt(coilForm.number_of_coils)).toFixed(2)} ر.س</strong></div>
+                        <div><span style={{color:'var(--cs-text-muted)'}}>تكلفة/متر:</span> <strong style={{color:'var(--cs-blue)'}}>{(parseFloat(coilForm.total_purchase_cost)/(parseInt(coilForm.number_of_coils)*parseFloat(coilForm.length_per_coil))).toFixed(2)} ر.س</strong></div>
+                      </div>
+                    )}
+                    {parseInt(coilForm.number_of_coils)>1 && (
+                      <div style={{fontSize:11,color:'#16A34A',marginTop:8,fontStyle:'italic'}}>
+                        💡 سيتم إنشاء {parseInt(coilForm.number_of_coils)} لفة بأكواد: {coilForm.coil_code.trim().replace(/-\d+$/, '')}-01 إلى {coilForm.coil_code.trim().replace(/-\d+$/, '')}-{String(parseInt(coilForm.number_of_coils)).padStart(2,'0')}
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
               <div style={{gridColumn:'1/-1'}}><label className="form-label">ملاحظات</label><textarea className="form-input" rows={2} value={coilForm.notes} onChange={e=>setCoilForm({...coilForm,notes:e.target.value})}/></div>
             </div>
-            <div style={{display:'flex',gap:10,marginTop:20,justifyContent:'flex-end'}}><button className="btn-secondary" onClick={()=>setCoilModal(false)}>إلغاء</button><button className="btn-primary" onClick={saveCoil} disabled={saving}><Save size={15}/>{saving?'جاري...':'حفظ اللفة'}</button></div>
+            <div style={{display:'flex',gap:10,marginTop:20,justifyContent:'flex-end'}}><button className="btn-secondary" onClick={()=>setCoilModal(false)}>إلغاء</button><button className="btn-primary" onClick={saveCoil} disabled={saving}><Save size={15}/>{saving?'جاري...':(editId?'حفظ التعديلات':'إنشاء اللفات وتسجيل الاستلام')}</button></div>
           </div>
         </div>
       )}
