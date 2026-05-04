@@ -47,13 +47,13 @@ export default function CopperPipePage(){
   const [saving,setSaving] = useState(false)
 
   const newCode = () => `CM-${100000 + Math.floor(Math.random()*900000)}`
-  const newMov = ()=>({movement_code:newCode(),movement_date:new Date().toISOString().split('T')[0],movement_type:'IN',liquid_size:'3/8"',suction_size:'5/8"',capacity_btu:'24,000-30,000',meters:'',num_coils:'1',length_per_coil:'15',waste_meters:'0',total_cost:'',project_id:'',tech_id:'',receiver_tech_id:'',client_id:'',brand:'Halcor',origin:'يوناني',unit_serial:'',reason:'شراء جديد',reference_no:'',notes:''})
+  const newMov = ()=>({movement_code:newCode(),movement_date:new Date().toISOString().split('T')[0],movement_type:'IN',liquid_size:'3/8"',suction_size:'5/8"',capacity_btu:'24,000-30,000',meters:'',num_coils:'1',length_per_coil:'15',waste_meters:'0',cost_per_coil:'',total_cost:'',project_id:'',tech_id:'',receiver_tech_id:'',client_id:'',brand:'Halcor',origin:'يوناني',unit_serial:'',reason:'شراء جديد',reference_no:'',notes:''})
   const [form,setForm] = useState<any>(newMov())
 
   const load = async () => {
     setLoading(true)
     const [m,s,t,cl,p] = await Promise.all([
-      supabase.from('copper_movements').select('*,projects(project_name),technicians(full_name),clients(company_name)').order('movement_date',{ascending:false}).order('created_at',{ascending:false}),
+      supabase.from('copper_movements').select('*,projects(project_name),technicians!copper_movements_tech_id_fkey(full_name),receiver_tech:technicians!copper_movements_receiver_tech_id_fkey(full_name),clients(company_name)').order('movement_date',{ascending:false}).order('created_at',{ascending:false}),
       supabase.from('copper_stock_by_pair').select('*'),
       supabase.from('technicians').select('id,full_name').eq('status','Active'),
       supabase.from('clients').select('id,company_name'),
@@ -77,18 +77,20 @@ export default function CopperPipePage(){
 
   const openEdit = (m:any) => {
     setEditId(m.id)
-    setForm({movement_code:m.movement_code,movement_date:m.movement_date?.split('T')[0]||'',movement_type:m.movement_type,liquid_size:m.liquid_size,suction_size:m.suction_size,capacity_btu:m.capacity_btu||'',meters:String(m.meters||''),num_coils:String(m.num_coils||0),length_per_coil:m.num_coils>0?String((m.meters||0)/(m.num_coils||1)):'15',waste_meters:String(m.waste_meters||0),total_cost:String(m.total_cost||''),project_id:m.project_id||'',tech_id:m.tech_id||'',receiver_tech_id:m.receiver_tech_id||'',client_id:m.client_id||'',brand:m.brand||'Halcor',origin:m.origin||'يوناني',unit_serial:m.unit_serial||'',reason:m.reason||'',reference_no:m.reference_no||'',notes:m.notes||''})
+    setForm({movement_code:m.movement_code,movement_date:m.movement_date?.split('T')[0]||'',movement_type:m.movement_type,liquid_size:m.liquid_size,suction_size:m.suction_size,capacity_btu:m.capacity_btu||'',meters:String(m.meters||''),num_coils:String(m.num_coils||0),length_per_coil:m.num_coils>0?String((m.meters||0)/(m.num_coils||1)):'15',waste_meters:String(m.waste_meters||0),cost_per_coil:m.num_coils>0?String((m.total_cost||0)/(m.num_coils||1)):'',total_cost:String(m.total_cost||''),project_id:m.project_id||'',tech_id:m.tech_id||'',receiver_tech_id:m.receiver_tech_id||'',client_id:m.client_id||'',brand:m.brand||'Halcor',origin:m.origin||'يوناني',unit_serial:m.unit_serial||'',reason:m.reason||'',reference_no:m.reference_no||'',notes:m.notes||''})
     setModal(true)
   }
 
   const save = async () => {
     const meters = parseFloat(form.meters)||0
     const waste = parseFloat(form.waste_meters)||0
-    const totalCost = parseFloat(form.total_cost)||0
+    const costPerCoil = parseFloat(form.cost_per_coil)||0
     const numCoils = parseInt(form.num_coils)||0
+    // إجمالي التكلفة = تكلفة اللفة × عدد اللفات (محسوب تلقائياً)
+    const totalCost = form.movement_type === 'IN' ? (costPerCoil * numCoils) : (parseFloat(form.total_cost)||0)
 
     if (meters <= 0) { alert('الكمية بالمتر مطلوبة'); return }
-    if (form.movement_type === 'IN' && totalCost <= 0) { alert('إجمالي التكلفة مطلوب للاستلام'); return }
+    if (form.movement_type === 'IN' && costPerCoil <= 0) { alert('تكلفة اللفة الواحدة مطلوبة'); return }
     if (form.movement_type === 'IN' && numCoils <= 0) { alert('عدد اللفات مطلوب'); return }
 
     if (form.movement_type === 'OUT' && !editId) {
@@ -309,7 +311,7 @@ export default function CopperPipePage(){
                 <td style={{color:'var(--cs-orange)'}}>{m.waste_meters>0 ? `${fmt(m.waste_meters)} م` : '—'}</td>
                 <td style={{color:'var(--cs-green)',fontWeight:600}}>{fmt(m.total_cost)} ر.س</td>
                 <td style={{fontSize:12}}>{m.projects?.project_name || '—'}</td>
-                <td style={{fontSize:12}}>{m.technicians?.full_name || '—'}</td>
+                <td style={{fontSize:12}}>{m.movement_type==='IN' ? (m.receiver_tech?.full_name || '—') : (m.technicians?.full_name || '—')}</td>
                 <td style={{fontSize:12}}>{m.reason || '—'}</td>
                 <td>
                   <div style={{display:'flex',gap:4}}>
@@ -424,22 +426,27 @@ export default function CopperPipePage(){
 
                 {form.movement_type==='IN' ? (
                   <div style={{gridColumn:'1/-1'}}>
-                    <label className="form-label">إجمالي تكلفة الشراء (ر.س) *</label>
-                    <input type="number" min="0" step="0.01" className="form-input" style={{background:'#F0FFF4',fontWeight:700,fontSize:16}} placeholder="مثلاً: 8000" value={form.total_cost} onChange={e=>setForm({...form,total_cost:e.target.value})}/>
-                    {metersNum>0 && parseFloat(form.total_cost)>0 && (
-                      <div style={{marginTop:8,padding:'10px 14px',background:'linear-gradient(135deg, #E8F6FC 0%, #DBEAFE 100%)',borderRadius:8,border:'1px solid #93C5FD'}}>
-                        <div style={{fontSize:11,color:'var(--cs-text-muted)',marginBottom:6,fontWeight:600}}>💰 ملخص التكلفة المحسوبة:</div>
-                        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,fontSize:13}}>
-                          <div style={{background:'white',padding:'8px 12px',borderRadius:6,textAlign:'center'}}>
-                            <div style={{fontSize:10,color:'var(--cs-text-muted)'}}>تكلفة المتر</div>
-                            <div style={{fontSize:18,fontWeight:800,color:'var(--cs-blue)'}}>{fmt(parseFloat(form.total_cost)/metersNum)} ر.س</div>
+                    <label className="form-label">💰 تكلفة اللفة الواحدة (ر.س) *</label>
+                    <input type="number" min="0" step="0.01" className="form-input" style={{background:'#F0FFF4',fontWeight:700,fontSize:16}} placeholder="مثلاً: 800" value={form.cost_per_coil} onChange={e=>setForm({...form,cost_per_coil:e.target.value})}/>
+                    {parseFloat(form.cost_per_coil)>0 && parseInt(form.num_coils)>0 && metersNum>0 && (
+                      <div style={{marginTop:8,padding:'12px 14px',background:'linear-gradient(135deg, #DCFCE7 0%, #DBEAFE 100%)',borderRadius:8,border:'2px solid #16A34A'}}>
+                        <div style={{fontSize:11,color:'var(--cs-text-muted)',marginBottom:8,fontWeight:600,textAlign:'center'}}>💰 الحساب التلقائي:</div>
+                        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8,fontSize:13}}>
+                          <div style={{background:'white',padding:'10px',borderRadius:6,textAlign:'center'}}>
+                            <div style={{fontSize:10,color:'var(--cs-text-muted)'}}>تكلفة اللفة</div>
+                            <div style={{fontSize:16,fontWeight:800,color:'var(--cs-green)'}}>{fmt(parseFloat(form.cost_per_coil))} ر.س</div>
                           </div>
-                          {parseInt(form.num_coils)>0 && (
-                            <div style={{background:'white',padding:'8px 12px',borderRadius:6,textAlign:'center'}}>
-                              <div style={{fontSize:10,color:'var(--cs-text-muted)'}}>تكلفة اللفة</div>
-                              <div style={{fontSize:18,fontWeight:800,color:'var(--cs-green)'}}>{fmt(parseFloat(form.total_cost)/parseInt(form.num_coils))} ر.س</div>
-                            </div>
-                          )}
+                          <div style={{background:'white',padding:'10px',borderRadius:6,textAlign:'center'}}>
+                            <div style={{fontSize:10,color:'var(--cs-text-muted)'}}>تكلفة المتر</div>
+                            <div style={{fontSize:16,fontWeight:800,color:'var(--cs-blue)'}}>{fmt(parseFloat(form.cost_per_coil)/parseFloat(form.length_per_coil||'1'))} ر.س</div>
+                          </div>
+                          <div style={{background:'#FEF3C7',padding:'10px',borderRadius:6,textAlign:'center',border:'2px solid #FBBF24'}}>
+                            <div style={{fontSize:10,color:'#92400E',fontWeight:700}}>الإجمالي</div>
+                            <div style={{fontSize:18,fontWeight:900,color:'#92400E'}}>{fmt(parseFloat(form.cost_per_coil)*parseInt(form.num_coils))} ر.س</div>
+                          </div>
+                        </div>
+                        <div style={{fontSize:11,color:'var(--cs-text-muted)',marginTop:8,textAlign:'center'}}>
+                          {parseFloat(form.cost_per_coil)} × {parseInt(form.num_coils)} لفة = {fmt(parseFloat(form.cost_per_coil)*parseInt(form.num_coils))} ر.س
                         </div>
                       </div>
                     )}
