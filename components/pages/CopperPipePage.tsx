@@ -177,6 +177,103 @@ export default function CopperPipePage(){
   const totalSurplus = projectSummary.filter((p:any)=>p.balance>0).reduce((s:number,p:any)=>s+p.balance, 0)
   const totalDeficit = projectSummary.filter((p:any)=>p.balance<0).reduce((s:number,p:any)=>s+Math.abs(p.balance), 0)
 
+  // طباعة سند حركة منفرد
+  const printMovement = (m:any) => {
+    const isIN = m.movement_type === 'IN'
+    const html = `
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+<meta charset="UTF-8">
+<title>سند ${isIN?'استلام':'صرف'} نحاس - ${m.movement_code}</title>
+<style>
+  @media print { @page { size: A5; margin: 1cm; } }
+  body { font-family: 'Tajawal', 'Cairo', Arial, sans-serif; padding: 20px; color: #1E293B; max-width: 600px; margin: 0 auto; }
+  .header { text-align: center; padding: 16px; border-bottom: 3px solid ${isIN?'#16A34A':'#DC2626'}; margin-bottom: 20px; }
+  .company { font-size: 22px; font-weight: 900; color: #1E9CD7; }
+  .subtitle { font-size: 11px; color: #64748B; letter-spacing: 1px; margin-top: 4px; }
+  .doc-title { font-size: 18px; font-weight: 800; margin-top: 12px; color: ${isIN?'#16A34A':'#DC2626'}; padding: 6px 16px; background: ${isIN?'#F0FFF4':'#FEF2F2'}; border-radius: 8px; display: inline-block; }
+  .meta { display: flex; justify-content: space-between; margin-bottom: 16px; font-size: 12px; color: #475569; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 13px; }
+  th { background: #F1F5F9; text-align: right; padding: 8px 10px; border: 1px solid #CBD5E1; font-weight: 700; color: #475569; }
+  td { padding: 8px 10px; border: 1px solid #E2E8F0; }
+  .label { color: #64748B; font-size: 11px; }
+  .value { font-weight: 700; }
+  .totals { margin-top: 16px; background: ${isIN?'#F0FFF4':'#FEF2F2'}; border: 2px solid ${isIN?'#16A34A':'#DC2626'}; border-radius: 8px; padding: 12px 16px; }
+  .totals-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 13px; }
+  .totals-row.main { font-size: 16px; font-weight: 900; color: ${isIN?'#16A34A':'#DC2626'}; border-top: 1px solid ${isIN?'#16A34A30':'#DC262630'}; padding-top: 8px; margin-top: 6px; }
+  .signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 36px; }
+  .sig-box { border-top: 2px solid #1E293B; padding-top: 8px; text-align: center; font-size: 11px; }
+  .footer { text-align: center; margin-top: 30px; font-size: 10px; color: #94A3B8; border-top: 1px dashed #CBD5E1; padding-top: 12px; }
+</style>
+</head>
+<body>
+  <div class="header">
+    <div class="company">COOL SEASONS & DARAJA.STORE</div>
+    <div class="subtitle">مواسم البرودة ودرجة للتكييف</div>
+    <div class="doc-title">${isIN?'📥 سند استلام نحاس':'📤 سند صرف نحاس'}</div>
+  </div>
+
+  <div class="meta">
+    <div><span class="label">رقم الحركة:</span> <span class="value" style="font-family:monospace">${m.movement_code||'-'}</span></div>
+    <div><span class="label">التاريخ:</span> <span class="value">${m.movement_date||'-'}</span></div>
+  </div>
+
+  <table>
+    <tr><th colspan="2" style="background:${isIN?'#16A34A':'#DC2626'};color:white;text-align:center;">📋 تفاصيل الحركة</th></tr>
+    <tr><td class="label" style="width:40%">المقاس</td><td class="value">${m.liquid_size} × ${m.suction_size}</td></tr>
+    <tr><td class="label">السعة (BTU)</td><td>${m.capacity_btu||'—'}</td></tr>
+    <tr><td class="label">الكمية</td><td class="value" style="color:${isIN?'#16A34A':'#DC2626'};font-size:15px">${isIN?'+':'-'}${Number(m.meters||0).toLocaleString('ar-SA')} متر</td></tr>
+    ${isIN ? `<tr><td class="label">عدد اللفات</td><td class="value">${m.num_coils||0} لفة</td></tr>` : ''}
+    ${m.waste_meters>0 ? `<tr><td class="label">الفاقد</td><td style="color:#D97706">${Number(m.waste_meters).toLocaleString('ar-SA')} متر</td></tr>` : ''}
+    ${isIN ? `<tr><td class="label">الماركة</td><td>${m.brand||'—'}</td></tr><tr><td class="label">المنشأ</td><td>${m.origin||'—'}</td></tr>` : ''}
+    ${m.unit_serial ? `<tr><td class="label">رقم الوحدة</td><td>${m.unit_serial}</td></tr>` : ''}
+  </table>
+
+  <table>
+    <tr><th colspan="2" style="background:#1E9CD7;color:white;text-align:center;">🔗 الربط</th></tr>
+    ${m.projects?.project_name ? `<tr><td class="label" style="width:40%">المشروع</td><td class="value">${m.projects.project_name}</td></tr>` : ''}
+    ${m.clients?.company_name ? `<tr><td class="label">العميل</td><td>${m.clients.company_name}</td></tr>` : ''}
+    ${isIN && m.receiver_tech?.full_name ? `<tr><td class="label">الفني المستلم</td><td>${m.receiver_tech.full_name}</td></tr>` : ''}
+    ${!isIN && m.technicians?.full_name ? `<tr><td class="label">الفني المنفذ</td><td>${m.technicians.full_name}</td></tr>` : ''}
+    <tr><td class="label">السبب</td><td>${m.reason||'—'}</td></tr>
+    ${m.reference_no ? `<tr><td class="label">المرجع/الفاتورة</td><td>${m.reference_no}</td></tr>` : ''}
+  </table>
+
+  <div class="totals">
+    ${isIN ? `
+      <div class="totals-row"><span>تكلفة اللفة الواحدة:</span><span class="value">${(m.num_coils>0?(m.total_cost/m.num_coils):0).toLocaleString('ar-SA',{maximumFractionDigits:2})} ر.س</span></div>
+      <div class="totals-row"><span>تكلفة المتر:</span><span class="value">${(m.meters>0?(m.total_cost/m.meters):0).toLocaleString('ar-SA',{maximumFractionDigits:2})} ر.س</span></div>
+      <div class="totals-row main"><span>إجمالي قيمة الاستلام:</span><span>${Number(m.total_cost||0).toLocaleString('ar-SA',{maximumFractionDigits:2})} ر.س</span></div>
+    ` : `
+      <div class="totals-row"><span>الكمية المستخدمة + الفاقد:</span><span class="value">${(Number(m.meters||0)+Number(m.waste_meters||0)).toLocaleString('ar-SA')} متر</span></div>
+      <div class="totals-row main"><span>إجمالي تكلفة المنصرف:</span><span>${Number(m.total_cost||0).toLocaleString('ar-SA',{maximumFractionDigits:2})} ر.س</span></div>
+    `}
+  </div>
+
+  ${m.notes ? `<div style="margin-top:16px;padding:10px 14px;background:#FFFBEB;border-right:3px solid #F59E0B;border-radius:4px;font-size:12px;"><strong>ملاحظات:</strong> ${m.notes}</div>` : ''}
+
+  <div class="signatures">
+    <div class="sig-box">${isIN?'الفني المستلم':'الفني المنفذ'}</div>
+    <div class="sig-box">المسؤول</div>
+  </div>
+
+  <div class="footer">
+    تم الإنشاء: ${new Date().toLocaleString('ar-SA')} | COOL SEASONS ERP
+  </div>
+
+  <script>window.onload = () => { setTimeout(() => window.print(), 200); }</script>
+</body>
+</html>`
+    const w = window.open('', '_blank')
+    if (w) {
+      w.document.write(html)
+      w.document.close()
+    } else {
+      alert('يرجى السماح للنوافذ المنبثقة لطباعة السند')
+    }
+  }
+
   if (loading) return <div style={{padding:'4rem',textAlign:'center',color:'var(--cs-text-muted)'}}>جاري التحميل...</div>
 
   const selectedPair = stockByPair.find(s=>s.liquid_size===form.liquid_size && s.suction_size===form.suction_size)
@@ -315,8 +412,9 @@ export default function CopperPipePage(){
                 <td style={{fontSize:12}}>{m.reason || '—'}</td>
                 <td>
                   <div style={{display:'flex',gap:4}}>
-                    <button onClick={()=>openEdit(m)} style={{background:'transparent',border:'none',cursor:'pointer',color:'var(--cs-blue)'}}><Edit2 size={14}/></button>
-                    <button onClick={()=>del(m.id)} style={{background:'transparent',border:'none',cursor:'pointer',color:'var(--cs-red)'}}><Trash2 size={14}/></button>
+                    <button onClick={()=>printMovement(m)} title="طباعة السند" style={{background:'transparent',border:'none',cursor:'pointer',color:'var(--cs-green)'}}><Printer size={14}/></button>
+                    <button onClick={()=>openEdit(m)} title="تعديل" style={{background:'transparent',border:'none',cursor:'pointer',color:'var(--cs-blue)'}}><Edit2 size={14}/></button>
+                    <button onClick={()=>del(m.id)} title="حذف" style={{background:'transparent',border:'none',cursor:'pointer',color:'var(--cs-red)'}}><Trash2 size={14}/></button>
                   </div>
                 </td>
               </tr>
