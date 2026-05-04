@@ -49,7 +49,7 @@ export default function CopperPipePage() {
     setLoading(true)
     const [{data:c},{data:tr},{data:t},{data:cl},{data:p}]=await Promise.all([
       supabase.from('copper_coils').select('*,technicians:custody_tech_id(full_name)').order('created_at',{ascending:false}),
-      supabase.from('copper_transactions').select('*,copper_coils(coil_code,pipe_size),technicians(full_name),clients(company_name),projects(project_name)').order('trans_date',{ascending:false,nullsFirst:false}),
+      supabase.from('copper_transactions').select('*,copper_coils(coil_code,pipe_pair,liquid_size,suction_size),technicians(full_name),clients(company_name),projects(project_name)').order('trans_date',{ascending:false,nullsFirst:false}),
       supabase.from('technicians').select('id,full_name').eq('status','Active'),
       supabase.from('clients').select('id,company_name'),
       supabase.from('projects').select('id,project_name'),
