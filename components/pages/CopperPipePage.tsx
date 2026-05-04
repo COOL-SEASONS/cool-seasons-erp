@@ -24,7 +24,7 @@ const REASONS_OUT=['تركيب وحدة جديدة','تمديد توصيلات',
 const newCoilCode=()=>`COIL-${1000+Math.floor(Date.now()/1000)%9000}`
 const newTransCode=()=>`CT-${5000+Math.floor(Date.now()/1000)%9000}`
 
-const newCoil=()=>({coil_code:newCoilCode(),liquid_size:'3/8"',suction_size:'5/8"',capacity_btu:'24,000-30,000',brand:'Halcor',origin:'يوناني',custody_tech_id:'',status:'Active',notes:'',number_of_coils:'1',length_per_coil:'15',total_purchase_cost:'',purchase_date:new Date().toISOString().split('T')[0]})
+const newCoil=()=>({coil_code:newCoilCode(),liquid_size:'3/8"',suction_size:'5/8"',capacity_btu:'24,000-30,000',brand:'Halcor',origin:'يوناني',custody_tech_id:'',status:'Active',notes:'',number_of_coils:'1',length_per_coil:'15',total_purchase_cost:'',purchase_date:new Date().toISOString().split('T')[0],project_id:''})
 
 const newTrans=(coilId='')=>({trans_code:newTransCode(),coil_id:coilId,trans_date:new Date().toISOString().split('T')[0],trans_type:'OUT',meters_before:'',meters_after:'',waste_meters:'0',tech_id:'',client_id:'',project_id:'',unit_serial:'',unit_capacity_btu:'',reason:'تركيب وحدة جديدة',purchase_total_cost:'',notes:''})
 
@@ -113,6 +113,7 @@ export default function CopperPipePage() {
         waste_meters: 0,
         cost: Math.round(costPerCoil*100)/100,
         reason: 'شراء جديد',
+        project_id: coilForm.project_id || null,
         notes: numCoils > 1 ? `استلام جماعي: لفة ${i+1} من ${numCoils}` : null
       }
       const {error:transError}=await supabase.from('copper_transactions').insert(transPayload)
@@ -184,6 +185,17 @@ export default function CopperPipePage() {
   }
   const delTrans=async(id:string)=>{if(!confirm('حذف الحركة؟'))return;await supabase.from('copper_transactions').delete().eq('id',id);load()}
 
+  // Project summary: مستلم vs مستخدم لكل مشروع
+  const projectSummary = projects.map((p:any)=>{
+    const inMeters = transactions.filter(t=>t.project_id===p.id && t.trans_type==='IN').reduce((s:number,t:any)=>s+(t.meters_used||0), 0)
+    const outMeters = transactions.filter(t=>t.project_id===p.id && t.trans_type==='OUT').reduce((s:number,t:any)=>s+(t.meters_used||0)+(t.waste_meters||0), 0)
+    const balance = inMeters - outMeters
+    return { id: p.id, name: p.project_name, in: inMeters, out: outMeters, balance, status: balance>0?'surplus':balance<0?'deficit':'balanced' }
+  }).filter((p:any) => p.in>0 || p.out>0)
+
+  const totalSurplus = projectSummary.filter((p:any)=>p.balance>0).reduce((s:number,p:any)=>s+p.balance, 0)
+  const totalDeficit = projectSummary.filter((p:any)=>p.balance<0).reduce((s:number,p:any)=>s+Math.abs(p.balance), 0)
+
   // Stock per pair
   const stockByPair=PIPE_PAIRS.map(pair=>{
     const pairCoils=coils.filter(c=>c.liquid_size===pair.liquid&&c.suction_size===pair.suction&&c.status==='Active')
@@ -231,6 +243,69 @@ export default function CopperPipePage() {
         <div className="stat-card"><div style={{fontSize:11,color:'var(--cs-text-muted)',fontWeight:600,marginBottom:4}}>💰 قيمة المخزون</div><div style={{fontSize:18,fontWeight:800,color:'var(--cs-green)'}}>{fmt(totalValue)} ر.س</div></div>
         <div className="stat-card"><div style={{fontSize:11,color:'var(--cs-text-muted)',fontWeight:600,marginBottom:4}}>⚠️ مخزون منخفض</div><div style={{fontSize:22,fontWeight:800,color:lowStock.length>0?'var(--cs-red)':'var(--cs-text-muted)'}}>{lowStock.length}</div></div>
       </div>
+
+      {/* 📊 ملخص المشاريع */}
+      {projectSummary.length > 0 && (
+        <div className="card" style={{marginBottom:14,padding:'1rem 1.25rem',background:'linear-gradient(135deg, #FFF8E7 0%, #FEFCE8 100%)',border:'1px solid #FBBF2440'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10,flexWrap:'wrap',gap:8}}>
+            <h3 style={{margin:0,fontSize:15,color:'#92400E',display:'flex',alignItems:'center',gap:8}}>
+              <span>📊</span>
+              <span>ملخص المخزون حسب المشروع</span>
+            </h3>
+            {(totalSurplus > 0 || totalDeficit > 0) && (
+              <div style={{display:'flex',gap:14,fontSize:12}}>
+                {totalSurplus > 0 && (
+                  <span style={{color:'#16A34A',fontWeight:700}}>
+                    🟢 إجمالي الفائض: {fmt(totalSurplus)} م
+                  </span>
+                )}
+                {totalDeficit > 0 && (
+                  <span style={{color:'#DC2626',fontWeight:700}}>
+                    🔴 إجمالي النقص: {fmt(totalDeficit)} م
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+          
+          {totalSurplus > 0 && totalDeficit > 0 && (
+            <div style={{background:'#DBEAFE',borderRadius:6,padding:'8px 12px',fontSize:12,color:'#1E40AF',marginBottom:10}}>
+              💡 يمكنك استخدام {fmt(Math.min(totalSurplus, totalDeficit))} م من المشاريع ذات الفائض لتغطية المشاريع ذات النقص
+            </div>
+          )}
+
+          <div style={{overflow:'auto',background:'white',borderRadius:8}}>
+            <table className="cs-table" style={{margin:0,fontSize:13}}>
+              <thead>
+                <tr>
+                  <th style={{textAlign:'right'}}>المشروع</th>
+                  <th>📥 مستلم</th>
+                  <th>📤 مستخدم</th>
+                  <th>الرصيد</th>
+                  <th>الحالة</th>
+                </tr>
+              </thead>
+              <tbody>
+                {projectSummary.map((p:any)=>(
+                  <tr key={p.id}>
+                    <td style={{textAlign:'right',fontWeight:600}}>{p.name}</td>
+                    <td style={{color:'#16A34A',fontWeight:600}}>{fmt(p.in)} م</td>
+                    <td style={{color:'#DC2626',fontWeight:600}}>{fmt(p.out)} م</td>
+                    <td style={{fontWeight:800,color:p.balance>0?'#16A34A':p.balance<0?'#DC2626':'#64748B'}}>
+                      {p.balance>0?'+':''}{fmt(p.balance)} م
+                    </td>
+                    <td>
+                      {p.status==='surplus' && <span style={{background:'#DCFCE7',color:'#15803D',padding:'2px 8px',borderRadius:6,fontSize:11,fontWeight:700}}>فائض ✅</span>}
+                      {p.status==='deficit' && <span style={{background:'#FEE2E2',color:'#991B1B',padding:'2px 8px',borderRadius:6,fontSize:11,fontWeight:700}}>نقص ⚠️</span>}
+                      {p.status==='balanced' && <span style={{background:'#F1F5F9',color:'#475569',padding:'2px 8px',borderRadius:6,fontSize:11,fontWeight:700}}>متوازن</span>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Stock by size — KEY FEATURE */}
       {stockByPair.length>0&&(
@@ -403,7 +478,7 @@ export default function CopperPipePage() {
                         <input type="number" min="0.1" step="0.1" className="form-input" style={{background:'white',fontWeight:700,fontSize:18,textAlign:'center'}} value={coilForm.length_per_coil} onChange={e=>setCoilForm({...coilForm,length_per_coil:e.target.value})}/>
                       </div>
                     </div>
-                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
                       <div>
                         <label className="form-label" style={{fontSize:11}}>إجمالي تكلفة الشراء (ر.س) *</label>
                         <input type="number" min="0" step="0.01" className="form-input" style={{background:'white',fontWeight:700}} placeholder="مثلاً: 7500" value={coilForm.total_purchase_cost} onChange={e=>setCoilForm({...coilForm,total_purchase_cost:e.target.value})}/>
@@ -412,6 +487,13 @@ export default function CopperPipePage() {
                         <label className="form-label" style={{fontSize:11}}>تاريخ الشراء</label>
                         <input type="date" className="form-input" value={coilForm.purchase_date} onChange={e=>setCoilForm({...coilForm,purchase_date:e.target.value})}/>
                       </div>
+                    </div>
+                    <div>
+                      <label className="form-label" style={{fontSize:11}}>📁 المشروع (اختياري - لتتبع المخزون لكل مشروع)</label>
+                      <select className="form-input" style={{background:'white'}} value={coilForm.project_id} onChange={e=>setCoilForm({...coilForm,project_id:e.target.value})}>
+                        <option value="">— مخزون عام (بدون تحديد مشروع) —</option>
+                        {projects.map((p:any)=><option key={p.id} value={p.id}>{p.project_name}</option>)}
+                      </select>
                     </div>
                     {parseInt(coilForm.number_of_coils)>0 && parseFloat(coilForm.length_per_coil)>0 && parseFloat(coilForm.total_purchase_cost)>0 && (
                       <div style={{marginTop:10,padding:'10px 14px',background:'white',borderRadius:6,display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8,fontSize:12}}>
