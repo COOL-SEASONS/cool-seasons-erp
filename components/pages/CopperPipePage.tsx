@@ -16,6 +16,16 @@ const PIPE_PAIRS = [
   {liquid:'5/8"',  suction:'1-3/8"',btu:'VRF/Chiller',   label:'5/8" × 1-3/8" — VRF/Chiller'},
 ]
 
+// قوائم منفصلة (للاختيار المرن)
+const LIQUID_SIZES = ['1/4"','3/8"','1/2"','5/8"']
+const SUCTION_SIZES = ['3/8"','1/2"','5/8"','3/4"','7/8"','1-1/8"','1-3/8"']
+
+// دالة لإيجاد الـ BTU بناءً على الزوج
+const findBTU = (l:string, s:string):string => {
+  const pair = PIPE_PAIRS.find(p=>p.liquid===l && p.suction===s)
+  return pair?.btu || 'مخصص'
+}
+
 const BRANDS = ['Halcor','Wieland','KME','Mueller','Cambridge-Lee','Mexichem','نحاس محلي','أخرى']
 const ORIGINS = ['يوناني','إيطالي','ألماني','أمريكي','مكسيكي','صيني','محلي','أخرى']
 const REASONS_IN = ['شراء جديد','نقل من مشروع آخر','مرتجع من فني','تسوية مخزون']
@@ -37,7 +47,7 @@ export default function CopperPipePage(){
   const [saving,setSaving] = useState(false)
 
   const newCode = () => `CM-${100000 + Math.floor(Math.random()*900000)}`
-  const newMov = ()=>({movement_code:newCode(),movement_date:new Date().toISOString().split('T')[0],movement_type:'IN',liquid_size:'3/8"',suction_size:'5/8"',capacity_btu:'24,000-30,000',meters:'',num_coils:'1',waste_meters:'0',total_cost:'',project_id:'',tech_id:'',client_id:'',brand:'Halcor',origin:'يوناني',unit_serial:'',reason:'شراء جديد',reference_no:'',notes:''})
+  const newMov = ()=>({movement_code:newCode(),movement_date:new Date().toISOString().split('T')[0],movement_type:'IN',liquid_size:'3/8"',suction_size:'5/8"',capacity_btu:'24,000-30,000',meters:'',num_coils:'1',length_per_coil:'15',waste_meters:'0',total_cost:'',project_id:'',tech_id:'',receiver_tech_id:'',client_id:'',brand:'Halcor',origin:'يوناني',unit_serial:'',reason:'شراء جديد',reference_no:'',notes:''})
   const [form,setForm] = useState<any>(newMov())
 
   const load = async () => {
@@ -67,7 +77,7 @@ export default function CopperPipePage(){
 
   const openEdit = (m:any) => {
     setEditId(m.id)
-    setForm({movement_code:m.movement_code,movement_date:m.movement_date?.split('T')[0]||'',movement_type:m.movement_type,liquid_size:m.liquid_size,suction_size:m.suction_size,capacity_btu:m.capacity_btu||'',meters:String(m.meters||''),num_coils:String(m.num_coils||0),waste_meters:String(m.waste_meters||0),total_cost:String(m.total_cost||''),project_id:m.project_id||'',tech_id:m.tech_id||'',client_id:m.client_id||'',brand:m.brand||'Halcor',origin:m.origin||'يوناني',unit_serial:m.unit_serial||'',reason:m.reason||'',reference_no:m.reference_no||'',notes:m.notes||''})
+    setForm({movement_code:m.movement_code,movement_date:m.movement_date?.split('T')[0]||'',movement_type:m.movement_type,liquid_size:m.liquid_size,suction_size:m.suction_size,capacity_btu:m.capacity_btu||'',meters:String(m.meters||''),num_coils:String(m.num_coils||0),length_per_coil:m.num_coils>0?String((m.meters||0)/(m.num_coils||1)):'15',waste_meters:String(m.waste_meters||0),total_cost:String(m.total_cost||''),project_id:m.project_id||'',tech_id:m.tech_id||'',receiver_tech_id:m.receiver_tech_id||'',client_id:m.client_id||'',brand:m.brand||'Halcor',origin:m.origin||'يوناني',unit_serial:m.unit_serial||'',reason:m.reason||'',reference_no:m.reference_no||'',notes:m.notes||''})
     setModal(true)
   }
 
@@ -112,6 +122,7 @@ export default function CopperPipePage(){
       total_cost: cost,
       project_id: form.project_id||null,
       tech_id: form.tech_id||null,
+      receiver_tech_id: form.movement_type==='IN' ? (form.receiver_tech_id||null) : null,
       client_id: form.client_id||null,
       brand: form.movement_type==='IN' ? (form.brand||null) : null,
       origin: form.movement_type==='IN' ? (form.origin||null) : null,
@@ -336,15 +347,27 @@ export default function CopperPipePage(){
                 <div><label className="form-label">رقم الحركة *</label><input className="form-input" value={form.movement_code} onChange={e=>setForm({...form,movement_code:e.target.value})}/></div>
                 <div><label className="form-label">التاريخ</label><input type="date" className="form-input" value={form.movement_date} onChange={e=>setForm({...form,movement_date:e.target.value})}/></div>
 
-                <div style={{gridColumn:'1/-1'}}>
-                  <label className="form-label">المقاس (Liquid × Suction) *</label>
-                  <select className="form-input" value={`${form.liquid_size}|${form.suction_size}`} onChange={e=>{
-                    const [l,s] = e.target.value.split('|')
-                    const pair = PIPE_PAIRS.find(p=>p.liquid===l && p.suction===s)
-                    setForm({...form,liquid_size:l,suction_size:s,capacity_btu:pair?.btu||''})
+                <div>
+                  <label className="form-label">مقاس السائل (Liquid) *</label>
+                  <select className="form-input" value={form.liquid_size} onChange={e=>{
+                    const newLiquid = e.target.value
+                    setForm({...form,liquid_size:newLiquid,capacity_btu:findBTU(newLiquid,form.suction_size)})
                   }}>
-                    {PIPE_PAIRS.map(p=>(<option key={`${p.liquid}|${p.suction}`} value={`${p.liquid}|${p.suction}`}>{p.label}</option>))}
+                    {LIQUID_SIZES.map(s=><option key={s} value={s}>{s}</option>)}
                   </select>
+                </div>
+                <div>
+                  <label className="form-label">مقاس الغازي (Suction) *</label>
+                  <select className="form-input" value={form.suction_size} onChange={e=>{
+                    const newSuction = e.target.value
+                    setForm({...form,suction_size:newSuction,capacity_btu:findBTU(form.liquid_size,newSuction)})
+                  }}>
+                    {SUCTION_SIZES.map(s=><option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
+                <div style={{gridColumn:'1/-1',background:'#F0F9FF',borderRadius:6,padding:'8px 12px',fontSize:12,color:'var(--cs-blue)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                  <span>📐 الزوج المختار: <strong>{form.liquid_size} × {form.suction_size}</strong></span>
+                  <span>💨 السعة المتوقعة: <strong>{form.capacity_btu||'غير محدد'} BTU</strong></span>
                 </div>
 
                 {form.movement_type==='OUT' && selectedPair && (
@@ -354,15 +377,41 @@ export default function CopperPipePage(){
                   </div>
                 )}
 
-                <div>
-                  <label className="form-label">الكمية (متر) *</label>
-                  <input type="number" min="0.1" step="0.1" className="form-input" style={{background:'#FFFDE7',fontWeight:700,fontSize:16,textAlign:'center'}} value={form.meters} onChange={e=>setForm({...form,meters:e.target.value})}/>
-                </div>
-
-                {form.movement_type==='IN' && (
-                  <div>
-                    <label className="form-label">عدد اللفات *</label>
-                    <input type="number" min="1" max="100" className="form-input" style={{textAlign:'center',fontWeight:700}} value={form.num_coils} onChange={e=>setForm({...form,num_coils:e.target.value})}/>
+                {form.movement_type==='IN' ? (
+                  <>
+                    <div>
+                      <label className="form-label">عدد اللفات *</label>
+                      <input type="number" min="1" max="100" className="form-input" style={{textAlign:'center',fontWeight:700,fontSize:16}} value={form.num_coils} onChange={e=>{
+                        const n = e.target.value
+                        const lpc = parseFloat(form.length_per_coil)||0
+                        const total = (parseInt(n)||0) * lpc
+                        setForm({...form,num_coils:n,meters:total>0?String(total):''})
+                      }}/>
+                    </div>
+                    <div>
+                      <label className="form-label">طول كل لفة (متر) *</label>
+                      <input type="number" min="0.1" step="0.1" className="form-input" style={{textAlign:'center',fontWeight:700,fontSize:16}} value={form.length_per_coil} onChange={e=>{
+                        const lpc = e.target.value
+                        const n = parseInt(form.num_coils)||0
+                        const total = n * (parseFloat(lpc)||0)
+                        setForm({...form,length_per_coil:lpc,meters:total>0?String(total):''})
+                      }}/>
+                    </div>
+                    <div style={{gridColumn:'1/-1',background:'#FFFDE7',borderRadius:8,padding:'10px 14px',display:'flex',justifyContent:'space-between',alignItems:'center',border:'2px solid #FBBF24'}}>
+                      <div>
+                        <div style={{fontSize:11,color:'var(--cs-text-muted)'}}>📏 الكمية الإجمالية المحسوبة</div>
+                        <div style={{fontSize:24,fontWeight:900,color:'var(--cs-blue)'}}>{fmt(parseFloat(form.meters)||0)} متر</div>
+                      </div>
+                      <div style={{fontSize:13,color:'var(--cs-text-muted)',textAlign:'left'}}>
+                        <div>{form.num_coils||0} لفة × {form.length_per_coil||0} م</div>
+                        <div style={{fontSize:11,marginTop:2}}>= {fmt((parseInt(form.num_coils)||0) * (parseFloat(form.length_per_coil)||0))} م</div>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div style={{gridColumn:'1/-1'}}>
+                    <label className="form-label">الكمية المستخدمة (متر) *</label>
+                    <input type="number" min="0.1" step="0.1" className="form-input" style={{background:'#FFFDE7',fontWeight:700,fontSize:16,textAlign:'center'}} value={form.meters} onChange={e=>setForm({...form,meters:e.target.value})}/>
                   </div>
                 )}
 
@@ -376,11 +425,22 @@ export default function CopperPipePage(){
                 {form.movement_type==='IN' ? (
                   <div style={{gridColumn:'1/-1'}}>
                     <label className="form-label">إجمالي تكلفة الشراء (ر.س) *</label>
-                    <input type="number" min="0" step="0.01" className="form-input" style={{background:'#F0FFF4',fontWeight:700}} placeholder="مثلاً: 7500" value={form.total_cost} onChange={e=>setForm({...form,total_cost:e.target.value})}/>
+                    <input type="number" min="0" step="0.01" className="form-input" style={{background:'#F0FFF4',fontWeight:700,fontSize:16}} placeholder="مثلاً: 8000" value={form.total_cost} onChange={e=>setForm({...form,total_cost:e.target.value})}/>
                     {metersNum>0 && parseFloat(form.total_cost)>0 && (
-                      <div style={{marginTop:6,padding:'6px 12px',background:'#E8F6FC',borderRadius:6,fontSize:11,color:'var(--cs-blue)',textAlign:'center'}}>
-                        💡 تكلفة المتر: <strong>{fmt(parseFloat(form.total_cost)/metersNum)} ر.س/م</strong>
-                        {parseInt(form.num_coils)>0 && <span> · تكلفة اللفة: <strong>{fmt(parseFloat(form.total_cost)/parseInt(form.num_coils))} ر.س</strong></span>}
+                      <div style={{marginTop:8,padding:'10px 14px',background:'linear-gradient(135deg, #E8F6FC 0%, #DBEAFE 100%)',borderRadius:8,border:'1px solid #93C5FD'}}>
+                        <div style={{fontSize:11,color:'var(--cs-text-muted)',marginBottom:6,fontWeight:600}}>💰 ملخص التكلفة المحسوبة:</div>
+                        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,fontSize:13}}>
+                          <div style={{background:'white',padding:'8px 12px',borderRadius:6,textAlign:'center'}}>
+                            <div style={{fontSize:10,color:'var(--cs-text-muted)'}}>تكلفة المتر</div>
+                            <div style={{fontSize:18,fontWeight:800,color:'var(--cs-blue)'}}>{fmt(parseFloat(form.total_cost)/metersNum)} ر.س</div>
+                          </div>
+                          {parseInt(form.num_coils)>0 && (
+                            <div style={{background:'white',padding:'8px 12px',borderRadius:6,textAlign:'center'}}>
+                              <div style={{fontSize:10,color:'var(--cs-text-muted)'}}>تكلفة اللفة</div>
+                              <div style={{fontSize:18,fontWeight:800,color:'var(--cs-green)'}}>{fmt(parseFloat(form.total_cost)/parseInt(form.num_coils))} ر.س</div>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -428,6 +488,13 @@ export default function CopperPipePage(){
                     <div><label className="form-label">المنشأ</label>
                       <select className="form-input" value={form.origin} onChange={e=>setForm({...form,origin:e.target.value})}>
                         {ORIGINS.map(o=><option key={o}>{o}</option>)}
+                      </select>
+                    </div>
+                    <div style={{gridColumn:'1/-1'}}>
+                      <label className="form-label">👤 الفني المستلم من المورد (اختياري)</label>
+                      <select className="form-input" value={form.receiver_tech_id} onChange={e=>setForm({...form,receiver_tech_id:e.target.value})}>
+                        <option value="">— لم يحدد —</option>
+                        {techs.map((t:any)=><option key={t.id} value={t.id}>{t.full_name}</option>)}
                       </select>
                     </div>
                   </>
