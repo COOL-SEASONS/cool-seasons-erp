@@ -66,7 +66,7 @@ export default function ProjectsPage() {
     // جلب كل البيانات المرتبطة بالمشروع
     const [copperRes, freonRes, techRes, clientRes] = await Promise.all([
       supabase.from('copper_movements').select('*,technicians!copper_movements_tech_id_fkey(full_name),receiver_tech:technicians!copper_movements_receiver_tech_id_fkey(full_name)').eq('project_id', project.id).order('movement_date', {ascending: false}),
-      supabase.from('freon_transactions').select('*,technicians(full_name),freon_cylinders(cylinder_code,freon_type)').eq('project_id', project.id).order('trans_date', {ascending: false}),
+      supabase.from('freon_movements').select('*,technicians!freon_movements_tech_id_fkey(full_name)').eq('project_id', project.id).order('movement_date', {ascending: false}),
       supabase.from('technicians').select('id,full_name').eq('id', project.tech_id).maybeSingle(),
       supabase.from('clients').select('id,company_name,phone,email').eq('id', project.client_id).maybeSingle()
     ])
@@ -88,11 +88,11 @@ export default function ProjectsPage() {
     const copperCostOut = copperMovs.filter(m=>m.movement_type==='OUT').reduce((s,m)=>s+(m.total_cost||0), 0)
     
     // الفريون
-    const freonIn = freonTxs.filter(t=>t.trans_type==='IN').reduce((s,t)=>s+(t.net_kg||0), 0)
-    const freonOut = freonTxs.filter(t=>t.trans_type==='OUT').reduce((s,t)=>s+(t.net_kg||0), 0)
+    const freonIn = freonTxs.filter(t=>t.movement_type==='IN').reduce((s,t)=>s+(t.kg||0), 0)
+    const freonOut = freonTxs.filter(t=>t.movement_type==='OUT').reduce((s,t)=>s+(t.kg||0), 0)
     const freonBalance = freonIn - freonOut
-    const freonCostIn = freonTxs.filter(t=>t.trans_type==='IN').reduce((s,t)=>s+(t.cost||0), 0)
-    const freonCostOut = freonTxs.filter(t=>t.trans_type==='OUT').reduce((s,t)=>s+(t.cost||0), 0)
+    const freonCostIn = freonTxs.filter(t=>t.movement_type==='IN').reduce((s,t)=>s+(t.total_cost||0), 0)
+    const freonCostOut = freonTxs.filter(t=>t.movement_type==='OUT').reduce((s,t)=>s+(t.total_cost||0), 0)
     
     // إجمالي تكلفة المواد
     const totalMaterialsCost = copperCostOut + freonCostOut
@@ -115,14 +115,14 @@ export default function ProjectsPage() {
     // أنواع الفريون
     const freonByType: any = {}
     freonTxs.forEach(t=>{
-      const key = t.freon_cylinders?.freon_type || 'غير محدد'
+      const key = t.freon_type || 'غير محدد'
       if (!freonByType[key]) freonByType[key] = {type:key, in:0, out:0, costIn:0, costOut:0}
-      if (t.trans_type==='IN') {
-        freonByType[key].in += (t.net_kg||0)
-        freonByType[key].costIn += (t.cost||0)
+      if (t.movement_type==='IN') {
+        freonByType[key].in += (t.kg||0)
+        freonByType[key].costIn += (t.total_cost||0)
       } else {
-        freonByType[key].out += (t.net_kg||0)
-        freonByType[key].costOut += (t.cost||0)
+        freonByType[key].out += (t.kg||0)
+        freonByType[key].costOut += (t.total_cost||0)
       }
     })
     
