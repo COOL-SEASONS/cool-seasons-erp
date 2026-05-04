@@ -60,6 +60,214 @@ export default function ProjectsPage() {
   const statusColor: any = { 'In Progress': 'badge-blue', Completed: 'badge-green', 'On Hold': 'badge-amber', Cancelled: 'badge-red', New: 'badge-gray' }
   const statusAr: any = { 'In Progress': 'جاري', Completed: 'مكتمل', 'On Hold': 'متوقف', Cancelled: 'ملغي', New: 'جديد' }
 
+  
+  // طباعة تقرير شامل للمشروع
+  const printProjectReport = async (project:any) => {
+    // جلب كل البيانات المرتبطة بالمشروع
+    const [copperRes, freonRes, techRes, clientRes] = await Promise.all([
+      supabase.from('copper_movements').select('*,technicians!copper_movements_tech_id_fkey(full_name),receiver_tech:technicians!copper_movements_receiver_tech_id_fkey(full_name)').eq('project_id', project.id).order('movement_date', {ascending: false}),
+      supabase.from('freon_transactions').select('*,technicians(full_name),freon_cylinders(cylinder_code,freon_type)').eq('project_id', project.id).order('trans_date', {ascending: false}),
+      supabase.from('technicians').select('id,full_name').eq('id', project.tech_id).maybeSingle(),
+      supabase.from('clients').select('id,company_name,phone,email').eq('id', project.client_id).maybeSingle()
+    ])
+    
+    const copperMovs = copperRes.data || []
+    const freonTxs = freonRes.data || []
+    const tech = techRes.data
+    const client = clientRes.data
+    
+    // حساب الإحصائيات
+    const fmtN = (n:number) => Number(n||0).toLocaleString('ar-SA',{maximumFractionDigits:2})
+    
+    // النحاس
+    const copperReceived = copperMovs.filter(m=>m.movement_type==='IN').reduce((s,m)=>s+(m.meters||0), 0)
+    const copperUsed = copperMovs.filter(m=>m.movement_type==='OUT').reduce((s,m)=>s+(m.meters||0)+(m.waste_meters||0), 0)
+    const copperBalance = copperReceived - copperUsed
+    const copperWaste = copperMovs.filter(m=>m.movement_type==='OUT').reduce((s,m)=>s+(m.waste_meters||0), 0)
+    const copperCostIn = copperMovs.filter(m=>m.movement_type==='IN').reduce((s,m)=>s+(m.total_cost||0), 0)
+    const copperCostOut = copperMovs.filter(m=>m.movement_type==='OUT').reduce((s,m)=>s+(m.total_cost||0), 0)
+    
+    // الفريون
+    const freonIn = freonTxs.filter(t=>t.trans_type==='IN').reduce((s,t)=>s+(t.net_kg||0), 0)
+    const freonOut = freonTxs.filter(t=>t.trans_type==='OUT').reduce((s,t)=>s+(t.net_kg||0), 0)
+    const freonBalance = freonIn - freonOut
+    const freonCostIn = freonTxs.filter(t=>t.trans_type==='IN').reduce((s,t)=>s+(t.cost||0), 0)
+    const freonCostOut = freonTxs.filter(t=>t.trans_type==='OUT').reduce((s,t)=>s+(t.cost||0), 0)
+    
+    // إجمالي تكلفة المواد
+    const totalMaterialsCost = copperCostOut + freonCostOut
+    
+    // المقاسات النحاسية المستخدمة
+    const copperByPair: any = {}
+    copperMovs.forEach(m=>{
+      const key = `${m.liquid_size} × ${m.suction_size}`
+      if (!copperByPair[key]) copperByPair[key] = {pair:key, in:0, out:0, waste:0, costIn:0, costOut:0}
+      if (m.movement_type==='IN') {
+        copperByPair[key].in += (m.meters||0)
+        copperByPair[key].costIn += (m.total_cost||0)
+      } else {
+        copperByPair[key].out += (m.meters||0)
+        copperByPair[key].waste += (m.waste_meters||0)
+        copperByPair[key].costOut += (m.total_cost||0)
+      }
+    })
+    
+    // أنواع الفريون
+    const freonByType: any = {}
+    freonTxs.forEach(t=>{
+      const key = t.freon_cylinders?.freon_type || 'غير محدد'
+      if (!freonByType[key]) freonByType[key] = {type:key, in:0, out:0, costIn:0, costOut:0}
+      if (t.trans_type==='IN') {
+        freonByType[key].in += (t.net_kg||0)
+        freonByType[key].costIn += (t.cost||0)
+      } else {
+        freonByType[key].out += (t.net_kg||0)
+        freonByType[key].costOut += (t.cost||0)
+      }
+    })
+    
+    const html = `
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+<meta charset="UTF-8">
+<title>تقرير شامل للمشروع - ${project.project_name}</title>
+<style>
+  @media print { @page { size: A4; margin: 1.5cm; } }
+  body { font-family: 'Tajawal', 'Cairo', Arial, sans-serif; padding: 20px; color: #1E293B; max-width: 900px; margin: 0 auto; line-height: 1.5; }
+  .header { text-align: center; padding: 16px; border-bottom: 4px double #1E9CD7; margin-bottom: 20px; }
+  .company { font-size: 24px; font-weight: 900; color: #1E9CD7; }
+  .subtitle { font-size: 12px; color: #64748B; letter-spacing: 1px; margin-top: 4px; }
+  .doc-title { font-size: 20px; font-weight: 800; margin-top: 14px; color: white; padding: 10px 24px; background: linear-gradient(135deg,#1E9CD7,#0F4C81); border-radius: 8px; display: inline-block; }
+  .section { margin: 20px 0; }
+  .section-title { font-size: 16px; font-weight: 800; color: #1E293B; padding: 8px 14px; background: #F1F5F9; border-right: 4px solid #1E9CD7; margin-bottom: 10px; }
+  table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 12px; }
+  th { background: #E0F2FE; color: #0C4A6E; text-align: right; padding: 8px 10px; border: 1px solid #BAE6FD; font-weight: 700; }
+  td { padding: 7px 10px; border: 1px solid #E2E8F0; }
+  .label { color: #64748B; font-size: 11px; font-weight: 600; }
+  .value { font-weight: 700; }
+  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 12px 0; }
+  .stat-card { background: white; border: 1px solid #E2E8F0; border-radius: 8px; padding: 10px; text-align: center; }
+  .stat-card.green { background: #F0FDF4; border-color: #16A34A; }
+  .stat-card.red { background: #FEF2F2; border-color: #DC2626; }
+  .stat-card.blue { background: #EFF6FF; border-color: #1E9CD7; }
+  .stat-card.amber { background: #FFFBEB; border-color: #F59E0B; }
+  .stat-label { font-size: 10px; color: #64748B; }
+  .stat-value { font-size: 18px; font-weight: 900; margin-top: 4px; }
+  .balance-positive { color: #16A34A; }
+  .balance-negative { color: #DC2626; }
+  .balance-zero { color: #64748B; }
+  .totals-box { background: linear-gradient(135deg,#FEF3C7,#FFFBEB); border: 2px solid #F59E0B; border-radius: 10px; padding: 14px; margin: 16px 0; }
+  .totals-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 13px; }
+  .totals-row.main { font-size: 18px; font-weight: 900; color: #92400E; border-top: 2px solid #F59E0B; padding-top: 10px; margin-top: 8px; }
+  .footer { text-align: center; margin-top: 30px; font-size: 10px; color: #94A3B8; border-top: 1px dashed #CBD5E1; padding-top: 12px; }
+  .empty { text-align: center; padding: 14px; color: #94A3B8; font-style: italic; font-size: 12px; }
+  .no-data { background: #F8FAFC; padding: 12px; text-align: center; border-radius: 8px; color: #64748B; font-size: 12px; }
+</style>
+</head>
+<body>
+  <div class="header">
+    <div class="company">COOL SEASONS & DARAJA.STORE</div>
+    <div class="subtitle">مواسم البرودة ودرجة للتكييف · شركة سعودية متخصصة</div>
+    <div class="doc-title">📊 تقرير شامل للمشروع</div>
+  </div>
+
+  <!-- معلومات المشروع -->
+  <div class="section">
+    <div class="section-title">📋 معلومات المشروع الأساسية</div>
+    <table>
+      <tr><td class="label" style="width:25%">الكود</td><td class="value" style="font-family:monospace">${project.project_code||'-'}</td><td class="label" style="width:25%">الاسم</td><td class="value">${project.project_name||'-'}</td></tr>
+      <tr><td class="label">العميل</td><td>${client?.company_name||'-'}</td><td class="label">الهاتف</td><td>${client?.phone||'-'}</td></tr>
+      <tr><td class="label">الفني المسؤول</td><td>${tech?.full_name||'-'}</td><td class="label">الموقع</td><td>${project.location||'-'}</td></tr>
+      <tr><td class="label">تاريخ البدء</td><td>${project.start_date||'-'}</td><td class="label">تاريخ الانتهاء</td><td>${project.end_date||'-'}</td></tr>
+      <tr><td class="label">الميزانية</td><td class="value" style="color:#1E9CD7">${fmtN(project.budget||0)} ر.س</td><td class="label">التكلفة الفعلية</td><td class="value">${fmtN(project.actual_cost||0)} ر.س</td></tr>
+      <tr><td class="label">نسبة الإنجاز</td><td class="value" style="color:#16A34A">${project.completion_pct||0}%</td><td class="label">الحالة</td><td class="value">${project.status||'-'}</td></tr>
+    </table>
+  </div>
+
+  <!-- ملخص النحاس -->
+  <div class="section">
+    <div class="section-title">🔥 استهلاك النحاس</div>
+    ${copperMovs.length === 0 ? '<div class="no-data">لا توجد حركات نحاس مرتبطة بهذا المشروع</div>' : `
+    <div class="stats-grid">
+      <div class="stat-card green"><div class="stat-label">📥 مستلم</div><div class="stat-value" style="color:#16A34A">${fmtN(copperReceived)} م</div></div>
+      <div class="stat-card red"><div class="stat-label">📤 مستخدم</div><div class="stat-value" style="color:#DC2626">${fmtN(copperUsed)} م</div></div>
+      <div class="stat-card amber"><div class="stat-label">⚠️ الفاقد</div><div class="stat-value" style="color:#D97706">${fmtN(copperWaste)} م</div></div>
+      <div class="stat-card blue"><div class="stat-label">📦 الرصيد</div><div class="stat-value ${copperBalance>0?'balance-positive':copperBalance<0?'balance-negative':'balance-zero'}">${copperBalance>0?'+':''}${fmtN(copperBalance)} م</div></div>
+    </div>
+    <table>
+      <thead><tr><th>المقاس</th><th>📥 مستلم</th><th>📤 مستخدم</th><th>⚠️ فاقد</th><th>الرصيد</th><th>تكلفة الاستلام</th><th>تكلفة الاستخدام</th></tr></thead>
+      <tbody>
+        ${Object.values(copperByPair).map((p:any)=>`
+          <tr>
+            <td class="value">${p.pair}</td>
+            <td style="color:#16A34A">${fmtN(p.in)} م</td>
+            <td style="color:#DC2626">${fmtN(p.out)} م</td>
+            <td style="color:#D97706">${fmtN(p.waste)} م</td>
+            <td class="value ${(p.in-p.out-p.waste)>0?'balance-positive':(p.in-p.out-p.waste)<0?'balance-negative':'balance-zero'}">${fmtN(p.in-p.out-p.waste)} م</td>
+            <td>${fmtN(p.costIn)} ر.س</td>
+            <td>${fmtN(p.costOut)} ر.س</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+    `}
+  </div>
+
+  <!-- ملخص الفريون -->
+  <div class="section">
+    <div class="section-title">❄️ استهلاك الفريون</div>
+    ${freonTxs.length === 0 ? '<div class="no-data">لا توجد حركات فريون مرتبطة بهذا المشروع</div>' : `
+    <div class="stats-grid">
+      <div class="stat-card green"><div class="stat-label">📥 مستلم</div><div class="stat-value" style="color:#16A34A">${fmtN(freonIn)} كغ</div></div>
+      <div class="stat-card red"><div class="stat-label">📤 مستخدم</div><div class="stat-value" style="color:#DC2626">${fmtN(freonOut)} كغ</div></div>
+      <div class="stat-card blue"><div class="stat-label">📦 الرصيد</div><div class="stat-value ${freonBalance>0?'balance-positive':freonBalance<0?'balance-negative':'balance-zero'}">${freonBalance>0?'+':''}${fmtN(freonBalance)} كغ</div></div>
+      <div class="stat-card amber"><div class="stat-label">💰 التكلفة</div><div class="stat-value" style="color:#D97706">${fmtN(freonCostOut)} ر.س</div></div>
+    </div>
+    <table>
+      <thead><tr><th>نوع الفريون</th><th>📥 مستلم</th><th>📤 مستخدم</th><th>الرصيد</th><th>تكلفة الاستلام</th><th>تكلفة الاستخدام</th></tr></thead>
+      <tbody>
+        ${Object.values(freonByType).map((f:any)=>`
+          <tr>
+            <td class="value">${f.type}</td>
+            <td style="color:#16A34A">${fmtN(f.in)} كغ</td>
+            <td style="color:#DC2626">${fmtN(f.out)} كغ</td>
+            <td class="value ${(f.in-f.out)>0?'balance-positive':(f.in-f.out)<0?'balance-negative':'balance-zero'}">${fmtN(f.in-f.out)} كغ</td>
+            <td>${fmtN(f.costIn)} ر.س</td>
+            <td>${fmtN(f.costOut)} ر.س</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+    `}
+  </div>
+
+  <!-- إجمالي تكلفة المواد -->
+  <div class="totals-box">
+    <div style="font-size:14px;font-weight:800;color:#92400E;margin-bottom:10px;text-align:center">💰 الملخص المالي للمواد</div>
+    <div class="totals-row"><span>إجمالي تكلفة النحاس المُستخدم:</span><span class="value" style="color:#DC2626">${fmtN(copperCostOut)} ر.س</span></div>
+    <div class="totals-row"><span>إجمالي تكلفة الفريون المُستخدم:</span><span class="value" style="color:#DC2626">${fmtN(freonCostOut)} ر.س</span></div>
+    <div class="totals-row main"><span>📊 إجمالي تكلفة المواد للمشروع:</span><span>${fmtN(totalMaterialsCost)} ر.س</span></div>
+    ${project.budget > 0 ? `<div class="totals-row" style="margin-top:8px;font-size:12px;color:#64748B"><span>نسبة المواد من الميزانية:</span><span class="value">${fmtN(totalMaterialsCost*100/project.budget)}%</span></div>` : ''}
+  </div>
+
+  <div class="footer">
+    تم إنشاء التقرير: ${new Date().toLocaleString('ar-SA')} | COOL SEASONS ERP | تقرير محاسبي رسمي
+  </div>
+
+  <script>window.onload = () => { setTimeout(() => window.print(), 300); }</script>
+</body>
+</html>`
+    
+    const w = window.open('', '_blank')
+    if (w) {
+      w.document.write(html)
+      w.document.close()
+    } else {
+      alert('يرجى السماح للنوافذ المنبثقة لطباعة التقرير')
+    }
+  }
+
   return (
     <div>
       <div className="page-header">
@@ -106,8 +314,9 @@ export default function ProjectsPage() {
                       <td style={{ direction: 'ltr' }}>{r.budget ? new Intl.NumberFormat('en').format(r.budget) + ' ر.س' : '—'}</td>
                       <td>
                         <div style={{ display: 'flex', gap: 6 }}>
-                          <button onClick={() => { setForm({ ...r, client_id: r.client_id||'', tech_id: r.tech_id||'' }); setEditId(r.id); setModal(true) }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--cs-blue)' }}><Edit2 size={15}/></button>
-                          <button onClick={() => del(r.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--cs-red)' }}><Trash2 size={15}/></button>
+                          <button onClick={() => printProjectReport(r)} title="تقرير شامل" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--cs-green)' }}><Printer size={15}/></button>
+                          <button onClick={() => { setForm({ ...r, client_id: r.client_id||'', tech_id: r.tech_id||'' }); setEditId(r.id); setModal(true) }} title="تعديل" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--cs-blue)' }}><Edit2 size={15}/></button>
+                          <button onClick={() => del(r.id)} title="حذف" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--cs-red)' }}><Trash2 size={15}/></button>
                         </div>
                       </td>
                     </tr>
