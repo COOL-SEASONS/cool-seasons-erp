@@ -24,9 +24,9 @@ const REASONS_OUT=['تركيب وحدة جديدة','تمديد توصيلات',
 const newCoilCode=()=>`COIL-${1000+Math.floor(Date.now()/1000)%9000}`
 const newTransCode=()=>`CT-${5000+Math.floor(Date.now()/1000)%9000}`
 
-const newCoil=()=>({coil_code:newCoilCode(),liquid_size:'3/8"',suction_size:'5/8"',capacity_btu:'24,000-30,000',brand:'Halcor',origin:'يوناني',initial_meters:'15',purchase_date:new Date().toISOString().split('T')[0],purchase_price:'0',custody_tech_id:'',status:'Active',notes:''})
+const newCoil=()=>({coil_code:newCoilCode(),liquid_size:'3/8"',suction_size:'5/8"',capacity_btu:'24,000-30,000',brand:'Halcor',origin:'يوناني',custody_tech_id:'',status:'Active',notes:''})
 
-const newTrans=(coilId='')=>({trans_code:newTransCode(),coil_id:coilId,trans_date:new Date().toISOString().split('T')[0],trans_type:'OUT',meters_before:'',meters_after:'',waste_meters:'0',tech_id:'',client_id:'',project_id:'',unit_serial:'',unit_capacity_btu:'',reason:'تركيب وحدة جديدة',notes:''})
+const newTrans=(coilId='')=>({trans_code:newTransCode(),coil_id:coilId,trans_date:new Date().toISOString().split('T')[0],trans_type:'OUT',meters_before:'',meters_after:'',waste_meters:'0',tech_id:'',client_id:'',project_id:'',unit_serial:'',unit_capacity_btu:'',reason:'تركيب وحدة جديدة',purchase_total_cost:'',notes:''})
 
 export default function CopperPipePage() {
   const [tab,setTab]=useState<'coils'|'transactions'>('coils')
@@ -62,18 +62,20 @@ export default function CopperPipePage() {
   const fmt=(n:number)=>new Intl.NumberFormat('ar-SA',{maximumFractionDigits:2}).format(n||0)
 
   const openEditCoil=(c:any)=>{
-    setCoilForm({coil_code:c.coil_code,liquid_size:c.liquid_size||'3/8"',suction_size:c.suction_size||'5/8"',capacity_btu:c.capacity_btu||'',brand:c.brand||'Halcor',origin:c.origin||'يوناني',initial_meters:String(c.initial_meters),purchase_date:c.purchase_date?.split('T')[0]||'',purchase_price:String(c.purchase_price||0),custody_tech_id:c.custody_tech_id||'',status:c.status||'Active',notes:c.notes||''})
+    setCoilForm({coil_code:c.coil_code,liquid_size:c.liquid_size||'3/8"',suction_size:c.suction_size||'5/8"',capacity_btu:c.capacity_btu||'',brand:c.brand||'Halcor',origin:c.origin||'يوناني',custody_tech_id:c.custody_tech_id||'',status:c.status||'Active',notes:c.notes||''})
     setEditId(c.id); setCoilModal(true)
   }
   const saveCoil=async()=>{
     if(!coilForm.coil_code.trim()) return alert('كود اللفة مطلوب')
     setSaving(true)
-    const initial=parseFloat(coilForm.initial_meters)||0
-    const price=parseFloat(coilForm.purchase_price)||0
-    const payload:any={coil_code:coilForm.coil_code.trim(),liquid_size:coilForm.liquid_size,suction_size:coilForm.suction_size,capacity_btu:coilForm.capacity_btu||null,brand:coilForm.brand||null,origin:coilForm.origin||null,initial_meters:initial,current_meters:initial,purchase_date:coilForm.purchase_date||null,purchase_price:price,unit_cost_per_meter:initial>0?Math.round(price/initial*100)/100:0,custody_tech_id:coilForm.custody_tech_id||null,status:coilForm.status,notes:coilForm.notes||null}
-    if(editId) delete payload.current_meters
+    const payload:any={coil_code:coilForm.coil_code.trim(),liquid_size:coilForm.liquid_size,suction_size:coilForm.suction_size,capacity_btu:coilForm.capacity_btu||null,brand:coilForm.brand||null,origin:coilForm.origin||null,initial_meters:0,current_meters:0,custody_tech_id:coilForm.custody_tech_id||null,status:coilForm.status,notes:coilForm.notes||null}
+    if(editId) { delete payload.current_meters; delete payload.initial_meters }
     const {error}=editId?await supabase.from('copper_coils').update(payload).eq('id',editId):await supabase.from('copper_coils').insert(payload)
-    if(error) alert('خطأ: '+error.message); else{setCoilModal(false);load()}
+    if(error) alert('خطأ: '+error.message); else{
+      const wasCreating = !editId
+      setCoilModal(false);load()
+      if(wasCreating) setTimeout(()=>alert('✅ تم إنشاء اللفة بنجاح\n\n📌 الخطوة التالية: اضغط زر "+حركة" بجانب اللفة لتسجيل أول استلام (الطول الفعلي + التكلفة الإجمالية)'),300)
+    }
     setSaving(false)
   }
   const delCoil=async(id:string)=>{
@@ -97,7 +99,18 @@ export default function CopperPipePage() {
     const coil=coils.find(c=>c.id===transForm.coil_id)
     const used=Math.abs(ma-mb)
     const waste=parseFloat(transForm.waste_meters)||0
-    const cost=coil?Math.round((used+waste)*(coil.unit_cost_per_meter||0)*100)/100:0
+    let cost = 0
+    if (transForm.trans_type==='IN') {
+      // عند الاستلام: التكلفة = إجمالي سعر الشراء (يدخله المستخدم)
+      cost = parseFloat(transForm.purchase_total_cost)||0
+    } else {
+      // عند الاستخدام: التكلفة = (المستخدم + الفاقد) × متوسط تكلفة المتر من الاستلامات
+      const inTrans = transactions.filter(t=>t.coil_id===transForm.coil_id && t.trans_type==='IN')
+      const totalMIn = inTrans.reduce((s,t)=>s+(t.meters_used||0), 0)
+      const totalCostIn = inTrans.reduce((s,t)=>s+(t.cost||0), 0)
+      const avgCostPerM = totalMIn>0 ? totalCostIn/totalMIn : 0
+      cost = Math.round((used+waste) * avgCostPerM * 100) / 100
+    }
     const payload={trans_code:transForm.trans_code.trim(),coil_id:transForm.coil_id,trans_date:transForm.trans_date,trans_type:transForm.trans_type,meters_before:mb,meters_after:ma,waste_meters:waste,tech_id:transForm.tech_id||null,client_id:transForm.client_id||null,project_id:transForm.project_id||null,unit_serial:transForm.unit_serial||null,unit_capacity_btu:transForm.unit_capacity_btu||null,cost,reason:transForm.reason||null,notes:transForm.notes||null}
     const {error}=editId?await supabase.from('copper_transactions').update(payload).eq('id',editId):await supabase.from('copper_transactions').insert(payload)
     if(error) alert('خطأ: '+error.message); else{setTransModal(false);load()}
@@ -114,7 +127,10 @@ export default function CopperPipePage() {
   const totalStock=coils.reduce((s,c)=>s+(c.current_meters||0),0)
   const totalUsed=transactions.filter(t=>t.trans_type==='OUT').reduce((s,t)=>s+(t.meters_used||0)+(t.waste_meters||0),0)
   const totalWaste=transactions.reduce((s,t)=>s+(t.waste_meters||0),0)
-  const totalValue=coils.reduce((s,c)=>s+(c.current_meters||0)*(c.unit_cost_per_meter||0),0)
+  // قيمة المخزون = إجمالي تكلفة الاستلامات − إجمالي تكلفة الاستخدامات
+  const totalValueIn=transactions.filter(t=>t.trans_type==='IN').reduce((s,t)=>s+(t.cost||0),0)
+  const totalValueOut=transactions.filter(t=>t.trans_type==='OUT').reduce((s,t)=>s+(t.cost||0),0)
+  const totalValue=Math.max(0,totalValueIn-totalValueOut)
   const lowStock=coils.filter(c=>c.current_meters!=null&&c.current_meters<2&&c.status==='Active')
   const coilSearch=coils.filter(c=>c.coil_code?.includes(search)||c.pipe_pair?.includes(search)||c.liquid_size?.includes(search)||c.suction_size?.includes(search)||c.technicians?.full_name?.toLowerCase().includes(search.toLowerCase()))
   const transSearch=transactions.filter(t=>t.trans_code?.includes(search)||t.copper_coils?.coil_code?.includes(search)||t.clients?.company_name?.toLowerCase().includes(search.toLowerCase()))
@@ -196,7 +212,8 @@ export default function CopperPipePage() {
               <tbody>
                 {coilSearch.length===0?<tr><td colSpan={11} style={{textAlign:'center',padding:40,color:'var(--cs-text-muted)'}}>لا توجد لفات</td></tr>
                 :coilSearch.map(c=>{
-                  const used=(c.initial_meters||0)-(c.current_meters||0)
+                  const used=transactions.filter(t=>t.coil_id===c.id&&t.trans_type==='OUT').reduce((s,t)=>s+(t.meters_used||0)+(t.waste_meters||0),0)
+                  const initialIn=transactions.filter(t=>t.coil_id===c.id&&t.trans_type==='IN').reduce((s,t)=>s+(t.meters_used||0),0)
                   const isLow=c.current_meters<2
                   const isEmpty=c.current_meters<=0
                   return (
@@ -205,10 +222,10 @@ export default function CopperPipePage() {
                       <td style={{fontFamily:'monospace',fontWeight:700,fontSize:13}}>{c.liquid_size} × {c.suction_size}</td>
                       <td style={{fontSize:11,color:'var(--cs-text-muted)'}}>{c.capacity_btu||'—'}</td>
                       <td>{c.brand||'—'}</td>
-                      <td style={{fontSize:12}}>{fmt(c.initial_meters)} م</td>
+                      <td style={{fontSize:12}}>{fmt(initialIn)} م</td>
                       <td style={{fontWeight:800,color:isEmpty?'var(--cs-red)':isLow?'var(--cs-orange)':'var(--cs-green)',fontSize:14}}>{fmt(c.current_meters)} م</td>
                       <td style={{color:'var(--cs-orange)',fontSize:12}}>{fmt(used)} م</td>
-                      <td>{fmt(c.unit_cost_per_meter)} ر.س</td>
+                      <td>{(function(){const ins=transactions.filter(t=>t.coil_id===c.id&&t.trans_type==='IN');const tm=ins.reduce((s,t)=>s+(t.meters_used||0),0);const tc=ins.reduce((s,t)=>s+(t.cost||0),0);return tm>0?fmt(tc/tm):'—'})()} ر.س</td>
                       <td style={{fontSize:12}}>{c.technicians?.full_name||'—'}</td>
                       <td><span className={`badge ${c.status==='Active'?'badge-green':c.status==='Empty'?'badge-red':'badge-gray'}`}>{c.status==='Active'?'نشطة':c.status==='Empty'?'فارغة':c.status}</span></td>
                       <td><div style={{display:'flex',gap:4}}>
@@ -262,7 +279,7 @@ export default function CopperPipePage() {
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.4)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center',padding:16}}>
           <div className="card" style={{width:'100%',maxWidth:600,maxHeight:'92vh',overflow:'auto',padding:24}}>
             <div style={{display:'flex',justifyContent:'space-between',marginBottom:18}}><div style={{fontFamily:'Cairo,sans-serif',fontWeight:700,fontSize:18}}>📦 {editId?'تعديل لفة':'لفة نحاس جديدة'}</div><button onClick={()=>setCoilModal(false)} style={{background:'none',border:'none',cursor:'pointer'}}><X size={20}/></button></div>
-            <div style={{background:'#E8F6FC',borderRadius:8,padding:'10px 14px',marginBottom:14,fontSize:12,color:'var(--cs-blue)'}}>💡 اللفة في تكييف السبليت = ماسورتان (Liquid + Suction) معاً. الطول 15م يعني 15م للزوج كاملاً (وليس 30م).</div>
+            <div style={{background:'#E8F6FC',borderRadius:8,padding:'10px 14px',marginBottom:14,fontSize:12,color:'var(--cs-blue)'}}>💡 <strong>خطوتان:</strong> (١) أنشئ اللفة هنا بمعلوماتها الأساسية فقط (الزوج، المصنع، المنشأ) · (٢) ثم سجّل أول حركة استلام لتحديد الطول الفعلي والتكلفة الإجمالية.<br/><br/>📐 ملاحظة: لفة السبليت = ماسورتان (Liquid + Suction) كقطعة واحدة. الطول 15م يعني 15م للزوج كاملاً.</div>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
               <div><label className="form-label">كود اللفة *</label><input className="form-input" value={coilForm.coil_code} onChange={e=>setCoilForm({...coilForm,coil_code:e.target.value})}/></div>
               <div style={{gridColumn:'1/-1',background:'#FFFBF0',borderRadius:8,padding:12,border:'1px solid #FFD70040'}}>
@@ -303,13 +320,7 @@ export default function CopperPipePage() {
               </div>
               <div><label className="form-label">الماركة</label><select className="form-input" value={coilForm.brand} onChange={e=>setCoilForm({...coilForm,brand:e.target.value})}>{BRANDS.map(b=><option key={b}>{b}</option>)}</select></div>
               <div><label className="form-label">بلد المنشأ</label><select className="form-input" value={coilForm.origin} onChange={e=>setCoilForm({...coilForm,origin:e.target.value})}>{ORIGINS.map(o=><option key={o}>{o}</option>)}</select></div>
-              <div><label className="form-label">الطول الأولي (متر)</label><input type="number" min="0" step="0.5" className="form-input" style={{background:'#FFFDE7',fontWeight:700}} value={coilForm.initial_meters} onChange={e=>setCoilForm({...coilForm,initial_meters:e.target.value})}/></div>
-              <div><label className="form-label">سعر اللفة كاملة (ر.س)</label><input type="number" min="0" className="form-input" value={coilForm.purchase_price} onChange={e=>setCoilForm({...coilForm,purchase_price:e.target.value})}/></div>
-              <div style={{gridColumn:'1/-1',background:'#E8F6FC',borderRadius:8,padding:'8px 14px',display:'flex',justifyContent:'space-between',fontSize:13}}>
-                <span style={{color:'var(--cs-text-muted)'}}>تكلفة المتر الواحد:</span>
-                <span style={{fontWeight:800,color:'var(--cs-blue)'}}>{(parseFloat(coilForm.initial_meters)>0)?fmt(parseFloat(coilForm.purchase_price)/parseFloat(coilForm.initial_meters)):'0.00'} ر.س/م</span>
-              </div>
-              <div><label className="form-label">تاريخ الشراء</label><input type="date" className="form-input" value={coilForm.purchase_date} onChange={e=>setCoilForm({...coilForm,purchase_date:e.target.value})}/></div>
+
               <div><label className="form-label">في عهدة الفني</label><select className="form-input" value={coilForm.custody_tech_id} onChange={e=>setCoilForm({...coilForm,custody_tech_id:e.target.value})}><option value="">— مخزن الشركة —</option>{techs.map(t=><option key={t.id} value={t.id}>{t.full_name}</option>)}</select></div>
               <div><label className="form-label">الحالة</label><select className="form-input" value={coilForm.status} onChange={e=>setCoilForm({...coilForm,status:e.target.value})}><option value="Active">نشطة</option><option value="Empty">فارغة</option><option value="Returned">مُرتجعة</option><option value="Damaged">تالفة</option></select></div>
               <div style={{gridColumn:'1/-1'}}><label className="form-label">ملاحظات</label><textarea className="form-input" rows={2} value={coilForm.notes} onChange={e=>setCoilForm({...coilForm,notes:e.target.value})}/></div>
@@ -349,7 +360,7 @@ export default function CopperPipePage() {
                 <div style={{gridColumn:'1/-1',background:'#F8FAFC',borderRadius:8,padding:'8px 14px',fontSize:12,display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8}}>
                   <div><span style={{color:'var(--cs-text-muted)'}}>الزوج:</span> <strong style={{fontFamily:'monospace'}}>{selectedCoil.liquid_size} × {selectedCoil.suction_size}</strong></div>
                   <div><span style={{color:'var(--cs-text-muted)'}}>المتبقي حالياً:</span> <strong style={{color:'var(--cs-blue)'}}>{fmt(selectedCoil.current_meters)} م</strong></div>
-                  <div><span style={{color:'var(--cs-text-muted)'}}>تكلفة/م:</span> <strong style={{color:'var(--cs-orange)'}}>{fmt(selectedCoil.unit_cost_per_meter)} ر.س</strong></div>
+                  <div><span style={{color:'var(--cs-text-muted)'}}>متوسط/م:</span> <strong style={{color:'var(--cs-orange)'}}>{(function(){const ins=transactions.filter(t=>t.coil_id===selectedCoil.id&&t.trans_type==='IN');const tm=ins.reduce((s,t)=>s+(t.meters_used||0),0);const tc=ins.reduce((s,t)=>s+(t.cost||0),0);return tm>0?fmt(tc/tm):'—'})()} ر.س</strong></div>
                 </div>
               )}
               <div style={{gridColumn:'1/-1',background:transForm.trans_type==='OUT'?'#FFF5F5':'#F0FFF4',borderRadius:8,padding:14,border:`2px solid ${transForm.trans_type==='OUT'?'#C0392B30':'#27AE6030'}`}}>
@@ -361,15 +372,23 @@ export default function CopperPipePage() {
                 {transForm.trans_type==='OUT'&&(
                   <div><label className="form-label" style={{fontSize:12}}>الفاقد بالقص (م) — اختياري</label><input type="number" min="0" step="0.1" className="form-input" placeholder="0.0" value={transForm.waste_meters} onChange={e=>setTransForm({...transForm,waste_meters:e.target.value})}/></div>
                 )}
-                {mb>0&&ma>0&&(
-                  <div style={{marginTop:10,padding:'8px 12px',background:'white',borderRadius:6,display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8}}>
-                    <div><span style={{fontSize:11,color:'var(--cs-text-muted)'}}>مستخدم فعلي:</span> <strong style={{fontSize:14,color:transForm.trans_type==='OUT'?'var(--cs-red)':'var(--cs-green)'}}>{fmt(used)} م</strong></div>
+                {(mb>=0&&ma>=0&&used>0)&&(
+                  <div style={{marginTop:10,padding:'8px 12px',background:'white',borderRadius:6,display:'grid',gridTemplateColumns:waste>0?'1fr 1fr 1fr':'1fr 1fr',gap:8}}>
+                    <div><span style={{fontSize:11,color:'var(--cs-text-muted)'}}>{transForm.trans_type==='OUT'?'مستخدم فعلي':'مستلم'}:</span> <strong style={{fontSize:14,color:transForm.trans_type==='OUT'?'var(--cs-red)':'var(--cs-green)'}}>{fmt(used)} م</strong></div>
                     {waste>0&&<div><span style={{fontSize:11,color:'var(--cs-text-muted)'}}>+ فاقد:</span> <strong style={{fontSize:14,color:'var(--cs-orange)'}}>{fmt(waste)} م</strong></div>}
-                    <div><span style={{fontSize:11,color:'var(--cs-text-muted)'}}>التكلفة:</span> <strong style={{fontSize:14,color:'var(--cs-orange)'}}>{fmt(transCost)} ر.س</strong></div>
+                    <div><span style={{fontSize:11,color:'var(--cs-text-muted)'}}>التكلفة:</span> <strong style={{fontSize:14,color:'var(--cs-orange)'}}>{fmt(transForm.trans_type==='IN' ? (parseFloat(transForm.purchase_total_cost)||0) : (function(){const inTrans=transactions.filter(t=>t.coil_id===transForm.coil_id&&t.trans_type==='IN');const totalM=inTrans.reduce((s,t)=>s+(t.meters_used||0),0);const totalC=inTrans.reduce((s,t)=>s+(t.cost||0),0);const avg=totalM>0?totalC/totalM:0;return (used+waste)*avg})())} ر.س</strong></div>
+                  </div>
+                )}
+                {transForm.trans_type==='IN'&&parseFloat(transForm.purchase_total_cost)>0&&used>0&&(
+                  <div style={{marginTop:6,padding:'6px 12px',background:'#E8F6FC',borderRadius:6,fontSize:11,color:'var(--cs-blue)',textAlign:'center'}}>
+                    💡 تكلفة المتر الواحد: <strong>{fmt(parseFloat(transForm.purchase_total_cost)/used)} ر.س/م</strong>
                   </div>
                 )}
               </div>
               <div><label className="form-label">السبب</label><select className="form-input" value={transForm.reason} onChange={e=>setTransForm({...transForm,reason:e.target.value})}>{(transForm.trans_type==='IN'?REASONS_IN:REASONS_OUT).map(r=><option key={r}>{r}</option>)}</select></div>
+              {transForm.trans_type==='IN'&&(
+                <div><label className="form-label">إجمالي تكلفة الشراء (ر.س) *</label><input type="number" min="0" step="0.01" className="form-input" style={{background:'#F0FFF4',fontWeight:700}} placeholder="مثلاً: 750.00" value={transForm.purchase_total_cost} onChange={e=>setTransForm({...transForm,purchase_total_cost:e.target.value})}/></div>
+              )}
               <div><label className="form-label">الفني المنفّذ</label><select className="form-input" value={transForm.tech_id} onChange={e=>setTransForm({...transForm,tech_id:e.target.value})}><option value="">— اختر —</option>{techs.map(t=><option key={t.id} value={t.id}>{t.full_name}</option>)}</select></div>
               {transForm.trans_type==='OUT'&&(
                 <>
@@ -396,8 +415,8 @@ export default function CopperPipePage() {
             </div>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10,marginBottom:16}}>
               <div className="stat-card" style={{textAlign:'center'}}><div style={{fontSize:11,color:'var(--cs-text-muted)'}}>المتبقي</div><div style={{fontSize:22,fontWeight:800,color:'var(--cs-green)'}}>{fmt(viewCoil.current_meters)} م</div></div>
-              <div className="stat-card" style={{textAlign:'center'}}><div style={{fontSize:11,color:'var(--cs-text-muted)'}}>الطول الأولي</div><div style={{fontSize:22,fontWeight:800,color:'var(--cs-blue)'}}>{fmt(viewCoil.initial_meters)} م</div></div>
-              <div className="stat-card" style={{textAlign:'center'}}><div style={{fontSize:11,color:'var(--cs-text-muted)'}}>المستخدم</div><div style={{fontSize:22,fontWeight:800,color:'var(--cs-orange)'}}>{fmt(viewCoil.initial_meters-viewCoil.current_meters)} م</div></div>
+              <div className="stat-card" style={{textAlign:'center'}}><div style={{fontSize:11,color:'var(--cs-text-muted)'}}>إجمالي مستلم</div><div style={{fontSize:22,fontWeight:800,color:'var(--cs-blue)'}}>{fmt(transactions.filter(t=>t.coil_id===viewCoil.id&&t.trans_type==='IN').reduce((s,t)=>s+(t.meters_used||0),0))} م</div></div>
+              <div className="stat-card" style={{textAlign:'center'}}><div style={{fontSize:11,color:'var(--cs-text-muted)'}}>إجمالي مستخدم</div><div style={{fontSize:22,fontWeight:800,color:'var(--cs-orange)'}}>{fmt(transactions.filter(t=>t.coil_id===viewCoil.id&&t.trans_type==='OUT').reduce((s,t)=>s+(t.meters_used||0)+(t.waste_meters||0),0))} م</div></div>
             </div>
             <div style={{fontSize:13,fontWeight:700,marginBottom:8}}>📋 سجل الحركات</div>
             <div style={{maxHeight:300,overflowY:'auto'}}>
