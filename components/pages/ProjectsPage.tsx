@@ -84,16 +84,24 @@ export default function ProjectsPage() {
     const ductByType: any = {}
     ductMovs.forEach((m:any)=>{
       const key = m.duct_type
-      if (!ductByType[key]) ductByType[key] = {type:DUCT_LABELS[key]||key, unit:DUCT_UNITS[key]||'', in:0, out:0, waste:0, costIn:0, costOut:0}
+      if (!ductByType[key]) ductByType[key] = {type:DUCT_LABELS[key]||key, unit:DUCT_UNITS[key]||'', in:0, out:0, waste:0, costIn:0, costOut:0, tonnage:0, linear:0}
       if (m.movement_type==='IN') {
         ductByType[key].in += (m.quantity||0)
         ductByType[key].costIn += (m.total_cost||0)
+        ductByType[key].tonnage += (m.cooling_tonnage||0)
+        ductByType[key].linear += (m.linear_meters||0)
       } else {
         ductByType[key].out += (m.quantity||0)
         ductByType[key].waste += (m.waste_qty||0)
         ductByType[key].costOut += (m.total_cost||0)
+        ductByType[key].tonnage -= (m.cooling_tonnage||0)
+        ductByType[key].linear -= (m.linear_meters||0)
       }
     })
+    
+    // إجماليات الدكت للسعة والمتر الطولي
+    const totalDuctTonnage = ductMovs.filter((m:any)=>m.movement_type==='IN').reduce((s:number,m:any)=>s+(m.cooling_tonnage||0),0) - ductMovs.filter((m:any)=>m.movement_type==='OUT').reduce((s:number,m:any)=>s+(m.cooling_tonnage||0),0)
+    const totalDuctLinear = ductMovs.filter((m:any)=>m.movement_type==='IN').reduce((s:number,m:any)=>s+(m.linear_meters||0),0) - ductMovs.filter((m:any)=>m.movement_type==='OUT').reduce((s:number,m:any)=>s+(m.linear_meters||0),0)
     const ductCostOut = ductMovs.filter((m:any)=>m.movement_type==='OUT').reduce((s:number,m:any)=>s+(m.total_cost||0), 0)
     
     // حساب الإحصائيات
@@ -267,21 +275,25 @@ export default function ProjectsPage() {
     <div class="section-title">🏗️ استهلاك الدكت</div>
     ${ductMovs.length === 0 ? '<div class="no-data">لا توجد حركات دكت مرتبطة بهذا المشروع</div>' : `
     <table>
-      <thead><tr><th>نوع الدكت</th><th>📥 مستلم</th><th>📤 مستخدم</th><th>⚠️ فاقد</th><th>الرصيد</th><th>تكلفة الاستلام</th><th>تكلفة الاستخدام</th></tr></thead>
+      <thead><tr><th>نوع الدكت</th><th>📥 مستلم</th><th>📤 مستخدم</th><th>الرصيد</th><th>❄️ طن</th><th>📏 طولي</th><th>تكلفة الاستخدام</th></tr></thead>
       <tbody>
         ${Object.values(ductByType).map((d:any)=>`
           <tr>
             <td class="value">${d.type}</td>
             <td style="color:#16A34A">${fmtN(d.in)} ${d.unit}</td>
             <td style="color:#DC2626">${fmtN(d.out)} ${d.unit}</td>
-            <td style="color:#D97706">${fmtN(d.waste)} ${d.unit}</td>
             <td class="value ${(d.in-d.out-d.waste)>0?'balance-positive':(d.in-d.out-d.waste)<0?'balance-negative':'balance-zero'}">${fmtN(d.in-d.out-d.waste)} ${d.unit}</td>
-            <td>${fmtN(d.costIn)} ر.س</td>
+            <td style="color:#0C4A6E;font-weight:700">${d.tonnage!==0?fmtN(Math.abs(d.tonnage))+' طن':'—'}</td>
+            <td style="color:#7C3AED;font-weight:700">${d.linear!==0?fmtN(Math.abs(d.linear))+' م':'—'}</td>
             <td>${fmtN(d.costOut)} ر.س</td>
           </tr>
         `).join('')}
       </tbody>
     </table>
+    <div style="margin-top:10px;padding:10px;background:#F0F9FF;border-radius:8px;display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:12px">
+      <div style="text-align:center"><div class="label">❄️ السعة الإجمالية</div><div style="font-size:18px;font-weight:900;color:#0C4A6E">${fmtN(Math.abs(totalDuctTonnage))} طن</div></div>
+      <div style="text-align:center"><div class="label">📏 الطول الطولي الإجمالي</div><div style="font-size:18px;font-weight:900;color:#7C3AED">${fmtN(Math.abs(totalDuctLinear))} م</div></div>
+    </div>
     `}
   </div>
 
