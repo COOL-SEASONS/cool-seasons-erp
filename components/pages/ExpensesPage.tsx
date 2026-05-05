@@ -86,8 +86,25 @@ export default function ExpensesPage() {
     return m&&t
   })
 
-  const totalSarf=rows.filter(r=>r.transaction_type==='صرف').reduce((s,r)=>s+(r.amount||0),0)
-  const totalOhda=rows.filter(r=>r.transaction_type==='عهدة').reduce((s,r)=>s+(r.amount||0),0)
+  // حساب المعتمد فقط (Approved) في الإجماليات
+  const totalSarf=rows.filter(r=>r.transaction_type==='صرف' && r.status==='Approved').reduce((s,r)=>s+(r.amount||0),0)
+  const totalOhda=rows.filter(r=>r.transaction_type==='عهدة' && r.status==='Approved').reduce((s,r)=>s+(r.amount||0),0)
+  
+  // المعلق (Pending) للتنبيه فقط
+  const pendingCount = rows.filter(r=>r.status==='Pending').length
+  const pendingTotal = rows.filter(r=>r.status==='Pending').reduce((s,r)=>s+(r.amount||0),0)
+  
+  // تجميع حسب الفئة (المعتمد فقط)
+  const byCategoryMap: any = {}
+  rows.filter(r=>r.status==='Approved').forEach((r:any)=>{
+    const cat = r.category || 'بدون فئة'
+    if (!byCategoryMap[cat]) byCategoryMap[cat] = {category: cat, sarf:0, ohda:0, count:0}
+    if (r.transaction_type==='صرف') byCategoryMap[cat].sarf += (r.amount||0)
+    else if (r.transaction_type==='عهدة') byCategoryMap[cat].ohda += (r.amount||0)
+    byCategoryMap[cat].count++
+  })
+  const byCategory = Object.values(byCategoryMap).sort((a:any,b:any)=>(b.sarf+b.ohda)-(a.sarf+a.ohda))
+  const totalByCategory = (byCategory as any[]).reduce((s,c)=>s+c.sarf+c.ohda, 0)
 
   return (
     <div>
@@ -99,15 +116,15 @@ export default function ExpensesPage() {
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:0,marginBottom:20,borderRadius:12,overflow:'hidden',border:'1px solid var(--cs-border)',boxShadow:'0 2px 8px rgba(0,0,0,0.06)'}}>
         {/* العهدة */}
         <div style={{background:'#FEF3E2',padding:'14px 18px',borderLeft:'1px solid var(--cs-border)'}}>
-          <div style={{fontSize:11,color:'#E67E22',fontWeight:700,marginBottom:6}}>📋 إجمالي العهد</div>
+          <div style={{fontSize:11,color:'#E67E22',fontWeight:700,marginBottom:6}}>📋 إجمالي العهد <span style={{fontSize:9,opacity:0.7}}>(المعتمد فقط)</span></div>
           <div style={{fontSize:22,fontWeight:900,color:'#E67E22',fontFamily:'Cairo,sans-serif'}}>{fmt(totalOhda)}</div>
-          <div style={{fontSize:11,color:'#E67E22',opacity:0.7,marginTop:2}}>{rows.filter(r=>r.transaction_type==='عهدة').length} سجل عهدة</div>
+          <div style={{fontSize:11,color:'#E67E22',opacity:0.7,marginTop:2}}>{rows.filter(r=>r.transaction_type==='عهدة' && r.status==='Approved').length} سجل معتمد</div>
         </div>
         {/* الصرف */}
         <div style={{background:'#FDECEA',padding:'14px 18px',borderLeft:'1px solid var(--cs-border)'}}>
-          <div style={{fontSize:11,color:'var(--cs-red)',fontWeight:700,marginBottom:6}}>💸 إجمالي الصرف</div>
+          <div style={{fontSize:11,color:'var(--cs-red)',fontWeight:700,marginBottom:6}}>💸 إجمالي الصرف <span style={{fontSize:9,opacity:0.7}}>(المعتمد فقط)</span></div>
           <div style={{fontSize:22,fontWeight:900,color:'var(--cs-red)',fontFamily:'Cairo,sans-serif'}}>{fmt(totalSarf)}</div>
-          <div style={{fontSize:11,color:'var(--cs-red)',opacity:0.7,marginTop:2}}>{rows.filter(r=>r.transaction_type==='صرف').length} سجل صرف</div>
+          <div style={{fontSize:11,color:'var(--cs-red)',opacity:0.7,marginTop:2}}>{rows.filter(r=>r.transaction_type==='صرف' && r.status==='Approved').length} سجل معتمد</div>
         </div>
         {/* إجمالي التكاليف = عهدة - صرف */}
         <div style={{background:totalOhda-totalSarf>=0?'#E8F8EF':'#FDECEA',padding:'14px 18px',position:'relative'}}>
@@ -122,6 +139,52 @@ export default function ExpensesPage() {
           </div>
         </div>
       </div>
+
+      {/* تنبيه السجلات المعلقة */}
+      {pendingCount > 0 && (
+        <div className="card" style={{marginBottom:16,padding:'10px 14px',background:'#FEF3C7',border:'1px solid #FBBF24',display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:8}}>
+          <div style={{fontSize:13,color:'#92400E'}}>
+            ⏳ <strong>{pendingCount} سجل معلّق</strong> بقيمة <strong>{fmt(pendingTotal)} ر.س</strong> ينتظر الاعتماد
+            <span style={{fontSize:11,marginRight:8,opacity:0.8}}>(غير محسوب في الإجماليات أعلاه)</span>
+          </div>
+          
+        </div>
+      )}
+
+      {/* تحليل المصروفات حسب الفئة */}
+      {byCategory.length > 0 && (
+        <div className="card" style={{marginBottom:16,padding:'1rem 1.25rem',background:'linear-gradient(135deg, #F0F9FF 0%, #FAFAFA 100%)',border:'1px solid #E0F2FE'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12,flexWrap:'wrap',gap:8}}>
+            <h3 style={{margin:0,fontSize:15,color:'#0C4A6E'}}>📊 تحليل المصروفات حسب الفئة <span style={{fontSize:11,fontWeight:400,opacity:0.7}}>(المعتمد فقط)</span></h3>
+            <div style={{fontSize:12,color:'#0891B2',fontWeight:700}}>الإجمالي: {fmt(totalByCategory)} ر.س</div>
+          </div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))',gap:10}}>
+            {(byCategory as any[]).map((cat,i)=>{
+              const total = cat.sarf + cat.ohda
+              const pct = totalByCategory>0 ? (total/totalByCategory*100) : 0
+              const colors = ['#1E9CD7','#16A34A','#7C3AED','#F59E0B','#DC2626','#0891B2','#A855F7','#10B981']
+              const color = colors[i % colors.length]
+              return (
+                <div key={cat.category} style={{background:'white',border:`1px solid ${color}40`,borderRadius:8,padding:'10px 14px'}}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
+                    <div style={{fontSize:13,fontWeight:700,color:color}}>{cat.category}</div>
+                    <div style={{fontSize:11,background:`${color}15`,color:color,padding:'2px 8px',borderRadius:6,fontWeight:700}}>{pct.toFixed(1)}%</div>
+                  </div>
+                  <div style={{fontSize:18,fontWeight:900,color:'var(--cs-text)',fontFamily:'Cairo,sans-serif',marginBottom:6}}>{fmt(total)} <span style={{fontSize:11,fontWeight:400,color:'var(--cs-text-muted)'}}>ر.س</span></div>
+                  <div style={{height:6,background:'#F1F5F9',borderRadius:3,overflow:'hidden',marginBottom:6}}>
+                    <div style={{height:'100%',width:`${pct}%`,background:`linear-gradient(90deg, ${color}, ${color}CC)`,borderRadius:3}}/>
+                  </div>
+                  <div style={{display:'flex',justifyContent:'space-between',fontSize:10,color:'var(--cs-text-muted)'}}>
+                    <span>📋 عهدة: <strong style={{color:'#E67E22'}}>{fmt(cat.ohda)}</strong></span>
+                    <span>💸 صرف: <strong style={{color:'var(--cs-red)'}}>{fmt(cat.sarf)}</strong></span>
+                    <span>{cat.count} سجل</span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
       <div className="card" style={{marginBottom:16,padding:'12px 16px'}}>
         <div style={{display:'flex',gap:10}}>
           <div style={{position:'relative',flex:1}}>
