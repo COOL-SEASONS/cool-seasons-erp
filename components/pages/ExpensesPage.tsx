@@ -103,8 +103,8 @@ export default function ExpensesPage() {
     else if (r.transaction_type==='عهدة') byCategoryMap[cat].ohda += (r.amount||0)
     byCategoryMap[cat].count++
   })
-  const byCategory = Object.values(byCategoryMap).sort((a:any,b:any)=>(b.sarf+b.ohda)-(a.sarf+a.ohda))
-  const totalByCategory = (byCategory as any[]).reduce((s,c)=>s+c.sarf+c.ohda, 0)
+  const byCategory = Object.values(byCategoryMap).sort((a:any,b:any)=>(b.ohda-b.sarf)-(a.ohda-a.sarf))
+  const totalByCategory = (byCategory as any[]).reduce((s,c)=>s+(c.ohda-c.sarf), 0)
 
   return (
     <div>
@@ -160,7 +160,7 @@ export default function ExpensesPage() {
           </div>
           <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))',gap:10}}>
             {(byCategory as any[]).map((cat,i)=>{
-              const total = cat.sarf + cat.ohda
+              const total = cat.ohda - cat.sarf
               const pct = totalByCategory>0 ? (total/totalByCategory*100) : 0
               const colors = ['#1E9CD7','#16A34A','#7C3AED','#F59E0B','#DC2626','#0891B2','#A855F7','#10B981']
               const color = colors[i % colors.length]
