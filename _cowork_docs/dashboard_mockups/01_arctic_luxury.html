@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard - Arctic Luxury</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Tajawal', sans-serif;
+    background: linear-gradient(135deg, #F4F7FA 0%, #E8F2FB 100%);
+    min-height: 100vh;
+    padding: 32px;
+    color: #1A2332;
+  }
+  .container { max-width: 1400px; margin: 0 auto; }
+
+  /* Header */
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 28px;
+  }
+  .header h1 { font-size: 28px; font-weight: 800; color: #0F1B2D; }
+  .header .subtitle { color: #64748B; font-size: 14px; margin-top: 4px; }
+  .header .date {
+    background: white;
+    padding: 12px 20px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(30, 156, 215, 0.08);
+    font-size: 14px;
+    color: #475569;
+    font-weight: 500;
+  }
+
+  /* KPI Strip */
+  .kpi-strip {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+  .kpi-card {
+    background: white;
+    border-radius: 16px;
+    padding: 20px 22px;
+    box-shadow: 0 4px 16px rgba(15, 27, 45, 0.04);
+    border: 1px solid rgba(226, 232, 240, 0.6);
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.2s;
+  }
+  .kpi-card:hover { transform: translateY(-2px); }
+  .kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0; right: 0;
+    width: 4px; height: 100%;
+    background: var(--accent, #1E9CD7);
+  }
+  .kpi-icon {
+    width: 40px; height: 40px;
+    background: var(--icon-bg, #E0F2FE);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    margin-bottom: 12px;
+  }
+  .kpi-label { font-size: 13px; color: #64748B; font-weight: 500; margin-bottom: 6px; }
+  .kpi-value { font-size: 26px; font-weight: 800; color: #0F1B2D; line-height: 1.1; }
+  .kpi-unit { font-size: 13px; color: #94A3B8; font-weight: 500; margin-right: 4px; }
+  .kpi-trend {
+    display: inline-flex; align-items: center; gap: 4px;
+    margin-top: 8px;
+    font-size: 12px; font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 6px;
+  }
+  .trend-up { background: #DCFCE7; color: #16A34A; }
+  .trend-down { background: #FEE2E2; color: #DC2626; }
+  .trend-neutral { background: #F1F5F9; color: #64748B; }
+
+  /* Alerts Section */
+  .section-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #0F1B2D;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-title .badge {
+    background: #FEE2E2;
+    color: #DC2626;
+    padding: 2px 10px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  .alerts-grid {
+    background: white;
+    border-radius: 20px;
+    padding: 24px;
+    box-shadow: 0 4px 20px rgba(15, 27, 45, 0.05);
+    border: 1px solid rgba(226, 232, 240, 0.6);
+  }
+
+  .alert-item {
+    display: grid;
+    grid-template-columns: auto 1fr auto auto;
+    gap: 16px;
+    align-items: center;
+    padding: 16px 0;
+    border-bottom: 1px solid #F1F5F9;
+    transition: background 0.15s;
+  }
+  .alert-item:last-child { border-bottom: none; }
+  .alert-item:hover { background: #FAFBFC; margin: 0 -12px; padding: 16px 12px; border-radius: 10px; }
+
+  .alert-icon-wrap {
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+  }
+  .icon-critical { background: #FEE2E2; color: #DC2626; }
+  .icon-warning { background: #FEF3C7; color: #D97706; }
+
+  .alert-content .alert-title {
+    font-weight: 700;
+    color: #0F1B2D;
+    font-size: 15px;
+    margin-bottom: 3px;
+  }
+  .alert-content .alert-desc {
+    font-size: 13px;
+    color: #64748B;
+  }
+
+  .alert-meta {
+    text-align: left;
+  }
+  .alert-meta .value {
+    font-weight: 700;
+    color: #0F1B2D;
+    font-size: 15px;
+  }
+  .alert-meta .label {
+    font-size: 12px;
+    color: #94A3B8;
+  }
+
+  .alert-action {
+    background: #1E9CD7;
+    color: white;
+    border: none;
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-family: inherit;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .alert-action:hover { background: #1788BD; transform: scale(1.05); }
+  .alert-action.danger { background: #C0392B; }
+  .alert-action.danger:hover { background: #A93220; }
+
+  .severity-tag {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    margin-left: 8px;
+  }
+  .sev-critical { background: #FEE2E2; color: #DC2626; }
+  .sev-warning { background: #FEF3C7; color: #D97706; }
+
+  .footer-info {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid #F1F5F9;
+    display: flex;
+    justify-content: space-between;
+    color: #64748B;
+    font-size: 13px;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <div>
+      <h1>لوحة التحكم</h1>
+      <div class="subtitle">Cool Seasons — نظرة شاملة على العمليات والتنبيهات</div>
+    </div>
+    <div class="date">📅 الأحد، 10 مايو 2026</div>
+  </div>
+
+  <!-- KPI Strip -->
+  <div class="kpi-strip">
+
+    <div class="kpi-card" style="--accent: #1E9CD7; --icon-bg: #E0F2FE;">
+      <div class="kpi-icon">🏗️</div>
+      <div class="kpi-label">مشاريع جارية</div>
+      <div class="kpi-value">12</div>
+      <span class="kpi-trend trend-up">▲ 3 هذا الأسبوع</span>
+    </div>
+
+    <div class="kpi-card" style="--accent: #16A34A; --icon-bg: #DCFCE7;">
+      <div class="kpi-icon">💰</div>
+      <div class="kpi-label">إيراد الشهر</div>
+      <div class="kpi-value">285,400<span class="kpi-unit">ر.س</span></div>
+      <span class="kpi-trend trend-up">▲ 18% عن أبريل</span>
+    </div>
+
+    <div class="kpi-card" style="--accent: #F59E0B; --icon-bg: #FEF3C7;">
+      <div class="kpi-icon">📉</div>
+      <div class="kpi-label">مصروفات معتمدة</div>
+      <div class="kpi-value">142,300<span class="kpi-unit">ر.س</span></div>
+      <span class="kpi-trend trend-neutral">≈ مطابق للمتوسط</span>
+    </div>
+
+    <div class="kpi-card" style="--accent: #8B5CF6; --icon-bg: #EDE9FE;">
+      <div class="kpi-icon">📦</div>
+      <div class="kpi-label">قيمة المخزون</div>
+      <div class="kpi-value">178,500<span class="kpi-unit">ر.س</span></div>
+      <span class="kpi-trend trend-down">▼ 12% (استهلاك)</span>
+    </div>
+
+    <div class="kpi-card" style="--accent: #C0392B; --icon-bg: #FEE2E2;">
+      <div class="kpi-icon">🚨</div>
+      <div class="kpi-label">تنبيهات حرجة</div>
+      <div class="kpi-value">7</div>
+      <span class="kpi-trend trend-down">▲ 2 جديدة اليوم</span>
+    </div>
+
+  </div>
+
+  <!-- Alerts Section -->
+  <div class="section-title">
+    🚨 التنبيهات الحرجة <span class="badge">7</span>
+  </div>
+
+  <div class="alerts-grid">
+
+    <div class="alert-item">
+      <div class="alert-icon-wrap icon-critical">🔥</div>
+      <div class="alert-content">
+        <div class="alert-title">
+          نحاس ¼" × ½" — مخزون منخفض
+          <span class="severity-tag sev-critical">حرج</span>
+        </div>
+        <div class="alert-desc">متبقي 12م فقط. مشروع فيلا الخبر يحتاج 45م خلال 3 أيام</div>
+      </div>
+      <div class="alert-meta">
+        <div class="value">12 / 45 م</div>
+        <div class="label">المتوفر / المطلوب</div>
+      </div>
+      <button class="alert-action danger">طلب توريد</button>
+    </div>
+
+    <div class="alert-item">
+      <div class="alert-icon-wrap icon-critical">📑</div>
+      <div class="alert-content">
+        <div class="alert-title">
+          عقد AMC — شركة الراجحي للعقارات
+          <span class="severity-tag sev-critical">5 أيام</span>
+        </div>
+        <div class="alert-desc">ينتهي 15 مايو 2026. قيمة العقد 85,000 ر.س — يحتاج تجديد عاجل</div>
+      </div>
+      <div class="alert-meta">
+        <div class="value">15 مايو</div>
+        <div class="label">تاريخ الانتهاء</div>
+      </div>
+      <button class="alert-action danger">تجديد</button>
+    </div>
+
+    <div class="alert-item">
+      <div class="alert-icon-wrap icon-warning">❄️</div>
+      <div class="alert-content">
+        <div class="alert-title">
+          فريون R-32 — تحت الحد الأدنى
+          <span class="severity-tag sev-warning">تحذير</span>
+        </div>
+        <div class="alert-desc">متبقي 8كجم (الحد الأدنى 15كجم). الاستهلاك المتوقع للأسبوع 12كجم</div>
+      </div>
+      <div class="alert-meta">
+        <div class="value">8 / 15 كجم</div>
+        <div class="label">المتوفر / الحد الأدنى</div>
+      </div>
+      <button class="alert-action">طلب توريد</button>
+    </div>
+
+    <div class="alert-item">
+      <div class="alert-icon-wrap icon-warning">💸</div>
+      <div class="alert-content">
+        <div class="alert-title">
+          فاتورة #1234 — فيلا الخبر
+          <span class="severity-tag sev-warning">متأخرة 67 يوم</span>
+        </div>
+        <div class="alert-desc">أحمد العتيبي — لم يتم السداد منذ 4 مارس 2026</div>
+      </div>
+      <div class="alert-meta">
+        <div class="value">45,000 ر.س</div>
+        <div class="label">المبلغ المستحق</div>
+      </div>
+      <button class="alert-action">متابعة</button>
+    </div>
+
+    <div class="alert-item">
+      <div class="alert-icon-wrap icon-warning">🏗️</div>
+      <div class="alert-content">
+        <div class="alert-title">
+          دكت Galvanized — استهلاك متوقع
+          <span class="severity-tag sev-warning">تحذير</span>
+        </div>
+        <div class="alert-desc">متبقي 18م². مشروع مجمّع الياسمين يحتاج 35م² الأسبوع القادم</div>
+      </div>
+      <div class="alert-meta">
+        <div class="value">18 / 35 م²</div>
+        <div class="label">المتوفر / المطلوب</div>
+      </div>
+      <button class="alert-action">طلب توريد</button>
+    </div>
+
+    <div class="alert-item">
+      <div class="alert-icon-wrap icon-critical">⏰</div>
+      <div class="alert-content">
+        <div class="alert-title">
+          مشروع شركة المراعي — تأخير محتمل
+          <span class="severity-tag sev-critical">حرج</span>
+        </div>
+        <div class="alert-desc">7 أيام من الموعد النهائي، نسبة الإنجاز 60% فقط</div>
+      </div>
+      <div class="alert-meta">
+        <div class="value">60% / 100%</div>
+        <div class="label">المُنجز / المطلوب</div>
+      </div>
+      <button class="alert-action danger">مراجعة</button>
+    </div>
+
+    <div class="alert-item">
+      <div class="alert-icon-wrap icon-warning">🚐</div>
+      <div class="alert-content">
+        <div class="alert-title">
+          سيارة الفنيون #3 — صيانة دورية
+          <span class="severity-tag sev-warning">تذكير</span>
+        </div>
+        <div class="alert-desc">قطعت 12,500 كم منذ آخر صيانة. الموعد الموصى به الأسبوع القادم</div>
+      </div>
+      <div class="alert-meta">
+        <div class="value">12,500 كم</div>
+        <div class="label">منذ آخر صيانة</div>
+      </div>
+      <button class="alert-action">جدولة</button>
+    </div>
+
+    <div class="footer-info">
+      <span>آخر تحديث: قبل دقيقتين</span>
+      <span>عرض الكل ←</span>
+    </div>
+
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard - Atmospheric Intelligence</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Tajawal', sans-serif;
+    background:
+      radial-gradient(ellipse at top right, rgba(30, 156, 215, 0.15) 0%, transparent 50%),
+      radial-gradient(ellipse at bottom left, rgba(192, 57, 43, 0.08) 0%, transparent 50%),
+      linear-gradient(180deg, #0A1628 0%, #0F1F35 100%);
+    min-height: 100vh;
+    padding: 32px;
+    color: #E2E8F0;
+    position: relative;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(30, 156, 215, 0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(30, 156, 215, 0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .container { max-width: 1400px; margin: 0 auto; position: relative; z-index: 1; }
+
+  /* Header */
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 32px;
+  }
+  .header h1 {
+    font-size: 30px;
+    font-weight: 900;
+    background: linear-gradient(135deg, #FFFFFF 0%, #94C5E0 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: -0.5px;
+  }
+  .header .subtitle { color: #64748B; font-size: 14px; margin-top: 4px; }
+  .header .pulse-bar {
+    display: flex; gap: 12px; align-items: center;
+    background: rgba(15, 31, 53, 0.6);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(30, 156, 215, 0.2);
+    padding: 12px 20px;
+    border-radius: 12px;
+  }
+  .pulse-dot {
+    width: 8px; height: 8px;
+    background: #16A34A;
+    border-radius: 50%;
+    box-shadow: 0 0 12px #16A34A;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* KPI Strip */
+  .kpi-strip {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+  .kpi-card {
+    background: rgba(15, 31, 53, 0.7);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(30, 156, 215, 0.15);
+    border-radius: 18px;
+    padding: 22px;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s;
+  }
+  .kpi-card::before {
+    content: '';
+    position: absolute;
+    top: -50%; left: -50%;
+    width: 200%; height: 200%;
+    background: radial-gradient(circle, var(--glow, rgba(30, 156, 215, 0.15)) 0%, transparent 50%);
+    opacity: 0.6;
+    pointer-events: none;
+  }
+  .kpi-card:hover {
+    border-color: var(--accent, #1E9CD7);
+    box-shadow: 0 0 30px rgba(30, 156, 215, 0.15);
+  }
+  .kpi-card.critical {
+    border-color: rgba(192, 57, 43, 0.4);
+  }
+  .kpi-card.critical::before {
+    background: radial-gradient(circle, rgba(192, 57, 43, 0.2) 0%, transparent 50%);
+  }
+  .kpi-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 14px;
+    position: relative;
+    z-index: 1;
+  }
+  .kpi-icon {
+    width: 38px; height: 38px;
+    background: rgba(30, 156, 215, 0.1);
+    border: 1px solid rgba(30, 156, 215, 0.25);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+  .kpi-card.critical .kpi-icon {
+    background: rgba(192, 57, 43, 0.1);
+    border-color: rgba(192, 57, 43, 0.3);
+  }
+  .kpi-label { font-size: 12px; color: #64748B; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; position: relative; z-index: 1; }
+  .kpi-value {
+    font-size: 32px; font-weight: 900; color: #FFFFFF; line-height: 1;
+    position: relative; z-index: 1;
+    text-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+  }
+  .kpi-unit { font-size: 13px; color: #64748B; font-weight: 500; margin-right: 4px; }
+  .kpi-trend {
+    display: inline-flex; align-items: center; gap: 4px;
+    margin-top: 12px;
+    font-size: 11px; font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 20px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    position: relative;
+    z-index: 1;
+  }
+  .trend-up { background: rgba(22, 163, 74, 0.15); color: #4ADE80; border: 1px solid rgba(22, 163, 74, 0.3); }
+  .trend-down { background: rgba(220, 38, 38, 0.15); color: #F87171; border: 1px solid rgba(220, 38, 38, 0.3); }
+  .trend-neutral { background: rgba(100, 116, 139, 0.15); color: #94A3B8; border: 1px solid rgba(100, 116, 139, 0.3); }
+
+  /* Alerts Section */
+  .section-title {
+    font-size: 16px;
+    font-weight: 800;
+    color: #FFFFFF;
+    margin-bottom: 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .section-title .badge {
+    background: rgba(192, 57, 43, 0.15);
+    color: #F87171;
+    border: 1px solid rgba(192, 57, 43, 0.3);
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .section-title .live {
+    margin-right: auto;
+    font-size: 11px;
+    color: #16A34A;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .alerts-grid {
+    background: rgba(15, 31, 53, 0.5);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(30, 156, 215, 0.15);
+    border-radius: 20px;
+    padding: 8px;
+  }
+
+  .alert-item {
+    display: grid;
+    grid-template-columns: auto 1fr auto auto;
+    gap: 16px;
+    align-items: center;
+    padding: 18px 20px;
+    border-radius: 14px;
+    margin: 4px 0;
+    border: 1px solid transparent;
+    transition: all 0.2s;
+    position: relative;
+  }
+  .alert-item:hover {
+    background: rgba(30, 156, 215, 0.05);
+    border-color: rgba(30, 156, 215, 0.2);
+  }
+  .alert-item.critical::before {
+    content: '';
+    position: absolute;
+    right: 0; top: 12px; bottom: 12px;
+    width: 3px;
+    background: linear-gradient(180deg, #C0392B, transparent);
+    border-radius: 3px;
+  }
+
+  .alert-icon-wrap {
+    width: 46px; height: 46px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    border: 1px solid;
+  }
+  .icon-critical {
+    background: rgba(192, 57, 43, 0.1);
+    border-color: rgba(192, 57, 43, 0.3);
+    color: #F87171;
+  }
+  .icon-warning {
+    background: rgba(245, 158, 11, 0.1);
+    border-color: rgba(245, 158, 11, 0.3);
+    color: #FBBF24;
+  }
+
+  .alert-content .alert-title {
+    font-weight: 700;
+    color: #FFFFFF;
+    font-size: 15px;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .alert-content .alert-desc {
+    font-size: 13px;
+    color: #94A3B8;
+  }
+
+  .alert-meta { text-align: left; }
+  .alert-meta .value {
+    font-weight: 800;
+    color: #FFFFFF;
+    font-size: 16px;
+  }
+  .alert-meta .label {
+    font-size: 11px;
+    color: #64748B;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .alert-action {
+    background: rgba(30, 156, 215, 0.15);
+    color: #38BDF8;
+    border: 1px solid rgba(30, 156, 215, 0.3);
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-family: inherit;
+    font-weight: 700;
+    font-size: 12px;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: all 0.15s;
+  }
+  .alert-action:hover {
+    background: rgba(30, 156, 215, 0.25);
+    border-color: #38BDF8;
+    box-shadow: 0 0 20px rgba(30, 156, 215, 0.3);
+  }
+  .alert-action.danger {
+    background: rgba(192, 57, 43, 0.15);
+    color: #F87171;
+    border-color: rgba(192, 57, 43, 0.3);
+  }
+  .alert-action.danger:hover {
+    background: rgba(192, 57, 43, 0.25);
+    border-color: #F87171;
+    box-shadow: 0 0 20px rgba(192, 57, 43, 0.3);
+  }
+
+  .severity-tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 5px;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .sev-critical {
+    background: rgba(192, 57, 43, 0.2);
+    color: #F87171;
+    border: 1px solid rgba(192, 57, 43, 0.4);
+  }
+  .sev-warning {
+    background: rgba(245, 158, 11, 0.2);
+    color: #FBBF24;
+    border: 1px solid rgba(245, 158, 11, 0.4);
+  }
+
+  .footer-info {
+    margin-top: 8px;
+    padding: 16px 20px;
+    border-top: 1px solid rgba(30, 156, 215, 0.1);
+    display: flex;
+    justify-content: space-between;
+    color: #64748B;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <div>
+      <h1>COOL SEASONS</h1>
+      <div class="subtitle">Operations Command Center · Real-time Intelligence</div>
+    </div>
+    <div class="pulse-bar">
+      <div class="pulse-dot"></div>
+      <span style="font-size: 12px; color: #94A3B8;">LIVE</span>
+      <span style="color: #475569;">|</span>
+      <span style="font-size: 13px; color: #E2E8F0;">10 May 2026 · 14:32</span>
+    </div>
+  </div>
+
+  <!-- KPI Strip -->
+  <div class="kpi-strip">
+
+    <div class="kpi-card" style="--accent: #1E9CD7; --glow: rgba(30, 156, 215, 0.2);">
+      <div class="kpi-header">
+        <div class="kpi-icon">🏗️</div>
+      </div>
+      <div class="kpi-label">مشاريع جارية</div>
+      <div class="kpi-value">12</div>
+      <span class="kpi-trend trend-up">▲ 3 جديدة</span>
+    </div>
+
+    <div class="kpi-card" style="--accent: #16A34A; --glow: rgba(22, 163, 74, 0.2);">
+      <div class="kpi-header">
+        <div class="kpi-icon">💰</div>
+      </div>
+      <div class="kpi-label">إيراد الشهر</div>
+      <div class="kpi-value">285K<span class="kpi-unit">ر.س</span></div>
+      <span class="kpi-trend trend-up">▲ 18%</span>
+    </div>
+
+    <div class="kpi-card" style="--accent: #F59E0B; --glow: rgba(245, 158, 11, 0.2);">
+      <div class="kpi-header">
+        <div class="kpi-icon">📉</div>
+      </div>
+      <div class="kpi-label">مصروفات معتمدة</div>
+      <div class="kpi-value">142K<span class="kpi-unit">ر.س</span></div>
+      <span class="kpi-trend trend-neutral">≈ مطابق</span>
+    </div>
+
+    <div class="kpi-card" style="--accent: #8B5CF6; --glow: rgba(139, 92, 246, 0.2);">
+      <div class="kpi-header">
+        <div class="kpi-icon">📦</div>
+      </div>
+      <div class="kpi-label">قيمة المخزون</div>
+      <div class="kpi-value">178K<span class="kpi-unit">ر.س</span></div>
+      <span class="kpi-trend trend-down">▼ 12%</span>
+    </div>
+
+    <div class="kpi-card critical" style="--accent: #C0392B;">
+      <div class="kpi-header">
+        <div class="kpi-icon">🚨</div>
+      </div>
+      <div class="kpi-label">تنبيهات حرجة</div>
+      <div class="kpi-value">7</div>
+      <span class="kpi-trend trend-down">▲ 2 جديدة</span>
+    </div>
+
+  </div>
+
+  <!-- Alerts Section -->
+  <div class="section-title">
+    🚨 Critical Alerts <span class="badge">7 ACTIVE</span>
+    <span class="live"><span class="pulse-dot"></span> Live Feed</span>
+  </div>
+
+  <div class="alerts-grid">
+
+    <div class="alert-item critical">
+      <div class="alert-icon-wrap icon-critical">🔥</div>
+      <div class="alert-content">
+        <div class="alert-title">
+          نحاس ¼" × ½" — مخزون منخفض
+          <span class="severity-tag sev-critical">CRITICAL</span>
+        </div>
+        <div class="alert-desc">متبقي 12م فقط · مشروع فيلا الخبر يحتاج 45م خلال 3 أيام</div>
+      </div>
+      <div class="alert-meta">
+        <div class="value">12 / 45 م</div>
+        <div class="label">المتوفر / المطلوب</div>
+      </div>
+      <button class="alert-action danger">طلب توريد</button>
+    </div>
+
+    <div class="alert-item critical">
+      <div class="alert-icon-wrap icon-critical">📑</div>
+      <div class="alert-content">
+        <div class="alert-title">
+          عقد AMC — شركة الراجحي
+          <span class="severity-tag sev-critical">5 DAYS</span>
+        </div>
+        <div class="alert-desc">ينتهي 15 مايو · قيمة العقد 85,000 ر.س · يحتاج تجديد عاجل</div>
+      </div>
+      <div class="alert-meta">
+        <div class="value">15 مايو</div>
+        <div class="label">EXPIRY DATE</div>
+      </div>
+      <button class="alert-action danger">تجديد</button>
+    </div>
+
+    <div class="alert-item">
+      <div class="alert-icon-wrap icon-warning">❄️</div>
+      <div class="alert-content">
+        <div class="alert-title">
+          فريون R-32 — تحت الحد الأدنى
+          <span class="severity-tag sev-warning">WARNING</span>
+        </div>
+        <div class="alert-desc">متبقي 8كجم (الحد 15كجم) · الاستهلاك المتوقع 12كجم/أسبوع</div>
+      </div>
+      <div class="alert-meta">
+        <div class="value">8 / 15 كجم</div>
+        <div class="label">المتوفر / الأدنى</div>
+      </div>
+      <button class="alert-action">طلب توريد</button>
+    </div>
+
+    <div class="alert-item">
+      <div class="alert-icon-wrap icon-warning">💸</div>
+      <div class="alert-content">
+        <div class="alert-title">
+          فاتورة #1234 — فيلا الخبر
+          <span class="severity-tag sev-warning">+67 DAYS</span>
+        </div>
+        <div class="alert-desc">أحمد العتيبي · لم يُسدّد منذ 4 مارس 2026</div>
+      </div>
+      <div class="alert-meta">
+        <div class="value">45,000 ر.س</div>
+        <div class="label">OVERDUE</div>
+      </div>
+      <button class="alert-action">متابعة</button>
+    </div>
+
+    <div class="alert-item">
+      <div class="alert-icon-wrap icon-warning">🏗️</div>
+      <div class="alert-content">
+        <div class="alert-title">
+          دكت Galvanized — استهلاك متوقع
+          <span class="severity-tag sev-warning">WARNING</span>
+        </div>
+        <div class="alert-desc">متبقي 18م² · مشروع مجمّع الياسمين يحتاج 35م² الأسبوع القادم</div>
+      </div>
+      <div class="alert-meta">
+        <div class="value">18 / 35 م²</div>
+        <div class="label">المتوفر / المطلوب</div>
+      </div>
+      <button class="alert-action">طلب توريد</button>
+    </div>
+
+    <div class="alert-item critical">
+      <div class="alert-icon-wrap icon-critical">⏰</div>
+      <div class="alert-content">
+        <div class="alert-title">
+          مشروع المراعي — تأخير محتمل
+          <span class="severity-tag sev-critical">CRITICAL</span>
+        </div>
+        <div class="alert-desc">7 أيام من الموعد النهائي · نسبة الإنجاز 60%</div>
+      </div>
+      <div class="alert-meta">
+        <div class="value">60%</div>
+        <div class="label">PROGRESS</div>
+      </div>
+      <button class="alert-action danger">مراجعة</button>
+    </div>
+
+    <div class="alert-item">
+      <div class="alert-icon-wrap icon-warning">🚐</div>
+      <div class="alert-content">
+        <div class="alert-title">
+          سيارة الفنيون #3 — صيانة دورية
+          <span class="severity-tag sev-warning">REMINDER</span>
+        </div>
+        <div class="alert-desc">12,500 كم منذ آخر صيانة · الموعد الموصى به الأسبوع القادم</div>
+      </div>
+      <div class="alert-meta">
+        <div class="value">12,500 كم</div>
+        <div class="label">SINCE SERVICE</div>
+      </div>
+      <button class="alert-action">جدولة</button>
+    </div>
+
+    <div class="footer-info">
+      <span>LAST UPDATE · 2 MINUTES AGO</span>
+      <span>VIEW ALL →</span>
+    </div>
+
+  </div>
+
+</div>
+</body>
+</html>
