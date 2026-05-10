@@ -66,6 +66,7 @@ export default function DuctWorksPage(){
     linear_meters: '',
     duct_width_cm: '',
     duct_height_cm: '',
+    calculation_method: 'Materials',
     project_id: '',
     tech_id: '',
     receiver_tech_id: '',
@@ -131,6 +132,7 @@ export default function DuctWorksPage(){
       linear_meters: String(m.linear_meters||''),
       duct_width_cm: String(m.duct_width_cm||''),
       duct_height_cm: String(m.duct_height_cm||''),
+      calculation_method: m.calculation_method || 'Materials',
       project_id: m.project_id||'',
       tech_id: m.tech_id||'',
       receiver_tech_id: m.receiver_tech_id||'',
@@ -153,9 +155,20 @@ export default function DuctWorksPage(){
     const totalCost = form.movement_type === 'IN' ? (costPerPiece * numPieces) : (parseFloat(form.total_cost)||0)
     const ductInfo = getDuctType(form.duct_type)
 
-    if (qty <= 0) { alert(`الكمية بـ ${ductInfo.unitLabel} مطلوبة`); return }
-    if (form.movement_type === 'IN' && costPerPiece <= 0) { alert('تكلفة القطعة الواحدة مطلوبة'); return }
-    if (form.movement_type === 'IN' && numPieces <= 0) { alert('عدد القطع مطلوب'); return }
+    const method = form.calculation_method
+    if (method === 'Tonnage') {
+      const tn = parseFloat(form.cooling_tonnage)||0
+      if (tn <= 0) { alert('السعة بالطن مطلوبة'); return }
+      if (form.movement_type === 'IN' && parseFloat(form.total_cost) <= 0) { alert('إجمالي التكلفة مطلوب'); return }
+    } else if (method === 'Linear') {
+      const lm = parseFloat(form.linear_meters)||0
+      if (lm <= 0) { alert('المتر الطولي مطلوب'); return }
+      if (form.movement_type === 'IN' && parseFloat(form.total_cost) <= 0) { alert('إجمالي التكلفة مطلوب'); return }
+    } else {
+      if (qty <= 0) { alert(`الكمية بـ ${ductInfo.unitLabel} مطلوبة`); return }
+      if (form.movement_type === 'IN' && costPerPiece <= 0) { alert('تكلفة القطعة الواحدة مطلوبة'); return }
+      if (form.movement_type === 'IN' && numPieces <= 0) { alert('عدد القطع مطلوب'); return }
+    }
 
     if (form.movement_type === 'OUT' && !editId) {
       const matchingStock = stockBySpec.find(s => s.duct_type===form.duct_type)
@@ -180,23 +193,34 @@ export default function DuctWorksPage(){
     const isPreInsulated = form.duct_type==='PreInsulated'
     const isFlexOrSpiral = form.duct_type==='Flexible' || form.duct_type==='Spiral'
 
+    let finalQty = qty
+    let finalCost = cost
+    if (method === 'Tonnage') {
+      finalQty = parseFloat(form.cooling_tonnage) || 1
+      finalCost = parseFloat(form.total_cost) || 0
+    } else if (method === 'Linear') {
+      finalQty = parseFloat(form.linear_meters) || 1
+      finalCost = parseFloat(form.total_cost) || 0
+    }
+    
     const payload:any = {
       movement_code: form.movement_code.trim(),
       movement_date: form.movement_date,
       movement_type: form.movement_type,
-      duct_type: form.duct_type,
-      gauge_mm: isGalvanizedOrFiber ? (parseFloat(form.gauge_mm)||null) : null,
-      diameter_inch: isFlexOrSpiral ? (parseFloat(form.diameter_inch)||null) : null,
-      sheet_size: (form.duct_type==='Galvanized') ? (form.sheet_size||null) : (isPreInsulated?(form.sheet_size||null):null),
-      insulation_density: (isPreInsulated || form.duct_type==='Fiberglass') ? (parseInt(form.insulation_density)||null) : null,
-      insulation_type: isPreInsulated ? (form.insulation_type||null) : null,
-      thickness_mm: (isPreInsulated || form.duct_type==='Fiberglass') ? (parseInt(form.thickness_mm)||null) : null,
-      is_insulated: form.duct_type==='Flexible' ? form.is_insulated : false,
-      quantity: qty,
-      unit: ductInfo.unit,
+      duct_type: method === 'Materials' ? form.duct_type : 'Galvanized',
+      calculation_method: method,
+      gauge_mm: (method === 'Materials' && isGalvanizedOrFiber) ? (parseFloat(form.gauge_mm)||null) : null,
+      diameter_inch: (method === 'Materials' && isFlexOrSpiral) ? (parseFloat(form.diameter_inch)||null) : null,
+      sheet_size: (method === 'Materials' && (form.duct_type==='Galvanized' || isPreInsulated)) ? (form.sheet_size||null) : null,
+      insulation_density: (method === 'Materials' && (isPreInsulated || form.duct_type==='Fiberglass')) ? (parseInt(form.insulation_density)||null) : null,
+      insulation_type: (method === 'Materials' && isPreInsulated) ? (form.insulation_type||null) : null,
+      thickness_mm: (method === 'Materials' && (isPreInsulated || form.duct_type==='Fiberglass')) ? (parseInt(form.thickness_mm)||null) : null,
+      is_insulated: (method === 'Materials' && form.duct_type==='Flexible') ? form.is_insulated : false,
+      quantity: finalQty,
+      unit: method === 'Tonnage' ? 'tonnage' : (method === 'Linear' ? 'm' : ductInfo.unit),
       num_pieces: form.movement_type==='IN' ? numPieces : 0,
       waste_qty: form.movement_type==='OUT' ? waste : 0,
-      total_cost: cost,
+      total_cost: finalCost,
       project_id: form.project_id||null,
       tech_id: form.tech_id||null,
       receiver_tech_id: form.movement_type==='IN' ? (form.receiver_tech_id||null) : null,
@@ -545,7 +569,34 @@ export default function DuctWorksPage(){
                 </div>
               )}
 
-              {/* اختيار نوع الدكت */}
+              {/* 🎯 اختيار طريقة الحساب */}
+              <div style={{marginBottom:14}}>
+                <label className="form-label" style={{fontSize:13,fontWeight:700}}>🎯 طريقة الحساب *</label>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8}}>
+                  {[
+                    {key:'Tonnage', label:'❄️ بالطن', desc:'السعة التبريدية', color:'#0C4A6E'},
+                    {key:'Linear', label:'📏 بالمتر الطولي', desc:'القياس المباشر', color:'#7C3AED'},
+                    {key:'Materials', label:'🏗️ بالمواد', desc:'5 أنواع دكت', color:'#1E9CD7'}
+                  ].map(m=>(
+                    <button key={m.key}
+                      onClick={()=>setForm({...form, calculation_method: m.key})}
+                      style={{
+                        padding:'14px 8px',
+                        border:`2px solid ${form.calculation_method===m.key?m.color:'#E2E8F0'}`,
+                        background:form.calculation_method===m.key?`${m.color}15`:'white',
+                        color:form.calculation_method===m.key?m.color:'var(--cs-text-muted)',
+                        borderRadius:8,fontSize:13,fontWeight:700,cursor:'pointer',
+                        display:'flex',flexDirection:'column',alignItems:'center',gap:4
+                      }}>
+                      <span style={{fontSize:16}}>{m.label}</span>
+                      <span style={{fontSize:10,opacity:0.8,fontWeight:400}}>{m.desc}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* اختيار نوع الدكت - يظهر فقط للمواد */}
+              {form.calculation_method === 'Materials' && (
               <div style={{marginBottom:14}}>
                 <label className="form-label">🏗️ نوع الدكت *</label>
                 <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:6}}>
@@ -567,13 +618,64 @@ export default function DuctWorksPage(){
                   ))}
                 </div>
               </div>
+              )}
 
               <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
                 <div><label className="form-label">رقم الحركة *</label><input className="form-input" value={form.movement_code} onChange={e=>setForm({...form,movement_code:e.target.value})}/></div>
                 <div><label className="form-label">التاريخ</label><input type="date" className="form-input" value={form.movement_date} onChange={e=>setForm({...form,movement_date:e.target.value})}/></div>
 
-                {/* المواصفات حسب النوع */}
-                {(form.duct_type==='Galvanized' || form.duct_type==='Fiberglass') && (
+                {/* ❄️ طريقة الطن */}
+                {form.calculation_method === 'Tonnage' && (
+                  <div style={{gridColumn:'1/-1',background:'linear-gradient(135deg, #DBEAFE 0%, #E0F2FE 100%)',borderRadius:8,padding:14,border:'2px solid #1E9CD7'}}>
+                    <div style={{fontSize:13,fontWeight:700,color:'#0C4A6E',marginBottom:10,textAlign:'center'}}>❄️ الحساب بالسعة التبريدية</div>
+                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+                      <div>
+                        <label className="form-label">السعة بالطن *</label>
+                        <input type="number" min="0" step="0.5" className="form-input" style={{background:'white',fontWeight:700,fontSize:18,textAlign:'center'}} placeholder="مثلاً: 10" value={form.cooling_tonnage} onChange={e=>{
+                          const tn = e.target.value
+                          const tnNum = parseFloat(tn)||0
+                          const estLinear = tnNum > 0 ? (tnNum * 4).toFixed(1) : ''
+                          setForm({...form, cooling_tonnage:tn, linear_meters: estLinear})
+                        }}/>
+                      </div>
+                      <div>
+                        <label className="form-label">المتر الطولي المقابل (تقديري)</label>
+                        <input type="number" min="0" step="0.1" className="form-input" style={{background:'white',fontWeight:700,fontSize:14,textAlign:'center'}} value={form.linear_meters} onChange={e=>setForm({...form,linear_meters:e.target.value})}/>
+                        <div style={{fontSize:10,color:'var(--cs-text-muted)',marginTop:4,textAlign:'center'}}>1 طن ≈ 4 متر طولي</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 📏 طريقة المتر الطولي */}
+                {form.calculation_method === 'Linear' && (
+                  <div style={{gridColumn:'1/-1',background:'linear-gradient(135deg, #F3E8FF 0%, #FAF5FF 100%)',borderRadius:8,padding:14,border:'2px solid #7C3AED'}}>
+                    <div style={{fontSize:13,fontWeight:700,color:'#7C3AED',marginBottom:10,textAlign:'center'}}>📏 الحساب بالمتر الطولي</div>
+                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10}}>
+                      <div>
+                        <label className="form-label">المتر الطولي *</label>
+                        <input type="number" min="0" step="0.1" className="form-input" style={{background:'white',fontWeight:700,fontSize:18,textAlign:'center'}} placeholder="مثلاً: 25" value={form.linear_meters} onChange={e=>setForm({...form,linear_meters:e.target.value})}/>
+                      </div>
+                      <div>
+                        <label className="form-label">العرض (سم)</label>
+                        <input type="number" min="0" step="1" className="form-input" placeholder="30" value={form.duct_width_cm} onChange={e=>setForm({...form,duct_width_cm:e.target.value})}/>
+                      </div>
+                      <div>
+                        <label className="form-label">الارتفاع (سم)</label>
+                        <input type="number" min="0" step="1" className="form-input" placeholder="40" value={form.duct_height_cm} onChange={e=>setForm({...form,duct_height_cm:e.target.value})}/>
+                      </div>
+                    </div>
+                    {parseFloat(form.duct_width_cm)>0 && parseFloat(form.duct_height_cm)>0 && parseFloat(form.linear_meters)>0 && (
+                      <div style={{marginTop:10,padding:'8px 12px',background:'white',borderRadius:6,fontSize:12,textAlign:'center',color:'#7C3AED'}}>
+                        📐 المحيط: <strong>{((parseFloat(form.duct_width_cm)+parseFloat(form.duct_height_cm))*2/100).toFixed(2)}م</strong> · 
+                        المساحة المعادلة: <strong>{(parseFloat(form.linear_meters) * (parseFloat(form.duct_width_cm)+parseFloat(form.duct_height_cm))*2/100).toFixed(2)} م²</strong>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* المواصفات حسب النوع - للمواد فقط */}
+                {form.calculation_method === 'Materials' && (form.duct_type==='Galvanized' || form.duct_type==='Fiberglass') && (
                   <>
                     <div><label className="form-label">{form.duct_type==='Galvanized'?'السمك (mm)':'سمك العزل (mm)'} *</label>
                       <select className="form-input" value={form.duct_type==='Galvanized'?form.gauge_mm:form.thickness_mm} onChange={e=>setForm({...form,[form.duct_type==='Galvanized'?'gauge_mm':'thickness_mm']:e.target.value})}>
@@ -597,7 +699,7 @@ export default function DuctWorksPage(){
                   </>
                 )}
 
-                {form.duct_type==='PreInsulated' && (
+                {form.calculation_method === 'Materials' && form.duct_type==='PreInsulated' && (
                   <>
                     <div><label className="form-label">نوع العزل *</label>
                       <select className="form-input" value={form.insulation_type} onChange={e=>setForm({...form,insulation_type:e.target.value})}>
@@ -622,7 +724,7 @@ export default function DuctWorksPage(){
                   </>
                 )}
 
-                {(form.duct_type==='Flexible' || form.duct_type==='Spiral') && (
+                {form.calculation_method === 'Materials' && (form.duct_type==='Flexible' || form.duct_type==='Spiral') && (
                   <>
                     <div><label className="form-label">القطر (inch) *</label>
                       <select className="form-input" value={form.diameter_inch} onChange={e=>setForm({...form,diameter_inch:e.target.value})}>
@@ -641,7 +743,7 @@ export default function DuctWorksPage(){
                 )}
 
                 {/* عرض المخزون المتاح للاستخدام */}
-                {form.movement_type==='OUT' && matchingStock && (
+                {form.calculation_method === 'Materials' && form.movement_type==='OUT' && matchingStock && (
                   <div style={{gridColumn:'1/-1',background:'#F1F5F9',borderRadius:8,padding:'10px 14px',fontSize:13,display:'flex',justifyContent:'space-between',flexWrap:'wrap',gap:8}}>
                     <span>📦 المتاح من {ductInfo.label}:</span>
                     <span style={{fontWeight:700,color:matchingStock.current_qty<5?'var(--cs-orange)':'var(--cs-blue)'}}>
@@ -650,8 +752,8 @@ export default function DuctWorksPage(){
                   </div>
                 )}
 
-                {/* الكميات */}
-                {form.movement_type==='IN' ? (
+                {/* الكميات - للمواد فقط */}
+                {form.calculation_method === 'Materials' && form.movement_type==='IN' ? (
                   <>
                     <div>
                       <label className="form-label">عدد القطع/الألواح *</label>
@@ -681,7 +783,7 @@ export default function DuctWorksPage(){
                       </div>
                     </div>
                   </>
-                ) : (
+                ) : form.calculation_method === 'Materials' ? (
                   <>
                     <div><label className="form-label">الكمية المستخدمة ({ductInfo.unitLabel}) *</label>
                       <input type="number" min="0.01" step="0.01" className="form-input" style={{background:'#FFFDE7',fontWeight:700,fontSize:16,textAlign:'center'}} value={form.quantity} onChange={e=>setForm({...form,quantity:e.target.value})}/>
@@ -690,10 +792,10 @@ export default function DuctWorksPage(){
                       <input type="number" min="0" step="0.01" className="form-input" value={form.waste_qty} onChange={e=>setForm({...form,waste_qty:e.target.value})}/>
                     </div>
                   </>
-                )}
+                ) : null}
 
                 {/* التكلفة */}
-                {form.movement_type==='IN' ? (
+                {form.calculation_method === 'Materials' && form.movement_type==='IN' ? (
                   <div style={{gridColumn:'1/-1'}}>
                     <label className="form-label">💰 تكلفة القطعة الواحدة (ر.س) *</label>
                     <input type="number" min="0" step="0.01" className="form-input" style={{background:'#F0FFF4',fontWeight:700,fontSize:16}} placeholder="مثلاً: 150" value={form.cost_per_piece} onChange={e=>setForm({...form,cost_per_piece:e.target.value})}/>
@@ -717,83 +819,29 @@ export default function DuctWorksPage(){
                       </div>
                     )}
                   </div>
-                ) : (
+                ) : form.calculation_method === 'Materials' && form.movement_type === 'OUT' ? (
                   qtyNum>0 && (
                     <div style={{gridColumn:'1/-1',padding:'8px 12px',background:'#FFF8E7',borderRadius:6,fontSize:13,textAlign:'center'}}>
                       💰 التكلفة المحسوبة: <strong style={{color:'var(--cs-orange)',fontSize:15}}>{fmt(usingFromAvg)} ر.س</strong>
                       <span style={{fontSize:11,color:'var(--cs-text-muted)',marginRight:8}}>({fmt(qtyNum+wasteNum)} {ductInfo.unitLabel} × {fmt(matchingStock?.avg_cost_per_unit||0)} ر.س)</span>
                     </div>
                   )
-                )}
-
-                {/* 📐 طرق إضافية للحساب */}
-                <div style={{gridColumn:'1/-1',background:'#F0F9FF',borderRadius:8,padding:'12px 14px',border:'1px solid #BAE6FD'}}>
-                  <div style={{fontSize:13,fontWeight:700,color:'#0C4A6E',marginBottom:10}}>📐 طرق إضافية للحساب (اختيارية)</div>
-                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
-                    <div>
-                      <label className="form-label" style={{fontSize:11}}>❄️ السعة بالطن (Tonnage)</label>
-                      <input type="number" min="0" step="0.5" className="form-input" placeholder="مثلاً: 5" value={form.cooling_tonnage} onChange={e=>{
-                        const tn = e.target.value
-                        // تقدير تلقائي للمتر الطولي (1 طن ≈ 4 متر طولي رئيسي)
-                        const tnNum = parseFloat(tn)||0
-                        const estLinear = tnNum > 0 ? (tnNum * 4).toFixed(1) : ''
-                        setForm({...form, cooling_tonnage:tn, linear_meters: form.linear_meters || estLinear})
-                      }}/>
-                    </div>
-                    <div>
-                      <label className="form-label" style={{fontSize:11}}>📏 المتر الطولي المقابل</label>
-                      <input type="number" min="0" step="0.1" className="form-input" placeholder="محسوب أو يدوي" value={form.linear_meters} onChange={e=>setForm({...form,linear_meters:e.target.value})}/>
-                    </div>
+                ) : (
+                  <div style={{gridColumn:'1/-1'}}>
+                    <label className="form-label">💰 إجمالي التكلفة (ر.س) {form.movement_type==='IN'?'*':'(محسوبة تلقائياً للاستخدام)'}</label>
+                    <input type="number" min="0" step="0.01" className="form-input" style={{background:form.movement_type==='IN'?'#F0FFF4':'#FFF8E7',fontWeight:700,fontSize:16,textAlign:'center'}} placeholder={form.calculation_method==='Tonnage'?'مثلاً: 5000':'مثلاً: 1500'} value={form.total_cost} onChange={e=>setForm({...form,total_cost:e.target.value})}/>
+                    {form.calculation_method==='Tonnage' && parseFloat(form.cooling_tonnage)>0 && parseFloat(form.total_cost)>0 && (
+                      <div style={{marginTop:6,padding:'6px 12px',background:'#E0F2FE',borderRadius:6,fontSize:11,color:'#0C4A6E',textAlign:'center'}}>
+                        💡 تكلفة الطن الواحد: <strong>{fmt(parseFloat(form.total_cost)/parseFloat(form.cooling_tonnage))} ر.س/طن</strong>
+                      </div>
+                    )}
+                    {form.calculation_method==='Linear' && parseFloat(form.linear_meters)>0 && parseFloat(form.total_cost)>0 && (
+                      <div style={{marginTop:6,padding:'6px 12px',background:'#F3E8FF',borderRadius:6,fontSize:11,color:'#7C3AED',textAlign:'center'}}>
+                        💡 تكلفة المتر الطولي: <strong>{fmt(parseFloat(form.total_cost)/parseFloat(form.linear_meters))} ر.س/م</strong>
+                      </div>
+                    )}
                   </div>
-                  
-                  {/* أبعاد الدكت (للأنواع المستطيلة) */}
-                  {(form.duct_type==='Galvanized' || form.duct_type==='PreInsulated' || form.duct_type==='Fiberglass') && (
-                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10,marginTop:10}}>
-                      <div>
-                        <label className="form-label" style={{fontSize:11}}>📐 العرض (سم)</label>
-                        <input type="number" min="0" step="1" className="form-input" placeholder="مثلاً: 30" value={form.duct_width_cm} onChange={e=>{
-                          const w = e.target.value
-                          const h = parseFloat(form.duct_height_cm)||0
-                          const wNum = parseFloat(w)||0
-                          // المحيط = 2 × (العرض + الارتفاع) بالمتر
-                          const perimeter = wNum>0 && h>0 ? 2 * (wNum + h) / 100 : 0
-                          const qty = parseFloat(form.quantity)||0
-                          // المتر الطولي = المتر² ÷ المحيط
-                          const linear = perimeter > 0 && qty > 0 ? (qty / perimeter).toFixed(2) : form.linear_meters
-                          setForm({...form, duct_width_cm: w, linear_meters: linear})
-                        }}/>
-                      </div>
-                      <div>
-                        <label className="form-label" style={{fontSize:11}}>📐 الارتفاع (سم)</label>
-                        <input type="number" min="0" step="1" className="form-input" placeholder="مثلاً: 40" value={form.duct_height_cm} onChange={e=>{
-                          const h = e.target.value
-                          const w = parseFloat(form.duct_width_cm)||0
-                          const hNum = parseFloat(h)||0
-                          const perimeter = w>0 && hNum>0 ? 2 * (w + hNum) / 100 : 0
-                          const qty = parseFloat(form.quantity)||0
-                          const linear = perimeter > 0 && qty > 0 ? (qty / perimeter).toFixed(2) : form.linear_meters
-                          setForm({...form, duct_height_cm: h, linear_meters: linear})
-                        }}/>
-                      </div>
-                      <div style={{display:'flex',alignItems:'flex-end'}}>
-                        {parseFloat(form.duct_width_cm)>0 && parseFloat(form.duct_height_cm)>0 && (
-                          <div style={{background:'white',padding:'6px 10px',borderRadius:6,fontSize:11,color:'var(--cs-blue)',width:'100%',textAlign:'center'}}>
-                            المحيط: <strong>{((parseFloat(form.duct_width_cm)+parseFloat(form.duct_height_cm))*2/100).toFixed(2)}م</strong>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* ملخص التحويل */}
-                  {(parseFloat(form.cooling_tonnage)>0 || parseFloat(form.linear_meters)>0) && (
-                    <div style={{marginTop:10,padding:'8px 12px',background:'white',borderRadius:6,fontSize:11,display:'flex',justifyContent:'space-around',gap:8,color:'var(--cs-text-muted)'}}>
-                      {parseFloat(form.cooling_tonnage)>0 && <span>❄️ <strong style={{color:'#1E9CD7'}}>{form.cooling_tonnage} طن</strong></span>}
-                      {qtyNum>0 && <span>📦 <strong>{fmt(qtyNum)} {ductInfo.unitLabel}</strong></span>}
-                      {parseFloat(form.linear_meters)>0 && <span>📏 <strong style={{color:'#16A34A'}}>{form.linear_meters} م طولي</strong></span>}
-                    </div>
-                  )}
-                </div>
+                )}
 
                 {/* المشروع */}
                 <div style={{gridColumn:'1/-1'}}>
