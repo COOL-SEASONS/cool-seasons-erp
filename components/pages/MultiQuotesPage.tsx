@@ -13,17 +13,16 @@ const newForm=()=>({
   status:'Draft',accepted_tier:'',notes:''
 })
 
-  const generateCode = (rows: any[]) => {
-    if(!rows.length) return 'MQ-101'
-    const nums = rows
-      .map((r:any) => r.quote_code?.replace('MQ-',''))
-      .filter(Boolean)
-      .map((n:string) => parseInt(n.replace(/\D/g,'')))
-      .filter((n:number) => !isNaN(n))
-    if(!nums.length) return 'MQ-101'
-    return 'MQ-' + (Math.max(...nums) + 1)
-  }
-
+const generateCode = (rows: any[]) => {
+  if(!rows.length) return 'MQ-101'
+  const nums = rows
+    .map((r:any) => r.quote_code?.replace('MQ-',''))
+    .filter(Boolean)
+    .map((n:string) => parseInt(n.replace(/\D/g,'')))
+    .filter((n:number) => !isNaN(n))
+  if(!nums.length) return 'MQ-101'
+  return 'MQ-' + (Math.max(...nums) + 1)
+}
 
 export default function MultiQuotesPage() {
   const [rows,setRows]=useState<any[]>([])
@@ -64,9 +63,10 @@ export default function MultiQuotesPage() {
     const ep=parseFloat(form.economy_price)||0
     const sp=parseFloat(form.standard_price)||0
     const pp=parseFloat(form.premium_price)||0
-    // Core payload - columns that definitely exist
+
     const payload:any={
       quote_code:form.quote_code.trim(),
+      quote_ref:form.quote_code.trim(),   // ← إضافة quote_ref لتجنب not-null error
       client_id:form.client_id||null,
       description:form.description||null,
       quote_date:form.quote_date||null,
@@ -80,7 +80,7 @@ export default function MultiQuotesPage() {
       status:form.status,
       notes:form.notes||null,
     }
-    // Try accepted_tier - may not exist yet
+
     const withTier={...payload,accepted_tier:form.accepted_tier||null}
     const {error}=editId
       ? await supabase.from('multi_quotes').update(withTier).eq('id',editId)
@@ -113,9 +113,11 @@ export default function MultiQuotesPage() {
           <button className="btn-primary" onClick={()=>{setForm({...newForm(), quote_code: generateCode(rows)});setEditId(null);setModal(true)}}><Plus size={16}/>عرض جديد</button>
         </div>
       </div>
+
       <div className="card" style={{marginBottom:16,padding:'12px 16px'}}>
         <div style={{position:'relative'}}><Search size={16} style={{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',color:'var(--cs-text-muted)'}}/><input className="form-input" style={{paddingRight:34}} placeholder="بحث..." value={search} onChange={e=>setSearch(e.target.value)}/></div>
       </div>
+
       <div className="card">
         {loading?<div style={{padding:40,textAlign:'center',color:'var(--cs-text-muted)'}}>جاري التحميل...</div>:(
           <div className="table-wrap"><table>
@@ -157,7 +159,11 @@ export default function MultiQuotesPage() {
             <div style={{marginBottom:14}}><div style={{fontSize:12,color:'var(--cs-text-muted)'}}>العميل</div><div style={{fontWeight:700,fontSize:16}}>{viewItem.clients?.company_name||'—'}</div></div>
             {viewItem.description&&<div style={{marginBottom:14,padding:'8px 12px',background:'var(--cs-gray-light)',borderRadius:8,fontSize:13}}>{viewItem.description}</div>}
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10,marginBottom:14}}>
-              {[{l:'💚 اقتصادي',v:viewItem.economy_total||viewItem.economy_price,c:'var(--cs-green)',bg:'#F0FFF4'},{l:'💛 قياسي',v:viewItem.standard_total||viewItem.standard_price,c:'#B7950B',bg:'#FFFDF0'},{l:'💎 متميز',v:viewItem.premium_total||viewItem.premium_price,c:'var(--cs-blue)',bg:'#EBF5FB'}].map((tier,i)=>(
+              {[
+                {l:'💚 اقتصادي',v:viewItem.economy_total||viewItem.economy_price,c:'var(--cs-green)',bg:'#F0FFF4'},
+                {l:'💛 قياسي',v:viewItem.standard_total||viewItem.standard_price,c:'#B7950B',bg:'#FFFDF0'},
+                {l:'💎 متميز',v:viewItem.premium_total||viewItem.premium_price,c:'var(--cs-blue)',bg:'#EBF5FB'}
+              ].map((tier,i)=>(
                 <div key={i} style={{background:tier.bg,border:`1px solid ${tier.c}30`,borderRadius:10,padding:12,textAlign:'center'}}>
                   <div style={{fontSize:12,fontWeight:700,color:tier.c,marginBottom:6}}>{tier.l}</div>
                   <div style={{fontSize:18,fontWeight:900,color:tier.c,fontFamily:'Cairo,sans-serif'}}>{fmt(tier.v)}</div>
@@ -167,7 +173,12 @@ export default function MultiQuotesPage() {
             </div>
             {viewItem.accepted_tier&&<div style={{background:'#E8F8EF',borderRadius:8,padding:'10px 14px',marginBottom:10,fontWeight:700,color:'var(--cs-green)',fontSize:14}}>✅ الخيار المقبول: {viewItem.accepted_tier}</div>}
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:4}}>
-              {[{l:'تاريخ العرض',v:viewItem.quote_date},{l:'تاريخ الانتهاء',v:viewItem.expiry_date},{l:'الحالة',v:STATUS_AR[viewItem.status]||viewItem.status},{l:'ملاحظات',v:viewItem.notes}].map(({l,v},i)=>v?(
+              {[
+                {l:'تاريخ العرض',v:viewItem.quote_date},
+                {l:'تاريخ الانتهاء',v:viewItem.expiry_date},
+                {l:'الحالة',v:STATUS_AR[viewItem.status]||viewItem.status},
+                {l:'ملاحظات',v:viewItem.notes}
+              ].map(({l,v},i)=>v?(
                 <div key={i} style={{padding:'6px 8px',borderBottom:'1px solid var(--cs-border)'}}>
                   <div style={{fontSize:10,color:'var(--cs-text-muted)'}}>{l}</div>
                   <div style={{fontSize:13,fontWeight:600}}>{v}</div>
@@ -193,11 +204,15 @@ export default function MultiQuotesPage() {
               <div><label className="form-label">تاريخ العرض</label><input type="date" className="form-input" value={form.quote_date} onChange={e=>setForm({...form,quote_date:e.target.value})}/></div>
               <div><label className="form-label">تاريخ الانتهاء</label><input type="date" className="form-input" value={form.expiry_date} onChange={e=>setForm({...form,expiry_date:e.target.value})}/></div>
             </div>
-            {/* Pricing tiers */}
+
             <div style={{marginTop:16,marginBottom:14}}>
               <div style={{fontWeight:700,fontSize:14,marginBottom:10}}>مستويات التسعير — قبل VAT</div>
               <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:12}}>
-                {[{key:'economy_price',label:'💚 اقتصادي',color:'var(--cs-green)',border:'#27AE60',val:ep},{key:'standard_price',label:'💛 قياسي',color:'#B7950B',border:'#F0D060',val:sp},{key:'premium_price',label:'💎 متميز',color:'var(--cs-blue)',border:'var(--cs-blue)',val:pp}].map(tier=>(
+                {[
+                  {key:'economy_price',label:'💚 اقتصادي',color:'var(--cs-green)',border:'#27AE60',val:ep},
+                  {key:'standard_price',label:'💛 قياسي',color:'#B7950B',border:'#F0D060',val:sp},
+                  {key:'premium_price',label:'💎 متميز',color:'var(--cs-blue)',border:'var(--cs-blue)',val:pp}
+                ].map(tier=>(
                   <div key={tier.key} style={{border:`2px solid ${tier.border}`,borderRadius:10,padding:12}}>
                     <div style={{fontSize:13,fontWeight:700,color:tier.color,marginBottom:8}}>{tier.label}</div>
                     <input type="number" min="0" className="form-input" style={{marginBottom:6}} value={form[tier.key]} onChange={e=>setForm({...form,[tier.key]:e.target.value})}/>
@@ -207,6 +222,7 @@ export default function MultiQuotesPage() {
                 ))}
               </div>
             </div>
+
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
               <div><label className="form-label">الحالة</label><select className="form-input" value={form.status} onChange={e=>setForm({...form,status:e.target.value})}>{Object.keys(STATUS_AR).map(s=><option key={s} value={s}>{STATUS_AR[s]}</option>)}</select></div>
               <div><label className="form-label">الخيار المقبول</label><select className="form-input" value={form.accepted_tier} onChange={e=>setForm({...form,accepted_tier:e.target.value})}>
@@ -217,6 +233,7 @@ export default function MultiQuotesPage() {
               </select></div>
               <div style={{gridColumn:'1/-1'}}><label className="form-label">ملاحظات</label><textarea className="form-input" rows={2} value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})}/></div>
             </div>
+
             <div style={{display:'flex',gap:10,marginTop:20,justifyContent:'flex-end'}}>
               <button className="btn-secondary" onClick={()=>setModal(false)}>إلغاء</button>
               <button className="btn-primary" onClick={save} disabled={saving}><Save size={15}/>{saving?'جاري الحفظ...':'حفظ'}</button>
