@@ -147,7 +147,7 @@ export default function Home() {
 
   function renderPage() {
     switch(page) {
-      case 'dashboard':         return <DashboardContent onNav={nav}/>
+      case 'dashboard':         return <DashboardContent/>
       case 'clients':           return <ClientsPage/>
       case 'projects':          return <ProjectsPage/>
       case 'technicians':       return <TechniciansPage/>
