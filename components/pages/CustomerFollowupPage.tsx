@@ -44,11 +44,26 @@ export default function CustomerFollowupPage() {
   const save=async()=>{
     if(!form.followup_code.trim()) return alert('الكود مطلوب')
     setSaving(true)
-    const payload={followup_code:form.followup_code.trim(),client_id:form.client_id||null,project_id:form.project_id||null,scheduled_date:form.scheduled_date||null,contact_method:form.contact_method||null,rating:form.rating||null,action_required:form.action_required||null,next_date:form.next_date||null,assigned_to:form.assigned_to||null,status:form.status||'مفتوح',summary:form.summary||null,service_type:form.service_type||null}
-    const {error}=editId?await supabase.from('customer_followup').update(payload).eq('id',editId):await supabase.from('customer_followup').insert(payload)
+    const payload:any={followup_code:form.followup_code.trim(),client_id:form.client_id||null,project_id:form.project_id||null,scheduled_date:form.scheduled_date||null,contact_method:form.contact_method||null,rating:form.rating||null,action_required:form.action_required||null,next_date:form.next_date||null,assigned_to:form.assigned_to||null,status:form.status||'مفتوح',summary:form.summary||null,service_type:form.service_type||null}
+
+    const doSave=(p:any)=>editId
+      ?supabase.from('customer_followup').update(p).eq('id',editId)
+      :supabase.from('customer_followup').insert(p)
+
+    let {error}=await doSave(payload)
+
+    // ✅ الإصلاح الوحيد: إذا عمود غير موجود في DB احذفه وأعد المحاولة تلقائياً
+    for(const col of ['project_id','action_required','assigned_to','service_type']){
+      if(error?.message?.includes(col)){
+        delete payload[col]
+        ;({error}=await doSave(payload))
+      }
+    }
+
     if(error) alert('خطأ: '+error.message); else{setModal(false);load()}
     setSaving(false)
   }
+
   const del=async(id:string)=>{if(!confirm('حذف؟'))return;await supabase.from('customer_followup').delete().eq('id',id);load()}
   const today=new Date().toISOString().split('T')[0]
   const todayFollowups=rows.filter(r=>r.scheduled_date?.split('T')[0]===today)
