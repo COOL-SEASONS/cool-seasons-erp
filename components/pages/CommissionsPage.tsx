@@ -48,6 +48,10 @@ export default function CommissionsPage() {
     const paid=parseFloat(form.paid_amount)||0
     // ✅ الإصلاح الوحيد: حذف commission_amt و balance من الـ payload
     // لأنهما generated columns في DB تُحسب تلقائياً
+    // ✅ تحويل "يوليو 2026" → "2026-07-01" لأن DB يتوقع DATE
+    const mIdx=months.indexOf((form.period_month||'').split(' ')[0])
+    const mYear=(form.period_month||'').split(' ')[1]
+    const periodDate=mIdx>=0&&mYear?`${mYear}-${String(mIdx+1).padStart(2,'0')}-01`:null
     const payload={
       broker_name:form.broker_name||null,
       project_id:form.project_id||null,
@@ -55,10 +59,6 @@ export default function CommissionsPage() {
       sales_amount:sales,
       commission_pct:pct,
       paid_amount:paid,
-      // ✅ تحويل "يوليو 2026" → "2026-07-01" لأن DB يتوقع DATE
-      const mIdx=months.indexOf((form.period_month||'').split(' ')[0])
-      const mYear=(form.period_month||'').split(' ')[1]
-      const periodDate=mIdx>=0&&mYear?`${mYear}-${String(mIdx+1).padStart(2,'0')}-01`:null
       period_month:periodDate,
       status:form.status,
       notes:form.notes||null
