@@ -143,8 +143,6 @@ export default function Home() {
   const [mob,  setMob]  = useState(false)
   const nav = (id: string) => { setPage(id); setMob(false) }
 
-  const isDashboard = page === 'dashboard'
-
   function renderPage() {
     switch(page) {
       case 'dashboard':         return <DashboardContent/>
@@ -196,7 +194,7 @@ export default function Home() {
       case 'copper_pipe':       return <CopperPipePage/>
       case 'duct_works':        return <DuctWorksPage/>
       default: return (
-        <div style={{textAlign:'center',padding:60,color:'var(--cs-text-muted)'}}>
+        <div style={{textAlign:'center',padding:60,color:'#94A3B8'}}>
           <BarChart3 size={40} style={{marginBottom:12,opacity:0.3}}/>
           <div style={{fontWeight:600}}>قيد التطوير</div>
         </div>
@@ -208,9 +206,9 @@ export default function Home() {
     <div style={{display:'flex',flexDirection:'column',height:'100%'}}>
 
       {/* ── Logo ── */}
-      <div style={{padding:'18px 14px 14px',borderBottom:'1px solid rgba(34,211,238,0.08)'}}>
+      <div style={{padding:'18px 14px 14px',borderBottom:'1px solid rgba(30,156,215,0.15)'}}>
         <div style={{display:'flex',alignItems:'center',gap:10}}>
-          <div style={{width:36,height:36,background:'linear-gradient(135deg,#22D3EE,#0891B2)',borderRadius:9,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+          <div style={{width:36,height:36,background:'linear-gradient(135deg,#1E9CD7,#0F4C81)',borderRadius:9,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,boxShadow:'0 4px 12px rgba(30,156,215,0.25)'}}>
             <svg width="20" height="20" viewBox="0 0 60 60" fill="none">
               <g stroke="white" strokeWidth="3.5" strokeLinecap="round">
                 <line x1="30" y1="8"  x2="30" y2="52"/>
@@ -225,8 +223,8 @@ export default function Home() {
             </svg>
           </div>
           <div>
-            <div style={{fontFamily:'Cairo,sans-serif',fontWeight:900,fontSize:12.5,color:'#F1F5F9',lineHeight:1.3}}>مواسم البرودة</div>
-            <div style={{fontFamily:'monospace',fontSize:8.5,color:'#22D3EE',letterSpacing:'1.5px',marginTop:1,fontWeight:600}}>COOL SEASONS ERP</div>
+            <div style={{fontFamily:'Cairo,sans-serif',fontWeight:900,fontSize:12.5,color:'#0F172A',lineHeight:1.3}}>مواسم البرودة</div>
+            <div style={{fontFamily:'monospace',fontSize:8.5,color:'#1E9CD7',letterSpacing:'1.5px',marginTop:1,fontWeight:600}}>COOL SEASONS ERP</div>
           </div>
         </div>
       </div>
@@ -238,24 +236,35 @@ export default function Home() {
             {item.children ? (
               <div>
                 <div
-                  className="nav-item"
                   onClick={() => setOpen(p => p.includes(item.id) ? p.filter(x=>x!==item.id) : [...p,item.id])}
-                  style={{justifyContent:'space-between'}}
+                  style={{
+                    display:'flex',alignItems:'center',justifyContent:'space-between',
+                    padding:'8px 10px',borderRadius:8,cursor:'pointer',
+                    color:'#475569',marginBottom:2
+                  }}
+                  onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.background='#F1F5F9'}}
+                  onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.background='transparent'}}
                 >
                   <div style={{display:'flex',alignItems:'center',gap:9}}>
-                    <item.icon size={14} style={{opacity:0.6}}/>
+                    <item.icon size={14} style={{opacity:0.7}}/>
                     <span style={{fontSize:12.5,fontWeight:600}}>{item.label}</span>
                   </div>
-                  <ChevronDown size={12} style={{transform:open.includes(item.id)?'rotate(180deg)':'none',transition:'transform 0.2s',opacity:0.4}}/>
+                  <ChevronDown size={12} style={{transform:open.includes(item.id)?'rotate(180deg)':'none',transition:'transform 0.2s',opacity:0.5}}/>
                 </div>
                 {open.includes(item.id) && (
                   <div style={{paddingRight:23,marginBottom:2}}>
                     {item.children.map(c => (
                       <div
                         key={c.id}
-                        className={`nav-item ${page===c.id?'active':''}`}
                         onClick={() => nav(c.id)}
-                        style={{fontSize:12,padding:'6px 10px'}}
+                        style={{
+                          padding:'6px 10px',borderRadius:6,cursor:'pointer',
+                          fontSize:12,
+                          color: page===c.id?'#1E9CD7':'#64748B',
+                          background: page===c.id?'#EFF6FF':'transparent',
+                          fontWeight: page===c.id?700:500,
+                          marginBottom:1
+                        }}
                       >
                         {c.label}
                       </div>
@@ -265,9 +274,15 @@ export default function Home() {
               </div>
             ) : (
               <div
-                className={`nav-item ${page===item.id?'active':''}`}
                 onClick={() => nav(item.id)}
-                style={{fontSize:13,fontWeight:700}}
+                style={{
+                  display:'flex',alignItems:'center',gap:9,
+                  padding:'8px 10px',borderRadius:8,cursor:'pointer',
+                  fontSize:13,fontWeight:700,
+                  color: page===item.id?'#1E9CD7':'#334155',
+                  background: page===item.id?'#EFF6FF':'transparent',
+                  marginBottom:2
+                }}
               >
                 <item.icon size={15}/><span>{item.label}</span>
               </div>
@@ -277,11 +292,17 @@ export default function Home() {
       </nav>
 
       {/* ── Settings ── */}
-      <div style={{padding:'10px 8px',borderTop:'1px solid rgba(34,211,238,0.06)'}}>
+      <div style={{padding:'10px 8px',borderTop:'1px solid rgba(30,156,215,0.1)'}}>
         <div
-          className={`nav-item ${page==='settings_page'?'active':''}`}
           onClick={() => nav('settings_page')}
-          style={{fontSize:12.5}}
+          style={{
+            display:'flex',alignItems:'center',gap:9,
+            padding:'8px 10px',borderRadius:8,cursor:'pointer',
+            fontSize:12.5,
+            color: page==='settings_page'?'#1E9CD7':'#475569',
+            background: page==='settings_page'?'#EFF6FF':'transparent',
+            fontWeight: page==='settings_page'?700:600
+          }}
         >
           <Settings size={14}/><span>الإعدادات</span>
         </div>
@@ -290,24 +311,27 @@ export default function Home() {
   )
 
   return (
-    <div style={{display:'flex',minHeight:'100vh'}}>
+    <div style={{display:'flex',minHeight:'100vh',background:'#F8FBFF'}}>
 
-      {/* ── SIDEBAR (dark always) ── */}
+      {/* ── SIDEBAR (Premium Light) ── */}
       <aside className="sidebar" style={{
-        width:240, background:'#0B1623',
-        borderLeft:'1px solid rgba(34,211,238,0.08)',
+        width:240, 
+        background:'rgba(255,255,255,0.92)',
+        backdropFilter:'blur(20px)',
+        borderLeft:'1px solid rgba(30,156,215,0.12)',
         position:'fixed', top:0, right:0,
         height:'100vh', zIndex:50, overflowY:'auto',
+        boxShadow:'-4px 0 20px rgba(15,23,42,0.04)'
       }}>
         <SidebarContent/>
       </aside>
 
       {/* ── MOBILE OVERLAY ── */}
       {mob && <>
-        <div onClick={() => setMob(false)} style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.65)',zIndex:99}}/>
-        <aside style={{width:260,background:'#0B1623',position:'fixed',top:0,right:0,height:'100vh',zIndex:100,overflowY:'auto'}}>
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'14px 16px',borderBottom:'1px solid rgba(34,211,238,0.08)'}}>
-            <span style={{fontWeight:700,color:'#E2E8F0',fontSize:13}}>القائمة</span>
+        <div onClick={() => setMob(false)} style={{position:'fixed',inset:0,background:'rgba(15,23,42,0.45)',zIndex:99,backdropFilter:'blur(4px)'}}/>
+        <aside style={{width:260,background:'white',position:'fixed',top:0,right:0,height:'100vh',zIndex:100,overflowY:'auto',boxShadow:'-4px 0 24px rgba(15,23,42,0.15)'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'14px 16px',borderBottom:'1px solid rgba(30,156,215,0.12)'}}>
+            <span style={{fontWeight:700,color:'#0F172A',fontSize:13}}>القائمة</span>
             <button onClick={() => setMob(false)} style={{background:'none',border:'none',cursor:'pointer',color:'#64748B'}}><X size={18}/></button>
           </div>
           <SidebarContent/>
@@ -318,47 +342,51 @@ export default function Home() {
       <main className="main-content" style={{
         flex:1, marginRight:240, minHeight:'100vh',
         display:'flex', flexDirection:'column',
-        /* dashboard → dark bg | other pages → original light bg */
-        background: isDashboard ? '#06080F' : 'var(--cs-gray-light)',
+        background: 'transparent'
       }}>
 
-        {/* ── HEADER (dark always) ── */}
+        {/* ── HEADER (Premium Light) ── */}
         <header style={{
-          background:'#080C16',
-          borderBottom:'1px solid rgba(34,211,238,0.07)',
+          background:'rgba(255,255,255,0.85)',
+          backdropFilter:'blur(20px)',
+          borderBottom:'1px solid rgba(30,156,215,0.1)',
           padding:'0 22px', height:56,
           display:'flex', alignItems:'center', justifyContent:'space-between',
           position:'sticky', top:0, zIndex:40,
+          boxShadow:'0 1px 3px rgba(15,23,42,0.02)'
         }}>
           <button onClick={() => setMob(true)} style={{background:'none',border:'none',cursor:'pointer',color:'#475569'}} id="mob-btn">
             <Menu size={20}/>
           </button>
 
-          <div style={{fontFamily:'monospace',fontSize:12,fontWeight:600,letterSpacing:'0.5px',
-            color: isDashboard ? '#22D3EE' : '#94A3B8'}}>
-            {isDashboard ? '⬡ MISSION CONTROL' : getPageLabel(page)}
+          <div style={{
+            fontFamily:'Tajawal,Cairo,sans-serif',
+            fontSize:13,fontWeight:700,
+            color:'#0F172A',letterSpacing:'-0.01em'
+          }}>
+            {getPageLabel(page)}
           </div>
 
           <div style={{display:'flex',alignItems:'center',gap:12}}>
-            <div style={{display:'flex',alignItems:'center',gap:5,background:'rgba(34,211,238,0.05)',border:'1px solid rgba(34,211,238,0.12)',borderRadius:20,padding:'3px 10px'}}>
-              <div style={{width:6,height:6,background:'#22C55E',borderRadius:'50%',animation:'pulseLive 2s infinite'}}/>
-              <span style={{fontSize:10,color:'#22D3EE',fontFamily:'monospace',fontWeight:600,letterSpacing:'0.5px'}}>LIVE</span>
+            <div style={{display:'flex',alignItems:'center',gap:6,background:'rgba(22,163,74,0.08)',border:'1px solid rgba(22,163,74,0.2)',borderRadius:20,padding:'4px 10px'}}>
+              <div style={{width:6,height:6,background:'#16A34A',borderRadius:'50%',boxShadow:'0 0 0 3px rgba(22,163,74,0.15)'}}/>
+              <span style={{fontSize:10,color:'#15803D',fontFamily:'monospace',fontWeight:700,letterSpacing:'0.5px'}}>LIVE</span>
             </div>
             <Bell size={16} color="#475569" style={{cursor:'pointer'}}/>
-            <div style={{width:28,height:28,background:'linear-gradient(135deg,#22D3EE,#0891B2)',borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',color:'white',fontSize:12,fontWeight:700}}>م</div>
+            <div style={{width:28,height:28,background:'linear-gradient(135deg,#1E9CD7,#0F4C81)',borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',color:'white',fontSize:12,fontWeight:700,boxShadow:'0 2px 8px rgba(30,156,215,0.3)'}}>م</div>
           </div>
         </header>
 
         {/* ── CONTENT ── */}
-        <div style={{flex:1, padding: isDashboard ? '18px 20px' : '24px'}}>
+        <div style={{flex:1}}>
           {renderPage()}
         </div>
       </main>
 
       {/* ── MOBILE BOTTOM NAV ── */}
-      <nav id="mob-nav" style={{display:'none',position:'fixed',bottom:0,left:0,right:0,background:'#0B1623',borderTop:'1px solid rgba(34,211,238,0.08)',zIndex:100,padding:'5px 0'}}>
+      <nav id="mob-nav" style={{display:'none',position:'fixed',bottom:0,left:0,right:0,background:'rgba(255,255,255,0.95)',backdropFilter:'blur(20px)',borderTop:'1px solid rgba(30,156,215,0.12)',zIndex:100,padding:'5px 0',boxShadow:'0 -4px 12px rgba(15,23,42,0.05)'}}>
         {MOBILE_NAV.map(item => (
-          <button key={item.id} onClick={() => nav(item.id)} style={{flex:1,background:'none',border:'none',cursor:'pointer',display:'flex',flexDirection:'column',alignItems:'center',gap:3,padding:'4px 0',color:page===item.id?'#22D3EE':'#475569',fontSize:10,fontFamily:'Tajawal,sans-serif',fontWeight:600}}>
+          <button key={item.id} onClick={() => nav(item.id)} style={{flex:1,background:'none',border:'none',cursor:'pointer',display:'flex',flexDirection:'column',alignItems:'center',gap:3,padding:'4px 0',color:page===item.id?'#1E9CD7':'#64748B',fontSize:10,fontFamily:'Tajawal,sans-serif',fontWeight:600}}>
             <item.icon size={19}/>{item.label}
           </button>
         ))}
@@ -372,7 +400,6 @@ export default function Home() {
           #mob-btn{display:flex!important}
         }
         @media(min-width:769px){#mob-btn{display:none!important}}
-        @keyframes pulseLive{0%,100%{opacity:1}50%{opacity:0.3}}
       `}</style>
     </div>
   )
