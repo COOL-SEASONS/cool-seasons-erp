@@ -6,7 +6,7 @@ import { Plus, Search, Edit2, Trash2, X, Save, Printer, ChevronDown, ChevronUp, 
 // ─── ثوابت أوامر التغيير ──────────────────────────────
 const CO_AR: any = { Pending:'انتظار موافقة', Approved:'موافق عليها', Rejected:'مرفوضة', Cancelled:'ملغية' }
 const CO_C:  any = { Pending:'badge-amber', Approved:'badge-green', Rejected:'badge-red', Cancelled:'badge-gray' }
-const newCO = () => ({ co_code:`CO-${551+Math.floor(Date.now()/1000)%9000}`, project_id:'', client_id:'', description:'', amount:'0', requested_date:new Date().toISOString().split('T')[0], approved_date:'', status:'Pending', notes:'' })
+const newCO = () => ({ co_code:`CO-${551+Math.floor(Date.now()/1000)%9000}`, project_id:'', client_id:'', description:'', amount:'0', requested_date:new Date().toISOString().split('T')[0], approved_date:'', status:'Pending', change_type:'Addition', deduction_reason:'', notes:'' })
 
 // ─── تبويبات ─────────────────────────────────────────
 type Tab = 'costing' | 'changeorders'
@@ -91,9 +91,13 @@ export default function JobCostingPage() {
     // أوامر شراء
     const poCost      = purchaseOrders.filter(p=>p.project_id===pid&&p.status!=='Cancelled').reduce((s,p)=>s+(p.grand_total||0),0)
 
-    // أوامر التغيير (المعتمدة فقط تؤثر على التكاليف)
-    const coApproved  = changeOrders.filter(c=>c.project_id===pid&&c.status==='Approved').reduce((s,c)=>s+(c.amount||0),0)
-    const coPending   = changeOrders.filter(c=>c.project_id===pid&&c.status==='Pending').reduce((s,c)=>s+(c.amount||0),0)
+    // أوامر التغيير — إضافات وخصميات
+    const coAdditions  = changeOrders.filter(c=>c.project_id===pid&&c.status==='Approved'&&c.change_type!=='Deduction').reduce((s,c)=>s+(c.amount||0),0)
+    const coDeductions = changeOrders.filter(c=>c.project_id===pid&&c.status==='Approved'&&c.change_type==='Deduction').reduce((s,c)=>s+(c.amount||0),0)
+    const coApproved   = coAdditions   // للتوافق مع الكود السابق
+    const coPending    = changeOrders.filter(c=>c.project_id===pid&&c.status==='Pending').reduce((s,c)=>s+(c.amount||0),0)
+    // قيمة العقد المعدّلة = الأصلية + الإضافات المعتمدة - الخصميات المعتمدة
+    const revisedBudget = (projects.find(p=>p.id===pid)?.budget||0) + coAdditions - coDeductions
 
     // الفواتير (الإيرادات الفعلية)
     const invoiced    = invoices.filter(i=>i.project_id===pid).reduce((s,i)=>s+(i.amount||0),0)
@@ -140,14 +144,14 @@ export default function JobCostingPage() {
   }
 
   const openEditCO = (r: any) => {
-    setCoForm({ co_code:r.co_code||'', project_id:r.project_id||'', client_id:r.client_id||'', description:r.description||'', amount:String(r.amount||0), requested_date:r.requested_date||'', approved_date:r.approved_date||'', status:r.status||'Pending', notes:r.notes||'' })
+    setCoForm({ co_code:r.co_code||'', project_id:r.project_id||'', client_id:r.client_id||'', description:r.description||'', amount:String(r.amount||0), requested_date:r.requested_date||'', approved_date:r.approved_date||'', status:r.status||'Pending', change_type:r.change_type||'Addition', deduction_reason:r.deduction_reason||'', notes:r.notes||'' })
     setCoEditId(r.id); setCoModal(true)
   }
 
   const saveCO = async () => {
     if (!coForm.co_code?.trim()) return alert('رقم الأمر مطلوب')
     setCoSaving(true)
-    const payload = { co_code:coForm.co_code.trim(), project_id:coForm.project_id||null, client_id:coForm.client_id||null, description:coForm.description||null, amount:parseFloat(coForm.amount)||0, requested_date:coForm.requested_date||null, approved_date:coForm.approved_date||null, status:coForm.status, notes:coForm.notes||null }
+    const payload = { co_code:coForm.co_code.trim(), project_id:coForm.project_id||null, client_id:coForm.client_id||null, description:coForm.description||null, amount:parseFloat(coForm.amount)||0, requested_date:coForm.requested_date||null, approved_date:coForm.approved_date||null, status:coForm.status, change_type:coForm.change_type||'Addition', deduction_reason:coForm.deduction_reason||null, notes:coForm.notes||null }
     const { error } = coEditId
       ? await supabase.from('change_orders').update(payload).eq('id',coEditId)
       : await supabase.from('change_orders').insert(payload)
@@ -344,9 +348,10 @@ ${coList.map(co=>`<tr><td style="font-family:monospace">${co.co_code}</td><td>${
                       : filteredProjects.map(proj => {
                         const c = calcProject(proj.id)
                         const budget = proj.budget || 0
-                        const profit = budget - c.totalCost
-                        const margin = budget > 0 ? Math.round(profit/budget*100) : 0
-                        const overBudget = c.totalCost > budget && budget > 0
+                        const revised = budget + c.coAdditions - c.coDeductions
+                        const profit = revised - c.totalCost
+                        const margin = revised > 0 ? Math.round(profit/revised*100) : 0
+                        const overBudget = c.totalCost > revised && revised > 0
                         const expanded = expandedId === proj.id
                         const projCOs   = changeOrders.filter(co => co.project_id === proj.id)
 
@@ -364,7 +369,14 @@ ${coList.map(co=>`<tr><td style="font-family:monospace">${co.co_code}</td><td>${
                               <div style={{ fontSize:10, fontFamily:'monospace', color:'var(--cs-text-muted)' }}>{proj.project_code}</div>
                             </td>
                             <td style={{ fontSize:12 }}>{proj.clients?.company_name||'—'}</td>
-                            <td style={{ fontWeight:600, color:'var(--cs-blue)' }}>{fmt(budget)} ر.س</td>
+                            <td>
+                              <div style={{ fontWeight:600, color:'var(--cs-blue)' }}>{fmt(budget)} ر.س</div>
+                              {revised !== budget && (
+                                <div style={{ fontSize:10, color: revised>budget?'var(--cs-green)':'var(--cs-red)', fontWeight:600 }}>
+                                  معدّلة: {fmt(revised)} ر.س
+                                </div>
+                              )}
+                            </td>
                             <td style={{ fontSize:12, color: c.eqCost>0?'var(--cs-red)':'var(--cs-text-muted)' }}>{c.eqCost>0?fmt(c.eqCost)+' ر.س':'—'}</td>
                             <td style={{ fontSize:12, color: c.materialCost>0?'var(--cs-red)':'var(--cs-text-muted)' }}>{c.materialCost>0?fmt(c.materialCost)+' ر.س':'—'}</td>
                             <td style={{ fontSize:12, color: c.expCost>0?'var(--cs-red)':'var(--cs-text-muted)' }}>{c.expCost>0?fmt(c.expCost)+' ر.س':'—'}</td>
@@ -376,10 +388,10 @@ ${coList.map(co=>`<tr><td style="font-family:monospace">${co.co_code}</td><td>${
                             </td>
                             <td style={{ fontWeight:800, color: overBudget?'var(--cs-red)':'var(--cs-text)' }}>{fmt(c.totalCost)} ر.س</td>
                             <td style={{ fontWeight:800, color: profit>=0?'var(--cs-green)':'var(--cs-red)' }}>
-                              {budget > 0 ? `${profit>=0?'+':''}${fmt(profit)} ر.س` : <span style={{ color:'var(--cs-text-muted)', fontSize:11 }}>غير محدد</span>}
+                              {revised > 0 ? `${profit>=0?'+':''}${fmt(profit)} ر.س` : <span style={{ color:'var(--cs-text-muted)', fontSize:11 }}>غير محدد</span>}
                             </td>
                             <td>
-                              {budget > 0 ? (
+                              {revised > 0 ? (
                                 <span style={{ fontWeight:700, fontSize:12,
                                   color: margin>=25?'#16A34A':margin>=10?'#D97706':'#DC2626',
                                   background: margin>=25?'#F0FDF4':margin>=10?'#FFFBEB':'#FEF2F2',
@@ -426,12 +438,15 @@ ${coList.map(co=>`<tr><td style="font-family:monospace">${co.co_code}</td><td>${
                                         { l:'💸 مصروفات',               v:c.expCost },
                                         { l:'👷 مقاولون',               v:c.ctCost, sub: `مدفوع: ${fmt(c.ctPaid)} ر.س` },
                                         { l:'📦 أوامر شراء',            v:c.poCost },
-                                        { l:'📋 أوامر تغيير (معتمدة)',  v:c.coApproved },
-                                      ].map(({ l, v, sub }, i) => (
+                                        { l:'📋 أوامر تغيير إضافات (معتمدة)',  v:c.coAdditions },
+                                        { l:'📋 أوامر تغيير خصميات (معتمدة)', v:c.coDeductions, neg:true },
+                                      ].map(({ l, v, sub, neg }: any, i: number) => (
                                         <div key={i} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'4px 0', borderBottom:'1px solid var(--cs-border)', fontSize:12 }}>
                                           <span style={{ color:'var(--cs-text-muted)' }}>{l}</span>
                                           <div style={{ textAlign:'left' }}>
-                                            <span style={{ fontWeight:600, color: v>0?'var(--cs-red)':'var(--cs-text-muted)' }}>{v>0?fmt(v)+' ر.س':'—'}</span>
+                                            <span style={{ fontWeight:600, color: v>0?(neg?'var(--cs-green)':'var(--cs-red)'):'var(--cs-text-muted)' }}>
+                                              {v>0?(neg?'−':'+')+fmt(v)+' ر.س':'—'}
+                                            </span>
                                             {sub && <div style={{ fontSize:10, color:'var(--cs-text-muted)' }}>{sub}</div>}
                                           </div>
                                         </div>
@@ -551,9 +566,19 @@ ${coList.map(co=>`<tr><td style="font-family:monospace">${co.co_code}</td><td>${
                         <td style={{ fontWeight:600 }}>{r.projects?.project_name||'—'}</td>
                         <td>{r.clients?.company_name||'—'}</td>
                         <td style={{ maxWidth:180, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', fontSize:12 }}>{r.description||'—'}</td>
-                        <td style={{ fontWeight:700, color:'var(--cs-blue)' }}>{fmt(r.amount)} ر.س</td>
+                        <td>
+                          <span style={{ fontWeight:700, color: r.change_type==='Deduction'?'var(--cs-red)':'var(--cs-blue)' }}>
+                            {r.change_type==='Deduction'?'−':'+'}{fmt(r.amount)} ر.س
+                          </span>
+                          {r.change_type==='Deduction' && r.deduction_reason && (
+                            <div style={{ fontSize:10, color:'var(--cs-red)' }}>📝 {r.deduction_reason}</div>
+                          )}
+                        </td>
                         <td style={{ fontSize:12 }}>{r.requested_date||'—'}</td>
-                        <td><span className={`badge ${CO_C[r.status]||'badge-gray'}`}>{CO_AR[r.status]||r.status}</span></td>
+                        <td>
+                          <span className={`badge ${CO_C[r.status]||'badge-gray'}`}>{CO_AR[r.status]||r.status}</span>
+                          {r.change_type && <span style={{ fontSize:10, marginRight:4, color: r.change_type==='Deduction'?'var(--cs-red)':r.change_type==='Addition'?'var(--cs-green)':'var(--cs-text-muted)' }}>{r.change_type==='Addition'?'➕':r.change_type==='Deduction'?'➖':'🔄'}</span>}
+                        </td>
                         <td><div style={{ display:'flex', gap:4 }}>
                           <button onClick={() => setCoPrint(r)} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--cs-green)' }}><Printer size={14}/></button>
                           <button onClick={() => openEditCO(r)} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--cs-blue)' }}><Edit2 size={14}/></button>
@@ -585,6 +610,13 @@ ${coList.map(co=>`<tr><td style="font-family:monospace">${co.co_code}</td><td>${
                   {Object.keys(CO_AR).map(s=><option key={s} value={s}>{CO_AR[s]}</option>)}
                 </select>
               </div>
+              <div><label className="form-label">نوع الأمر</label>
+                <select className="form-input" value={coForm.change_type||'Addition'} onChange={e=>setCoForm({...coForm,change_type:e.target.value})}>
+                  <option value="Addition">➕ إضافة نطاق — تُضاف للعقد</option>
+                  <option value="Deduction">➖ خصم — تُخصم من العقد</option>
+                  <option value="Variation">🔄 تعديل — بدون تغيير مالي</option>
+                </select>
+              </div>
               <div><label className="form-label">المشروع</label>
                 <select className="form-input" value={coForm.project_id||''} onChange={e=>{
                   const proj = projects.find(x=>x.id===e.target.value)
@@ -612,6 +644,12 @@ ${coList.map(co=>`<tr><td style="font-family:monospace">${co.co_code}</td><td>${
               {coForm.status === 'Approved' && (
                 <div><label className="form-label">تاريخ الموافقة</label>
                   <input type="date" className="form-input" value={coForm.approved_date||''} onChange={e=>setCoForm({...coForm,approved_date:e.target.value})}/>
+                </div>
+              )}
+              {coForm.change_type === 'Deduction' && (
+                <div style={{ gridColumn:'1/-1' }}>
+                  <label className="form-label">سبب الخصم *</label>
+                  <input className="form-input" placeholder="مثال: غرامة تأخير، خصم ضمان، تعديل كميات..." value={coForm.deduction_reason||''} onChange={e=>setCoForm({...coForm,deduction_reason:e.target.value})}/>
                 </div>
               )}
               <div style={{ gridColumn:'1/-1' }}><label className="form-label">ملاحظات</label>
