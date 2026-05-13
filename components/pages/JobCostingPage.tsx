@@ -104,7 +104,7 @@ export default function JobCostingPage() {
     const collected   = invoices.filter(i=>i.project_id===pid).reduce((s,i)=>s+(i.paid_amount||0),0)
 
     const totalCost   = eqCost + materialCost + expCost + ctCost + poCost
-    return { eqCost, eqRevenue, materialCost, copperCost, freonCost, ductCost, expCost, ctCost, ctPaid, poCost, coApproved, coPending, invoiced, collected, totalCost }
+    return { eqCost, eqRevenue, materialCost, copperCost, freonCost, ductCost, expCost, ctCost, ctPaid, poCost, coApproved, coAdditions, coDeductions, coPending, invoiced, collected, totalCost }
   }
 
   const fmt = (n: number) => new Intl.NumberFormat('ar-SA',{maximumFractionDigits:0}).format(n||0)
