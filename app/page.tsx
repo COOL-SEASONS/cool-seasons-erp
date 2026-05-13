@@ -1,58 +1,55 @@
 'use client'
-import { useState } from 'react'
-import {
-  LayoutDashboard, Users, FolderOpen, Wrench, DollarSign, Package, UserCheck,
-  FileText, Bell, ChevronDown, Settings, Menu, X, BarChart3, BarChart2
-} from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { supabase } from '@/lib/supabase'
+import { LayoutDashboard,Users,FolderOpen,Wrench,DollarSign,Package,UserCheck,FileText,Bell,ChevronDown,AlertCircle,AlertTriangle,TrendingUp,Building2,Settings,Menu,X,BarChart3,BarChart2 } from 'lucide-react'
 
-import DashboardContent    from '@/components/pages/DashboardContent'
-import ClientsPage         from '@/components/pages/ClientsPage'
-import ProjectsPage        from '@/components/pages/ProjectsPage'
-import TechniciansPage     from '@/components/pages/TechniciansPage'
-import InvoicesPage        from '@/components/pages/InvoicesPage'
-import MaintenancePage     from '@/components/pages/MaintenancePage'
-import MaintReportPage     from '@/components/pages/MaintReportPage'
-import InventoryPage       from '@/components/pages/InventoryPage'
-import ExpensesPage        from '@/components/pages/ExpensesPage'
-import ContractsPage       from '@/components/pages/ContractsPage'
-import VehiclesPage        from '@/components/pages/VehiclesPage'
-import CompanyDocsPage     from '@/components/pages/CompanyDocsPage'
-import QuotationsPage      from '@/components/pages/QuotationsPage'
-import DailyLogsPage       from '@/components/pages/DailyLogsPage'
-import PunchListPage       from '@/components/pages/PunchListPage'
-import ChangeOrdersPage    from '@/components/pages/ChangeOrdersPage'
-import HRAttendancePage    from '@/components/pages/HRAttendancePage'
-import CallCenterPage      from '@/components/pages/CallCenterPage'
-import CommissionsPage     from '@/components/pages/CommissionsPage'
-import DispatchBoardPage   from '@/components/pages/DispatchBoardPage'
-import WIPPage             from '@/components/pages/WIPPage'
-import JobCostingPage      from '@/components/pages/JobCostingPage'
-import RetentionPage       from '@/components/pages/RetentionPage'
-import PricebookPage       from '@/components/pages/PricebookPage'
-import RecurringJobsPage   from '@/components/pages/RecurringJobsPage'
-import FreonPage           from '@/components/pages/FreonPage'
-import PurchaseOrdersPage  from '@/components/pages/PurchaseOrdersPage'
-import EquipmentPage       from '@/components/pages/EquipmentPage'
-import WarrantyPage        from '@/components/pages/WarrantyPage'
-import ContractorPage      from '@/components/pages/ContractorPage'
+import DashboardContent from '@/components/pages/DashboardContent'
+import ClientsPage from '@/components/pages/ClientsPage'
+import ProjectsPage from '@/components/pages/ProjectsPage'
+import TechniciansPage from '@/components/pages/TechniciansPage'
+import InvoicesPage from '@/components/pages/InvoicesPage'
+import MaintenancePage from '@/components/pages/MaintenancePage'
+import MaintReportPage from '@/components/pages/MaintReportPage'
+import InventoryPage from '@/components/pages/InventoryPage'
+import ExpensesPage from '@/components/pages/ExpensesPage'
+import ContractsPage from '@/components/pages/ContractsPage'
+import VehiclesPage from '@/components/pages/VehiclesPage'
+import CompanyDocsPage from '@/components/pages/CompanyDocsPage'
+import QuotationsPage from '@/components/pages/QuotationsPage'
+import DailyLogsPage from '@/components/pages/DailyLogsPage'
+import PunchListPage from '@/components/pages/PunchListPage'
+import HRAttendancePage from '@/components/pages/HRAttendancePage'
+import CallCenterPage from '@/components/pages/CallCenterPage'
+import CommissionsPage from '@/components/pages/CommissionsPage'
+import DispatchBoardPage from '@/components/pages/DispatchBoardPage'
+import WIPPage from '@/components/pages/WIPPage'
+import JobCostingPage from '@/components/pages/JobCostingPage'
+import RetentionPage from '@/components/pages/RetentionPage'
+import PricebookPage from '@/components/pages/PricebookPage'
+import RecurringJobsPage from '@/components/pages/RecurringJobsPage'
+import FreonPage from '@/components/pages/FreonPage'
+import PurchaseOrdersPage from '@/components/pages/PurchaseOrdersPage'
+import EquipmentPage from '@/components/pages/EquipmentPage'
+import WarrantyPage from '@/components/pages/WarrantyPage'
+import ContractorPage from '@/components/pages/ContractorPage'
 import CustomerFollowupPage from '@/components/pages/CustomerFollowupPage'
 import TechLeaderboardPage from '@/components/pages/TechLeaderboardPage'
-import GanttPage           from '@/components/pages/GanttPage'
-import PrintProjectPage    from '@/components/pages/PrintProjectPage'
-import ReportsPage         from '@/components/pages/ReportsPage'
-import SettingsPage        from '@/components/pages/SettingsPage'
+import GanttPage from '@/components/pages/GanttPage'
+import PrintProjectPage from '@/components/pages/PrintProjectPage'
+import ReportsPage from '@/components/pages/ReportsPage'
+import SettingsPage from '@/components/pages/SettingsPage'
 import UnsoldEstimatesPage from '@/components/pages/UnsoldEstimatesPage'
-import AMCDashboardPage    from '@/components/pages/AMCDashboardPage'
-import CapacityPlanPage    from '@/components/pages/CapacityPlanPage'
-import ClientCardPage      from '@/components/pages/ClientCardPage'
-import JobChecklistsPage   from '@/components/pages/JobChecklistsPage'
-import MultiQuotesPage     from '@/components/pages/MultiQuotesPage'
-import MonthlyReportPage   from '@/components/pages/MonthlyReportPage'
+import AMCDashboardPage from '@/components/pages/AMCDashboardPage'
+import CapacityPlanPage from '@/components/pages/CapacityPlanPage'
+import ClientCardPage from '@/components/pages/ClientCardPage'
+import JobChecklistsPage from '@/components/pages/JobChecklistsPage'
+import MultiQuotesPage from '@/components/pages/MultiQuotesPage'
+import MonthlyReportPage from '@/components/pages/MonthlyReportPage'
 import SupplierComparePage from '@/components/pages/SupplierComparePage'
-import CashFlowPage        from '@/components/pages/CashFlowPage'
-import FlatRatePage        from '@/components/pages/FlatRatePage'
-import CopperPipePage      from '@/components/pages/CopperPipePage'
-import DuctWorksPage       from '@/components/pages/DuctWorksPage'
+import CashFlowPage from '@/components/pages/CashFlowPage'
+import FlatRatePage from '@/components/pages/FlatRatePage'
+import CopperPipePage from '@/components/pages/CopperPipePage'
+import DuctWorksPage from '@/components/pages/DuctWorksPage'
 
 const NAV = [
   { id:'dashboard', label:'لوحة التحكم', icon:LayoutDashboard },
@@ -71,7 +68,6 @@ const NAV = [
     {id:'gantt',label:'مخطط جانت'},
     {id:'invoices',label:'الفواتير'},
     {id:'expenses',label:'المصروفات'},
-    {id:'change_orders',label:'أوامر التغيير'},
     {id:'punch_list',label:'Punch List'},
     {id:'daily_logs',label:'السجل اليومي'},
     {id:'recurring_jobs',label:'أعمال متكررة'},
@@ -126,26 +122,160 @@ const MOBILE_NAV = [
   {id:'invoices',label:'الفواتير',icon:DollarSign},
 ]
 
-function getPageLabel(page: string) {
-  for (const item of NAV) {
-    if (item.id === page) return item.label
-    if (item.children) {
-      const child = item.children.find(c => c.id === page)
-      if (child) return child.label
+function StatCard({label,value,icon:Icon,color}:any) {
+  return (
+    <div className="stat-card">
+      <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
+        <div>
+          <div style={{fontSize:12,color:'var(--cs-text-muted)',fontWeight:600,marginBottom:6}}>{label}</div>
+          <div style={{fontSize:22,fontWeight:800,color:'var(--cs-text)',fontFamily:'Cairo,sans-serif'}}>{value??'—'}</div>
+        </div>
+        <div style={{background:color+'20',borderRadius:10,padding:10}}><Icon size={20} color={color}/></div>
+      </div>
+    </div>
+  )
+}
+
+function AlertRow({type,title,items}:any) {
+  const colors:any={red:'#C0392B',amber:'#E67E22',blue:'#1E9CD7'}
+  const bgs:any={red:'#FDECEA',amber:'#FEF3E2',blue:'#E8F6FC'}
+  const c=colors[type]; const bg=bgs[type]
+  if(!items||items.length===0) return null
+  return (
+    <div style={{background:bg,border:`1px solid ${c}30`,borderRadius:10,padding:'12px 16px',marginBottom:10}}>
+      <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
+        <AlertTriangle size={15} color={c}/>
+        <span style={{fontSize:13,fontWeight:700,color:c}}>{title} ({items.length})</span>
+      </div>
+      <div style={{display:'flex',flexDirection:'column',gap:4}}>
+        {items.slice(0,5).map((item:any,i:number)=>(
+          <div key={i} style={{fontSize:12,color:c,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+            <span>{item.name}</span>
+            <span style={{background:c+'15',padding:'1px 8px',borderRadius:10,fontWeight:600}}>{item.detail}</span>
+          </div>
+        ))}
+        {items.length>5&&<div style={{fontSize:11,color:c,opacity:0.7}}>+ {items.length-5} أخرى</div>}
+      </div>
+    </div>
+  )
+}
+
+function Dashboard({onNav}:{onNav:(id:string)=>void}) {
+  const [stats,setStats]=useState<any>({})
+  const [loading,setLoading]=useState(true)
+  const [recentProjects,setRecentProjects]=useState<any[]>([])
+  const [alerts,setAlerts]=useState<any>({expired:[],expiringSoon:[],expiringLater:[]})
+
+  useEffect(()=>{
+    async function load() {
+      const today=new Date()
+      const [{count:cc},{count:pc},{count:tc},{data:invData},{count:oc},{count:ls},{data:projs},{count:mo},{data:techs},{data:vehicles},{data:docs},{data:amcs}]=await Promise.all([
+        supabase.from('clients').select('*',{count:'exact',head:true}),
+        supabase.from('projects').select('*',{count:'exact',head:true}).eq('status','In Progress'),
+        supabase.from('technicians').select('*',{count:'exact',head:true}).eq('status','Active'),
+        supabase.from('invoices').select('total_amount,paid_amount'),
+        supabase.from('invoices').select('*',{count:'exact',head:true}).eq('status','Overdue'),
+        supabase.from('inventory').select('*',{count:'exact',head:true}).eq('status','Low Stock'),
+        supabase.from('projects').select('project_name,status,completion_pct').order('created_at',{ascending:false}).limit(5),
+        supabase.from('maintenance').select('*',{count:'exact',head:true}).eq('status','Overdue'),
+        supabase.from('technicians').select('full_name,residence_expiry,engineers_membership_exp').eq('status','Active'),
+        supabase.from('vehicles').select('plate_no,brand,model,insurance_expiry,registration_expiry'),
+        supabase.from('company_docs').select('doc_name,expiry_date'),
+        supabase.from('contracts_amc').select('contract_code,end_date,clients(company_name)').eq('status','Active'),
+      ])
+      const totalInv=invData?.reduce((s,r)=>s+(r.total_amount||0),0)||0
+      const totalPaid=invData?.reduce((s,r)=>s+(r.paid_amount||0),0)||0
+      setStats({cc,pc,tc,totalInv,totalPaid,oc,ls,mo})
+      setRecentProjects(projs||[])
+      const expired:any[]=[],expiringSoon:any[]=[],expiringLater:any[]=[]
+      function addDoc(name:string,expiry:string,cat:string){
+        if(!expiry) return
+        const d=expiry.split('T')[0]
+        const days=Math.ceil((new Date(d).getTime()-today.getTime())/86400000)
+        const item={name:`${cat}: ${name}`,detail:days<=0?'منتهية':`${days} يوم`}
+        if(days<=0) expired.push(item)
+        else if(days<=30) expiringSoon.push(item)
+        else if(days<=60) expiringLater.push(item)
+      }
+      techs?.forEach((t:any)=>{
+        if(t.residence_expiry) addDoc(t.full_name,t.residence_expiry,'إقامة')
+        if(t.engineers_membership_exp) addDoc(t.full_name,t.engineers_membership_exp,'عضوية')
+      })
+      vehicles?.forEach((v:any)=>{
+        const n=`${v.brand||''} ${v.model||''} (${v.plate_no||''})`
+        if(v.insurance_expiry) addDoc(n,v.insurance_expiry,'تأمين')
+        if(v.registration_expiry) addDoc(n,v.registration_expiry,'استمارة')
+      })
+      docs?.forEach((d:any)=>{if(d.expiry_date) addDoc(d.doc_name,d.expiry_date,'وثيقة')})
+      amcs?.forEach((a:any)=>{if(a.end_date) addDoc(a.clients?.company_name||a.contract_code,a.end_date,'عقد AMC')})
+      setAlerts({expired,expiringSoon,expiringLater})
+      setLoading(false)
     }
-  }
-  return ''
+    load()
+  },[])
+
+  const fmt=(n:number)=>new Intl.NumberFormat('ar-SA',{maximumFractionDigits:0}).format(n)+' ر.س'
+  const totalAlerts=alerts.expired.length+alerts.expiringSoon.length+alerts.expiringLater.length
+  if(loading) return <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))',gap:16}}>{[...Array(8)].map((_,i)=><div key={i} className="skeleton" style={{height:100}}/>)}</div>
+
+  return (
+    <div>
+      <div className="page-header">
+        <div><div className="page-title">لوحة التحكم</div><div className="page-subtitle">COOL SEASONS & DARAJA.STORE</div></div>
+        {totalAlerts>0&&<div style={{background:'#FDECEA',border:'1px solid #C0392B30',borderRadius:8,padding:'8px 14px',display:'flex',alignItems:'center',gap:8}}><AlertTriangle size={16} color="#C0392B"/><span style={{fontSize:13,fontWeight:700,color:'#C0392B'}}>{totalAlerts} تنبيه</span></div>}
+      </div>
+      {totalAlerts>0&&(
+        <div className="card" style={{padding:20,marginBottom:20,borderRight:'4px solid #C0392B'}}>
+          <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:16}}><AlertTriangle size={18} color="#C0392B"/><span style={{fontFamily:'Cairo,sans-serif',fontWeight:700,fontSize:16,color:'#C0392B'}}>تنبيهات الوثائق والتراخيص</span></div>
+          <AlertRow type="red" title="منتهية الصلاحية" items={alerts.expired}/>
+          <AlertRow type="amber" title="تنتهي خلال 30 يوم" items={alerts.expiringSoon}/>
+          <AlertRow type="blue" title="تنتهي خلال 60 يوم" items={alerts.expiringLater}/>
+          <div style={{display:'flex',gap:10,marginTop:12,flexWrap:'wrap'}}>
+            {[{id:'technicians',l:'الفنيون'},{id:'vehicles',l:'المركبات'},{id:'company_docs',l:'وثائق الشركة'}].map(b=>(
+              <button key={b.id} onClick={()=>onNav(b.id)} style={{fontSize:12,background:'none',border:'1px solid var(--cs-border)',borderRadius:6,padding:'5px 12px',cursor:'pointer',color:'var(--cs-text-muted)'}}>← {b.l}</button>
+            ))}
+          </div>
+        </div>
+      )}
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:14,marginBottom:24}}>
+        <StatCard label="العملاء" value={stats.cc} icon={Users} color="var(--cs-blue)"/>
+        <StatCard label="مشاريع جارية" value={stats.pc} icon={FolderOpen} color="var(--cs-green)"/>
+        <StatCard label="الفنيون النشطون" value={stats.tc} icon={UserCheck} color="var(--cs-orange)"/>
+        <StatCard label="إجمالي الفواتير" value={fmt(stats.totalInv)} icon={DollarSign} color="var(--cs-blue)"/>
+        <StatCard label="المحصّل" value={fmt(stats.totalPaid)} icon={TrendingUp} color="var(--cs-green)"/>
+        <StatCard label="فواتير متأخرة" value={stats.oc} icon={AlertCircle} color="var(--cs-red)"/>
+        <StatCard label="صيانة متأخرة" value={stats.mo} icon={Wrench} color="var(--cs-orange)"/>
+        <StatCard label="مخزون منخفض" value={stats.ls} icon={Package} color="var(--cs-red)"/>
+      </div>
+      <div className="card" style={{padding:20}}>
+        <div style={{fontFamily:'Cairo,sans-serif',fontWeight:700,fontSize:16,marginBottom:16}}>أحدث المشاريع</div>
+        {recentProjects.length===0?<div style={{textAlign:'center',color:'var(--cs-text-muted)',padding:30}}>لا توجد مشاريع بعد</div>:(
+          <div className="table-wrap"><table><thead><tr><th>اسم المشروع</th><th>الحالة</th><th>الإنجاز</th></tr></thead>
+          <tbody>{recentProjects.map((p,i)=>(
+            <tr key={i}>
+              <td style={{fontWeight:600}}>{p.project_name}</td>
+              <td><span className={`badge ${p.status==='Completed'?'badge-green':p.status==='In Progress'?'badge-blue':'badge-gray'}`}>{p.status}</span></td>
+              <td><div style={{display:'flex',alignItems:'center',gap:8,minWidth:100}}>
+                <div style={{flex:1,background:'var(--cs-border)',borderRadius:4,height:6}}><div style={{width:`${p.completion_pct||0}%`,background:'var(--cs-blue)',height:6,borderRadius:4}}/></div>
+                <span style={{fontSize:12,color:'var(--cs-text-muted)',minWidth:30}}>{p.completion_pct||0}%</span>
+              </div></td>
+            </tr>
+          ))}</tbody></table></div>
+        )}
+      </div>
+    </div>
+  )
 }
 
 export default function Home() {
-  const [page, setPage] = useState('dashboard')
-  const [open, setOpen] = useState<string[]>(['crm','ops'])
-  const [mob,  setMob]  = useState(false)
-  const nav = (id: string) => { setPage(id); setMob(false) }
+  const [page,setPage]=useState('dashboard')
+  const [open,setOpen]=useState<string[]>(['crm','ops'])
+  const [mob,setMob]=useState(false)
+  const nav=(id:string)=>{setPage(id);setMob(false)}
 
   function renderPage() {
     switch(page) {
-      case 'dashboard':         return <DashboardContent/>
+      case 'dashboard':         return <DashboardContent onNav={nav}/>
       case 'clients':           return <ClientsPage/>
       case 'projects':          return <ProjectsPage/>
       case 'technicians':       return <TechniciansPage/>
@@ -160,7 +290,6 @@ export default function Home() {
       case 'quotations':        return <QuotationsPage/>
       case 'daily_logs':        return <DailyLogsPage/>
       case 'punch_list':        return <PunchListPage/>
-      case 'change_orders':     return <ChangeOrdersPage/>
       case 'hr_attendance':     return <HRAttendancePage/>
       case 'call_center':       return <CallCenterPage/>
       case 'commissions':       return <CommissionsPage/>
@@ -193,214 +322,85 @@ export default function Home() {
       case 'flat_rate':         return <FlatRatePage/>
       case 'copper_pipe':       return <CopperPipePage/>
       case 'duct_works':        return <DuctWorksPage/>
-      default: return (
-        <div style={{textAlign:'center',padding:60,color:'#94A3B8'}}>
-          <BarChart3 size={40} style={{marginBottom:12,opacity:0.3}}/>
-          <div style={{fontWeight:600}}>قيد التطوير</div>
-        </div>
-      )
+      default: return <div style={{textAlign:'center',padding:60,color:'var(--cs-text-muted)'}}><BarChart3 size={40} style={{marginBottom:12,opacity:0.3}}/><div style={{fontWeight:600}}>قيد التطوير</div></div>
     }
   }
 
-  const SidebarContent = () => (
+  const SidebarContent=()=>(
     <div style={{display:'flex',flexDirection:'column',height:'100%'}}>
-
-      {/* ── Logo ── */}
-      <div style={{padding:'18px 14px 14px',borderBottom:'1px solid rgba(30,156,215,0.15)'}}>
+      <div style={{padding:'20px 16px 16px',borderBottom:'1px solid var(--cs-border)'}}>
         <div style={{display:'flex',alignItems:'center',gap:10}}>
-          <div style={{width:36,height:36,background:'linear-gradient(135deg,#1E9CD7,#0F4C81)',borderRadius:9,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,boxShadow:'0 4px 12px rgba(30,156,215,0.25)'}}>
-            <svg width="20" height="20" viewBox="0 0 60 60" fill="none">
-              <g stroke="white" strokeWidth="3.5" strokeLinecap="round">
-                <line x1="30" y1="8"  x2="30" y2="52"/>
-                <line x1="10" y1="19" x2="50" y2="41"/>
-                <line x1="10" y1="41" x2="50" y2="19"/>
-                <line x1="23" y1="12" x2="30" y2="20"/>
-                <line x1="37" y1="12" x2="30" y2="20"/>
-                <line x1="23" y1="48" x2="30" y2="40"/>
-                <line x1="37" y1="48" x2="30" y2="40"/>
-              </g>
-              <circle cx="30" cy="30" r="5" fill="white"/>
-            </svg>
-          </div>
+          <div style={{background:'var(--cs-blue)',borderRadius:10,width:36,height:36,display:'flex',alignItems:'center',justifyContent:'center'}}><Building2 size={18} color="white"/></div>
           <div>
-            <div style={{fontFamily:'Cairo,sans-serif',fontWeight:900,fontSize:12.5,color:'#0F172A',lineHeight:1.3}}>مواسم البرودة</div>
-            <div style={{fontFamily:'monospace',fontSize:8.5,color:'#1E9CD7',letterSpacing:'1.5px',marginTop:1,fontWeight:600}}>COOL SEASONS ERP</div>
+            <div style={{fontFamily:'Cairo,sans-serif',fontWeight:900,fontSize:13,color:'var(--cs-text)',lineHeight:1.2}}>COOL SEASONS</div>
+            <div style={{fontSize:10,color:'var(--cs-text-muted)'}}>DARAJA.STORE</div>
           </div>
         </div>
       </div>
-
-      {/* ── Nav ── */}
-      <nav style={{flex:1,padding:'10px 8px',overflowY:'auto'}}>
-        {NAV.map(item => (
+      <nav style={{flex:1,padding:'12px 10px',overflowY:'auto'}}>
+        {NAV.map(item=>(
           <div key={item.id}>
-            {item.children ? (
+            {item.children?(
               <div>
-                <div
-                  onClick={() => setOpen(p => p.includes(item.id) ? p.filter(x=>x!==item.id) : [...p,item.id])}
-                  style={{
-                    display:'flex',alignItems:'center',justifyContent:'space-between',
-                    padding:'8px 10px',borderRadius:8,cursor:'pointer',
-                    color:'#475569',marginBottom:2
-                  }}
-                  onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.background='#F1F5F9'}}
-                  onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.background='transparent'}}
-                >
-                  <div style={{display:'flex',alignItems:'center',gap:9}}>
-                    <item.icon size={14} style={{opacity:0.7}}/>
-                    <span style={{fontSize:12.5,fontWeight:600}}>{item.label}</span>
-                  </div>
-                  <ChevronDown size={12} style={{transform:open.includes(item.id)?'rotate(180deg)':'none',transition:'transform 0.2s',opacity:0.5}}/>
+                <div className="nav-item" onClick={()=>setOpen(p=>p.includes(item.id)?p.filter(x=>x!==item.id):[...p,item.id])} style={{justifyContent:'space-between'}}>
+                  <div style={{display:'flex',alignItems:'center',gap:10}}><item.icon size={16}/><span>{item.label}</span></div>
+                  <ChevronDown size={14} style={{transform:open.includes(item.id)?'rotate(180deg)':'none',transition:'transform 0.2s'}}/>
                 </div>
-                {open.includes(item.id) && (
-                  <div style={{paddingRight:23,marginBottom:2}}>
-                    {item.children.map(c => (
-                      <div
-                        key={c.id}
-                        onClick={() => nav(c.id)}
-                        style={{
-                          padding:'6px 10px',borderRadius:6,cursor:'pointer',
-                          fontSize:12,
-                          color: page===c.id?'#1E9CD7':'#64748B',
-                          background: page===c.id?'#EFF6FF':'transparent',
-                          fontWeight: page===c.id?700:500,
-                          marginBottom:1
-                        }}
-                      >
-                        {c.label}
-                      </div>
+                {open.includes(item.id)&&(
+                  <div style={{paddingRight:26,marginBottom:4}}>
+                    {item.children.map(c=>(
+                      <div key={c.id} className={`nav-item ${page===c.id?'active':''}`} onClick={()=>nav(c.id)} style={{fontSize:13,padding:'7px 12px'}}>{c.label}</div>
                     ))}
                   </div>
                 )}
               </div>
-            ) : (
-              <div
-                onClick={() => nav(item.id)}
-                style={{
-                  display:'flex',alignItems:'center',gap:9,
-                  padding:'8px 10px',borderRadius:8,cursor:'pointer',
-                  fontSize:13,fontWeight:700,
-                  color: page===item.id?'#1E9CD7':'#334155',
-                  background: page===item.id?'#EFF6FF':'transparent',
-                  marginBottom:2
-                }}
-              >
-                <item.icon size={15}/><span>{item.label}</span>
-              </div>
+            ):(
+              <div className={`nav-item ${page===item.id?'active':''}`} onClick={()=>nav(item.id)}><item.icon size={16}/><span>{item.label}</span></div>
             )}
           </div>
         ))}
       </nav>
-
-      {/* ── Settings ── */}
-      <div style={{padding:'10px 8px',borderTop:'1px solid rgba(30,156,215,0.1)'}}>
-        <div
-          onClick={() => nav('settings_page')}
-          style={{
-            display:'flex',alignItems:'center',gap:9,
-            padding:'8px 10px',borderRadius:8,cursor:'pointer',
-            fontSize:12.5,
-            color: page==='settings_page'?'#1E9CD7':'#475569',
-            background: page==='settings_page'?'#EFF6FF':'transparent',
-            fontWeight: page==='settings_page'?700:600
-          }}
-        >
-          <Settings size={14}/><span>الإعدادات</span>
-        </div>
+      <div style={{padding:'12px 10px',borderTop:'1px solid var(--cs-border)'}}>
+        <div className={`nav-item ${page==='settings_page'?'active':''}`} onClick={()=>nav('settings_page')}><Settings size={16}/><span>الإعدادات</span></div>
       </div>
     </div>
   )
 
   return (
-    <div style={{display:'flex',minHeight:'100vh',background:'#F8FBFF'}}>
-
-      {/* ── SIDEBAR (Premium Light) ── */}
-      <aside className="sidebar" style={{
-        width:240, 
-        background:'rgba(255,255,255,0.92)',
-        backdropFilter:'blur(20px)',
-        borderLeft:'1px solid rgba(30,156,215,0.12)',
-        position:'fixed', top:0, right:0,
-        height:'100vh', zIndex:50, overflowY:'auto',
-        boxShadow:'-4px 0 20px rgba(15,23,42,0.04)'
-      }}>
-        <SidebarContent/>
-      </aside>
-
-      {/* ── MOBILE OVERLAY ── */}
-      {mob && <>
-        <div onClick={() => setMob(false)} style={{position:'fixed',inset:0,background:'rgba(15,23,42,0.45)',zIndex:99,backdropFilter:'blur(4px)'}}/>
-        <aside style={{width:260,background:'white',position:'fixed',top:0,right:0,height:'100vh',zIndex:100,overflowY:'auto',boxShadow:'-4px 0 24px rgba(15,23,42,0.15)'}}>
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'14px 16px',borderBottom:'1px solid rgba(30,156,215,0.12)'}}>
-            <span style={{fontWeight:700,color:'#0F172A',fontSize:13}}>القائمة</span>
-            <button onClick={() => setMob(false)} style={{background:'none',border:'none',cursor:'pointer',color:'#64748B'}}><X size={18}/></button>
+    <div style={{display:'flex',minHeight:'100vh'}}>
+      <aside style={{width:240,background:'white',borderLeft:'1px solid var(--cs-border)',position:'fixed',top:0,right:0,height:'100vh',zIndex:50,overflowY:'auto'}} className="sidebar"><SidebarContent/></aside>
+      {mob&&<>
+        <div onClick={()=>setMob(false)} style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.4)',zIndex:99}}/>
+        <aside style={{width:260,background:'white',position:'fixed',top:0,right:0,height:'100vh',zIndex:100,overflowY:'auto'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:16,borderBottom:'1px solid var(--cs-border)'}}>
+            <span style={{fontWeight:700}}>القائمة</span>
+            <button onClick={()=>setMob(false)} style={{background:'none',border:'none',cursor:'pointer'}}><X size={20}/></button>
           </div>
           <SidebarContent/>
         </aside>
       </>}
-
-      {/* ── MAIN ── */}
-      <main className="main-content" style={{
-        flex:1, marginRight:240, minHeight:'100vh',
-        display:'flex', flexDirection:'column',
-        background: 'transparent'
-      }}>
-
-        {/* ── HEADER (Premium Light) ── */}
-        <header style={{
-          background:'rgba(255,255,255,0.85)',
-          backdropFilter:'blur(20px)',
-          borderBottom:'1px solid rgba(30,156,215,0.1)',
-          padding:'0 22px', height:56,
-          display:'flex', alignItems:'center', justifyContent:'space-between',
-          position:'sticky', top:0, zIndex:40,
-          boxShadow:'0 1px 3px rgba(15,23,42,0.02)'
-        }}>
-          <button onClick={() => setMob(true)} style={{background:'none',border:'none',cursor:'pointer',color:'#475569'}} id="mob-btn">
-            <Menu size={20}/>
-          </button>
-
-          <div style={{
-            fontFamily:'Tajawal,Cairo,sans-serif',
-            fontSize:13,fontWeight:700,
-            color:'#0F172A',letterSpacing:'-0.01em'
-          }}>
-            {getPageLabel(page)}
+      <main className="main-content" style={{flex:1,marginRight:240,minHeight:'100vh',display:'flex',flexDirection:'column'}}>
+        <header style={{background:'white',borderBottom:'1px solid var(--cs-border)',padding:'0 24px',height:60,display:'flex',alignItems:'center',justifyContent:'space-between',position:'sticky',top:0,zIndex:40}}>
+          <button onClick={()=>setMob(true)} style={{background:'none',border:'none',cursor:'pointer'}} id="mob-btn"><Menu size={22}/></button>
+          <div style={{display:'flex',alignItems:'center',gap:8}}>
+            <div style={{width:8,height:8,background:'var(--cs-green)',borderRadius:'50%'}}/>
+            <span style={{fontSize:12,color:'var(--cs-text-muted)'}}>متصل بـ Supabase</span>
           </div>
-
           <div style={{display:'flex',alignItems:'center',gap:12}}>
-            <div style={{display:'flex',alignItems:'center',gap:6,background:'rgba(22,163,74,0.08)',border:'1px solid rgba(22,163,74,0.2)',borderRadius:20,padding:'4px 10px'}}>
-              <div style={{width:6,height:6,background:'#16A34A',borderRadius:'50%',boxShadow:'0 0 0 3px rgba(22,163,74,0.15)'}}/>
-              <span style={{fontSize:10,color:'#15803D',fontFamily:'monospace',fontWeight:700,letterSpacing:'0.5px'}}>LIVE</span>
-            </div>
-            <Bell size={16} color="#475569" style={{cursor:'pointer'}}/>
-            <div style={{width:28,height:28,background:'linear-gradient(135deg,#1E9CD7,#0F4C81)',borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',color:'white',fontSize:12,fontWeight:700,boxShadow:'0 2px 8px rgba(30,156,215,0.3)'}}>م</div>
+            <Bell size={18} color="var(--cs-text-muted)" style={{cursor:'pointer'}}/>
+            <div style={{width:32,height:32,background:'var(--cs-blue)',borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',color:'white',fontSize:13,fontWeight:700}}>م</div>
           </div>
         </header>
-
-        {/* ── CONTENT ── */}
-        <div style={{flex:1}}>
-          {renderPage()}
-        </div>
+        <div style={{flex:1,padding:24}}>{renderPage()}</div>
       </main>
-
-      {/* ── MOBILE BOTTOM NAV ── */}
-      <nav id="mob-nav" style={{display:'none',position:'fixed',bottom:0,left:0,right:0,background:'rgba(255,255,255,0.95)',backdropFilter:'blur(20px)',borderTop:'1px solid rgba(30,156,215,0.12)',zIndex:100,padding:'5px 0',boxShadow:'0 -4px 12px rgba(15,23,42,0.05)'}}>
-        {MOBILE_NAV.map(item => (
-          <button key={item.id} onClick={() => nav(item.id)} style={{flex:1,background:'none',border:'none',cursor:'pointer',display:'flex',flexDirection:'column',alignItems:'center',gap:3,padding:'4px 0',color:page===item.id?'#1E9CD7':'#64748B',fontSize:10,fontFamily:'Tajawal,sans-serif',fontWeight:600}}>
-            <item.icon size={19}/>{item.label}
+      <nav id="mob-nav" style={{display:'none',position:'fixed',bottom:0,left:0,right:0,background:'white',borderTop:'1px solid var(--cs-border)',zIndex:100,padding:'6px 0'}}>
+        {MOBILE_NAV.map(item=>(
+          <button key={item.id} onClick={()=>nav(item.id)} style={{flex:1,background:'none',border:'none',cursor:'pointer',display:'flex',flexDirection:'column',alignItems:'center',gap:3,padding:'4px 0',color:page===item.id?'var(--cs-blue)':'var(--cs-text-muted)',fontSize:10,fontFamily:'Tajawal,sans-serif',fontWeight:600}}>
+            <item.icon size={20}/>{item.label}
           </button>
         ))}
       </nav>
-
-      <style>{`
-        @media(max-width:768px){
-          .sidebar{display:none!important}
-          .main-content{margin-right:0!important;padding-bottom:70px}
-          #mob-nav{display:flex!important}
-          #mob-btn{display:flex!important}
-        }
-        @media(min-width:769px){#mob-btn{display:none!important}}
-      `}</style>
+      <style>{`@media(max-width:768px){.sidebar{display:none!important}.main-content{margin-right:0!important;padding-bottom:70px}#mob-nav{display:flex!important}#mob-btn{display:flex!important}}@media(min-width:769px){#mob-btn{display:none!important}}`}</style>
     </div>
   )
 }
