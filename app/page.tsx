@@ -1,6 +1,9 @@
 'use client'
 import React, { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
+import { useEffect, useState as useStateAuth } from 'react'
+import LoginPage from '@/components/pages/LoginPage'
+import { supabase } from '@/lib/supabase'
 import { LayoutDashboard,Users,FolderOpen,Wrench,DollarSign,Package,UserCheck,FileText,Bell,ChevronDown,AlertCircle,AlertTriangle,TrendingUp,Building2,Settings,Menu,X,BarChart3,BarChart2 } from 'lucide-react'
 
 import DashboardContent from '@/components/pages/DashboardContent'
@@ -269,6 +272,28 @@ function Dashboard({onNav}:{onNav:(id:string)=>void}) {
 }
 
 export default function Home() {
+  // ─── Auth ─────────────────────────────────────────
+  const [session, setSession] = useStateAuth<any>(null)
+  const [authLoading, setAuthLoading] = useStateAuth(true)
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session); setAuthLoading(false)
+    })
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_,s) => setSession(s))
+    return () => subscription.unsubscribe()
+  }, [])
+
+  if (authLoading) return (
+    <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',
+      background:'linear-gradient(135deg,#0F4C81,#1E9CD7)',fontFamily:'Tajawal,sans-serif'}}>
+      <div style={{color:'white',fontSize:16,fontWeight:600}}>⏳ جاري التحقق...</div>
+    </div>
+  )
+
+  if (!session) return <LoginPage onLogin={() => supabase.auth.getSession().then(({data:{session}})=>setSession(session))}/>
+
+  // ─── App ──────────────────────────────────────────
   const [page,setPage]=useState('dashboard')
   const [open,setOpen]=useState<string[]>(['crm','ops'])
   const [mob,setMob]=useState(false)
@@ -347,13 +372,11 @@ export default function Home() {
                   <div style={{display:'flex',alignItems:'center',gap:10}}><item.icon size={16}/><span>{item.label}</span></div>
                   <ChevronDown size={14} style={{transform:open.includes(item.id)?'rotate(180deg)':'none',transition:'transform 0.2s'}}/>
                 </div>
-                {open.includes(item.id)&&(
-                  <div style={{paddingRight:26,marginBottom:4}}>
+                <div style={{paddingRight:26,marginBottom:4,display:open.includes(item.id)?'block':'none'}}>
                     {item.children.map(c=>(
                       <div key={c.id} className={`nav-item ${page===c.id?'active':''}`} onClick={()=>nav(c.id)} style={{fontSize:13,padding:'7px 12px'}}>{c.label}</div>
                     ))}
                   </div>
-                )}
               </div>
             ):(
               <div className={`nav-item ${page===item.id?'active':''}`} onClick={()=>nav(item.id)}><item.icon size={16}/><span>{item.label}</span></div>
@@ -386,6 +409,7 @@ export default function Home() {
           <div style={{display:'flex',alignItems:'center',gap:8}}>
             <div style={{width:8,height:8,background:'var(--cs-green)',borderRadius:'50%'}}/>
             <span style={{fontSize:12,color:'var(--cs-text-muted)'}}>متصل بـ Supabase</span>
+            <button onClick={()=>supabase.auth.signOut()} style={{marginRight:8,background:'#FEF2F2',color:'#DC2626',border:'1px solid #FCA5A5',borderRadius:6,padding:'4px 10px',cursor:'pointer',fontSize:11,fontFamily:'Tajawal,sans-serif',fontWeight:600}}>خروج 🚪</button>
           </div>
           <div style={{display:'flex',alignItems:'center',gap:12}}>
             <Bell size={18} color="var(--cs-text-muted)" style={{cursor:'pointer'}}/>
