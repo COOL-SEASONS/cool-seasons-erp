@@ -347,11 +347,13 @@ export default function Home() {
                   <div style={{display:'flex',alignItems:'center',gap:10}}><item.icon size={16}/><span>{item.label}</span></div>
                   <ChevronDown size={14} style={{transform:open.includes(item.id)?'rotate(180deg)':'none',transition:'transform 0.2s'}}/>
                 </div>
-                <div style={{paddingRight:26,marginBottom:4,display:open.includes(item.id)?'block':'none'}}>
+                {open.includes(item.id)&&(
+                  <div style={{paddingRight:26,marginBottom:4}}>
                     {item.children.map(c=>(
                       <div key={c.id} className={`nav-item ${page===c.id?'active':''}`} onClick={()=>nav(c.id)} style={{fontSize:13,padding:'7px 12px'}}>{c.label}</div>
                     ))}
                   </div>
+                )}
               </div>
             ):(
               <div className={`nav-item ${page===item.id?'active':''}`} onClick={()=>nav(item.id)}><item.icon size={16}/><span>{item.label}</span></div>
@@ -367,7 +369,7 @@ export default function Home() {
 
   return (
     <div style={{display:'flex',minHeight:'100vh'}}>
-      <aside style={{width:240,background:'white',borderLeft:'1px solid var(--cs-border)',position:'fixed',top:0,right:0,height:'100vh',zIndex:50,overflowY:'auto'}} className="sidebar"><SidebarContent/></aside>
+      <aside style={{width:240,background:'white',borderLeft:'1px solid var(--cs-border)',position:'fixed',top:0,right:0,height:'100vh',zIndex:50,overflowY:'auto'}} className="sidebar">{SidebarContent()}</aside>
       {mob&&<>
         <div onClick={()=>setMob(false)} style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.4)',zIndex:99}}/>
         <aside style={{width:260,background:'white',position:'fixed',top:0,right:0,height:'100vh',zIndex:100,overflowY:'auto'}}>
@@ -375,7 +377,7 @@ export default function Home() {
             <span style={{fontWeight:700}}>القائمة</span>
             <button onClick={()=>setMob(false)} style={{background:'none',border:'none',cursor:'pointer'}}><X size={20}/></button>
           </div>
-          <SidebarContent/>
+          {SidebarContent()}
         </aside>
       </>}
       <main className="main-content" style={{flex:1,marginRight:240,minHeight:'100vh',display:'flex',flexDirection:'column'}}>
