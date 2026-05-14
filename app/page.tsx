@@ -347,13 +347,11 @@ export default function Home() {
                   <div style={{display:'flex',alignItems:'center',gap:10}}><item.icon size={16}/><span>{item.label}</span></div>
                   <ChevronDown size={14} style={{transform:open.includes(item.id)?'rotate(180deg)':'none',transition:'transform 0.2s'}}/>
                 </div>
-                {open.includes(item.id)&&(
-                  <div style={{paddingRight:26,marginBottom:4}}>
+                <div style={{paddingRight:26,marginBottom:4,display:open.includes(item.id)?'block':'none'}}>
                     {item.children.map(c=>(
                       <div key={c.id} className={`nav-item ${page===c.id?'active':''}`} onClick={()=>nav(c.id)} style={{fontSize:13,padding:'7px 12px'}}>{c.label}</div>
                     ))}
                   </div>
-                )}
               </div>
             ):(
               <div className={`nav-item ${page===item.id?'active':''}`} onClick={()=>nav(item.id)}><item.icon size={16}/><span>{item.label}</span></div>
