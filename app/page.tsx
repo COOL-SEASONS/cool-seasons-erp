@@ -1,9 +1,7 @@
 'use client'
 import React, { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import { useEffect, useState as useStateAuth } from 'react'
 import LoginPage from '@/components/pages/LoginPage'
-import { supabase } from '@/lib/supabase'
 import { LayoutDashboard,Users,FolderOpen,Wrench,DollarSign,Package,UserCheck,FileText,Bell,ChevronDown,AlertCircle,AlertTriangle,TrendingUp,Building2,Settings,Menu,X,BarChart3,BarChart2 } from 'lucide-react'
 
 import DashboardContent from '@/components/pages/DashboardContent'
@@ -273,8 +271,8 @@ function Dashboard({onNav}:{onNav:(id:string)=>void}) {
 
 export default function Home() {
   // ─── Auth ─────────────────────────────────────────
-  const [session, setSession] = useStateAuth<any>(null)
-  const [authLoading, setAuthLoading] = useStateAuth(true)
+  const [session, setSession] = useState<any>(null)
+  const [authLoading, setAuthLoading] = useState(true)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
