@@ -5,15 +5,18 @@ on:
     - cron: '0 1 * * *'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   backup:
     runs-on: ubuntu-latest
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Download Backup via Supabase API
         env:
@@ -22,21 +25,19 @@ jobs:
         run: |
           mkdir -p backups/$(date +%Y-%m-%d)
 
-          # تنزيل النسخة الاحتياطية عبر API مباشرة
-          curl -X GET \
-            "https://api.supabase.com/v1/projects/${PROJECT_REF}/database/backups" \
-            -H "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" \
-            -o backups/$(date +%Y-%m-%d)/backup_list.json
-
-          # حفظ معلومات المشروع
-          curl -X GET \
+          curl -s -X GET \
             "https://api.supabase.com/v1/projects/${PROJECT_REF}" \
             -H "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" \
             -o backups/$(date +%Y-%m-%d)/project_info.json
 
-          echo "Backup Date: $(date)" > backups/$(date +%Y-%m-%d)/info.txt
-          echo "Status: SUCCESS" >> backups/$(date +%Y-%m-%d)/info.txt
-          cat backups/$(date +%Y-%m-%d)/backup_list.json
+          curl -s -X GET \
+            "https://api.supabase.com/v1/projects/${PROJECT_REF}/database/backups" \
+            -H "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" \
+            -o backups/$(date +%Y-%m-%d)/backups_list.json
+
+          echo "Date: $(date)" > backups/$(date +%Y-%m-%d)/info.txt
+          echo "Project: COOL SEASONS ERP" >> backups/$(date +%Y-%m-%d)/info.txt
+          echo "Status: SUCCESS ✅" >> backups/$(date +%Y-%m-%d)/info.txt
 
       - name: Save to GitHub
         run: |
