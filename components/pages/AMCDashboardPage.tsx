@@ -26,10 +26,12 @@ const newPart = (contractId = '', clientId = '') => ({
 export default function AMCDashboardPage() {
   const [contracts,   setContracts]   = useState<any[]>([])
   const [visits,      setVisits]      = useState<any[]>([])   // maint_reports
-  const [parts,       setParts]       = useState<any[]>([])   // amc_parts
+  const [parts,       setParts]       = useState<any[]>([])
+  const [ctrs,        setCtrs]        = useState<any[]>([])  // contractors
+  const [comms,       setComms]       = useState<any[]>([])  // commissions   // amc_parts
   const [loading,     setLoading]     = useState(true)
   const [expandedId,  setExpandedId]  = useState<string|null>(null)
-  const [activeTab,   setActiveTab]   = useState<'visits'|'parts'>('visits')
+  const [activeTab,   setActiveTab]   = useState<'visits'|'parts'|'ctrs'|'comms'>('visits')
   const [partModal,   setPartModal]   = useState(false)
   const [partForm,    setPartForm]    = useState<any>(newPart())
   const [partEditId,  setPartEditId]  = useState<string|null>(null)
@@ -37,7 +39,7 @@ export default function AMCDashboardPage() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    const [{ data: c }, { data: v }, { data: p }] = await Promise.all([
+    const [{ data: c }, { data: v }, { data: p }, { data: ct }, { data: cm }] = await Promise.all([
       supabase.from('contracts_amc')
         .select('*,clients(company_name,phone),technicians(full_name)')
         .order('end_date', { ascending: true }),
@@ -47,8 +49,10 @@ export default function AMCDashboardPage() {
       supabase.from('amc_parts')
         .select('*,clients(company_name)')
         .order('invoice_date', { ascending: false }),
+      supabase.from('contractors').select('contract_id,company_name,specialty,contract_value,paid_amount,status,link_type').eq('link_type','amc').not('contract_id','is',null),
+      supabase.from('commissions').select('contract_id,broker_name,commission_amt,paid_amount,status,link_type').eq('link_type','amc').not('contract_id','is',null),
     ])
-    setContracts(c||[]); setVisits(v||[]); setParts(p||[])
+    setContracts(c||[]); setVisits(v||[]); setParts(p||[]); setCtrs(ct||[]); setComms(cm||[])
     setLoading(false)
   }, [])
 
@@ -63,7 +67,12 @@ export default function AMCDashboardPage() {
     const partsRev  = cParts.reduce((s,  p) => s + (p.total_price||0), 0)
     const partsPaid = cParts.filter(p=>p.status==='Paid').reduce((s,p)=>s+(p.total_price||0),0)
     const partsPending = cParts.filter(p=>p.status!=='Paid').reduce((s,p)=>s+(p.total_price||0),0)
-    return { cVisits, cParts, visitCost, partsCost, partsRev, partsPaid, partsPending }
+    const cCtrs      = ctrs.filter(ct => ct.contract_id === cid)
+    const cComms     = comms.filter(cm => cm.contract_id === cid)
+    const ctrsCost   = cCtrs.reduce((s,ct)=>s+(ct.contract_value||0),0)
+    const ctrsValue  = cCtrs.reduce((s,ct)=>s+(ct.paid_amount||0),0)
+    const commsCost  = cComms.reduce((s,cm)=>s+(cm.commission_amt||0),0)
+    return { cVisits, cParts, visitCost, partsCost, partsRev, partsPaid, partsPending, cCtrs, cComms, ctrsCost, ctrsValue, commsCost }
   }
 
   // ─── CRUD قطع الغيار ─────────────────────────────
@@ -239,7 +248,8 @@ ${c.cParts.map((p,i) => `<tr>
     const calc     = calcContract(c.id)
     const profit   = (c.annual_value||0) - calc.visitCost
     const margin   = c.annual_value > 0 ? Math.round(profit/c.annual_value*100) : 0
-    return { ...c, daysLeft, ...calc, profit, margin }
+    const totalCosts = calc.visitCost + calc.ctrsCost + calc.commsCost
+    return { ...c, daysLeft, ...calc, profit, margin, totalCosts }
   })
 
   const active       = enriched.filter(c => c.status==='Active')
@@ -409,6 +419,8 @@ ${c.cParts.map((p,i) => `<tr>
                                 {[
                                   { id:'visits', label:'🔧 الزيارات والصيانة', count: c.cVisits.length },
                                   { id:'parts',  label:'📦 قطع الغيار',        count: c.cParts.length  },
+                                  { id:'ctrs',   label:'👷 المقاولون',          count: c.cCtrs.length   },
+                                  { id:'comms',  label:'💼 العمولات',           count: c.cComms.length  },
                                 ].map(t => (
                                   <button key={t.id} onClick={() => setActiveTab(t.id as any)}
                                     style={{ padding:'6px 16px', border:'none', borderRadius:6, cursor:'pointer', fontFamily:'Tajawal,sans-serif', fontSize:12, fontWeight:600,
@@ -420,6 +432,7 @@ ${c.cParts.map((p,i) => `<tr>
                               </div>
 
                               {/* Visits tab */}
+                              {/* TABS: add contractors and commissions */}
                               {activeTab === 'visits' && (
                                 <div>
                                   {c.cVisits.length === 0
@@ -461,6 +474,73 @@ ${c.cParts.map((p,i) => `<tr>
                                         <span>الربح: <b style={{ color: c.profit>=0?'var(--cs-green)':'var(--cs-red)' }}>{c.profit>=0?'+':''}{fmt(c.profit)} ر.س ({c.margin}%)</b></span>
                                       </div>
                                     </>
+                                  }
+                                </div>
+                              )}
+
+                              {/* Contractors tab */}
+                              {activeTab === 'ctrs' && (
+                                <div>
+                                  {c.cCtrs.length === 0
+                                    ? <div style={{ fontSize:12, color:'var(--cs-text-muted)', padding:'10px 0' }}>لا يوجد مقاولون مرتبطون بهذا العقد</div>
+                                    : <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
+                                        <thead><tr style={{ background:'var(--cs-gray-light)' }}>
+                                          <th style={{ padding:'6px 8px', textAlign:'right' }}>الشركة</th>
+                                          <th style={{ padding:'6px 8px', textAlign:'right' }}>التخصص</th>
+                                          <th style={{ padding:'6px 8px', textAlign:'right' }}>قيمة العقد</th>
+                                          <th style={{ padding:'6px 8px', textAlign:'right' }}>المدفوع</th>
+                                          <th style={{ padding:'6px 8px', textAlign:'right' }}>الحالة</th>
+                                        </tr></thead>
+                                        <tbody>
+                                          {c.cCtrs.map((ct:any,i:number) => (
+                                            <tr key={i} style={{ borderBottom:'1px solid var(--cs-border)' }}>
+                                              <td style={{ padding:'6px 8px', fontWeight:600 }}>{ct.company_name}</td>
+                                              <td style={{ padding:'6px 8px' }}><span className="badge badge-blue">{ct.specialty}</span></td>
+                                              <td style={{ padding:'6px 8px', fontWeight:700, color:'var(--cs-red)' }}>{fmt(ct.contract_value||0)} ر.س</td>
+                                              <td style={{ padding:'6px 8px', color:'var(--cs-green)' }}>{fmt(ct.paid_amount||0)} ر.س</td>
+                                              <td style={{ padding:'6px 8px' }}><span className={ct.status==='نشط'?'badge badge-green':'badge badge-gray'}>{ct.status}</span></td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                        <tfoot><tr style={{ background:'#FEF2F2', fontWeight:700 }}>
+                                          <td colSpan={2} style={{ padding:'6px 8px' }}>إجمالي المقاولين</td>
+                                          <td style={{ padding:'6px 8px', color:'var(--cs-red)' }}>{fmt(c.ctrsCost)} ر.س</td>
+                                          <td style={{ padding:'6px 8px', color:'var(--cs-green)' }}>{fmt(c.ctrsValue)} ر.س</td>
+                                          <td></td>
+                                        </tr></tfoot>
+                                      </table>
+                                  }
+                                </div>
+                              )}
+
+                              {/* Commissions tab */}
+                              {activeTab === 'comms' && (
+                                <div>
+                                  {c.cComms.length === 0
+                                    ? <div style={{ fontSize:12, color:'var(--cs-text-muted)', padding:'10px 0' }}>لا توجد عمولات مرتبطة بهذا العقد</div>
+                                    : <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
+                                        <thead><tr style={{ background:'var(--cs-gray-light)' }}>
+                                          <th style={{ padding:'6px 8px', textAlign:'right' }}>الوسيط</th>
+                                          <th style={{ padding:'6px 8px', textAlign:'right' }}>العمولة</th>
+                                          <th style={{ padding:'6px 8px', textAlign:'right' }}>المدفوع</th>
+                                          <th style={{ padding:'6px 8px', textAlign:'right' }}>الحالة</th>
+                                        </tr></thead>
+                                        <tbody>
+                                          {c.cComms.map((cm:any,i:number) => (
+                                            <tr key={i} style={{ borderBottom:'1px solid var(--cs-border)' }}>
+                                              <td style={{ padding:'6px 8px', fontWeight:600 }}>{cm.broker_name||'—'}</td>
+                                              <td style={{ padding:'6px 8px', fontWeight:700, color:'var(--cs-red)' }}>{fmt(cm.commission_amt||0)} ر.س</td>
+                                              <td style={{ padding:'6px 8px', color:'var(--cs-green)' }}>{fmt(cm.paid_amount||0)} ر.س</td>
+                                              <td style={{ padding:'6px 8px' }}><span className="badge badge-amber">{cm.status}</span></td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                        <tfoot><tr style={{ background:'#FEF2F2', fontWeight:700 }}>
+                                          <td style={{ padding:'6px 8px' }}>إجمالي العمولات</td>
+                                          <td style={{ padding:'6px 8px', color:'var(--cs-red)' }}>{fmt(c.commsCost)} ر.س</td>
+                                          <td colSpan={2}></td>
+                                        </tr></tfoot>
+                                      </table>
                                   }
                                 </div>
                               )}
