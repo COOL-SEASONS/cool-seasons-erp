@@ -20,8 +20,10 @@ export default function JobCostingPage() {
   const [expenses,   setExpenses]   = useState<any[]>([])
   const [contractors,setContractors]= useState<any[]>([])
   const [purchaseOrders,setPurchaseOrders] = useState<any[]>([])
+  const [commissions,   setCommissions]   = useState<any[]>([])
   const [equipment,  setEquipment]  = useState<any[]>([])
   const [invoices,   setInvoices]   = useState<any[]>([])
+  const [commissions,setCommissions]= useState<any[]>([])
   const [copper,     setCopper]     = useState<any[]>([])
   const [freon,      setFreon]      = useState<any[]>([])
   const [duct,       setDuct]       = useState<any[]>([])
@@ -46,14 +48,17 @@ export default function JobCostingPage() {
       { data: pr },{ data: co },{ data: ex },{ data: ct },
       { data: po },{ data: eq },{ data: inv },
       { data: cu },{ data: fr },{ data: du },{ data: cl },
+      { data: comm },
     ] = await Promise.all([
       supabase.from('projects').select('*,clients(company_name),technicians(full_name)').order('created_at',{ascending:false}),
       supabase.from('change_orders').select('*,projects(project_name),clients(company_name)').order('requested_date',{ascending:false,nullsFirst:false}),
       supabase.from('expenses').select('project_id,amount,status').not('project_id','is',null),
       supabase.from('contractors').select('project_id,contract_value,paid_amount').not('project_id','is',null),
       supabase.from('purchase_orders').select('project_id,grand_total,status').not('project_id','is',null),
+      supabase.from('commissions').select('project_id,commission_amt,source_type').eq('source_type','project').not('project_id','is',null),
       supabase.from('equipment_assets').select('project_id,purchase_price,selling_price,qty,installation_cost').not('project_id','is',null),
       supabase.from('invoices').select('project_id,amount,paid_amount,status').not('project_id','is',null),
+      supabase.from('commissions').select('project_id,commission_amt,link_type').eq('link_type','project').not('project_id','is',null),
       supabase.from('copper_movements').select('project_id,movement_type,total_cost').not('project_id','is',null),
       supabase.from('freon_movements').select('project_id,movement_type,total_cost').not('project_id','is',null),
       supabase.from('duct_movements').select('project_id,movement_type,total_cost').not('project_id','is',null),
@@ -61,8 +66,8 @@ export default function JobCostingPage() {
     ])
     setProjects(pr||[]); setChangeOrders(co||[]); setExpenses(ex||[])
     setContractors(ct||[]); setPurchaseOrders(po||[]); setEquipment(eq||[])
-    setInvoices(inv||[]); setCopper(cu||[]); setFreon(fr||[]); setDuct(du||[])
-    setClients(cl||[])
+    setInvoices(inv||[]); setCommissions(comm||[]); setCopper(cu||[]); setFreon(fr||[]); setDuct(du||[])
+    setClients(cl||[]); setCommissions(comm||[])
     setLoading(false)
   }, [])
 
@@ -90,6 +95,7 @@ export default function JobCostingPage() {
 
     // أوامر شراء
     const poCost      = purchaseOrders.filter(p=>p.project_id===pid&&p.status!=='Cancelled').reduce((s,p)=>s+(p.grand_total||0),0)
+    const commCost    = commissions.filter(c=>c.project_id===pid).reduce((s,c)=>s+(c.commission_amt||0),0)
 
     // أوامر التغيير — إضافات وخصميات
     const coAdditions  = changeOrders.filter(c=>c.project_id===pid&&c.status==='Approved'&&c.change_type!=='Deduction').reduce((s,c)=>s+(c.amount||0),0)
@@ -103,8 +109,8 @@ export default function JobCostingPage() {
     const invoiced    = invoices.filter(i=>i.project_id===pid).reduce((s,i)=>s+(i.amount||0),0)
     const collected   = invoices.filter(i=>i.project_id===pid).reduce((s,i)=>s+(i.paid_amount||0),0)
 
-    const totalCost   = eqCost + materialCost + expCost + ctCost + poCost
-    return { eqCost, eqRevenue, materialCost, copperCost, freonCost, ductCost, expCost, ctCost, ctPaid, poCost, coApproved, coAdditions, coDeductions, coPending, invoiced, collected, totalCost }
+    const totalCostBase = eqCost + materialCost + expCost + ctCost + poCost + commCost
+    return { eqCost, eqRevenue, materialCost, copperCost, freonCost, ductCost, expCost, ctCost, ctPaid, poCost, commCost, coApproved, coAdditions, coDeductions, coPending, invoiced, collected, totalCost }
   }
 
   const fmt = (n: number) => new Intl.NumberFormat('ar-SA',{maximumFractionDigits:0}).format(n||0)
@@ -215,6 +221,7 @@ export default function JobCostingPage() {
   <tr><td>💸 مصروفات</td><td class="red">${fmt(c.expCost)} ر.س</td><td>من صفحة المصروفات</td></tr>
   <tr><td>👷 مقاولون (قيمة العقود)</td><td class="red">${fmt(c.ctCost)} ر.س</td><td>المدفوع: ${fmt(c.ctPaid)} ر.س</td></tr>
   <tr><td>📦 أوامر الشراء</td><td class="red">${fmt(c.poCost)} ر.س</td><td>من صفحة أوامر الشراء</td></tr>
+  <tr><td>💼 عمولات الوسطاء</td><td class="red">\${fmtD(c.commCost)} ر.س</td><td>من صفحة العمولات</td></tr>
   <tr><td>📋 أوامر التغيير (معتمدة)</td><td class="red">${fmt(c.coApproved)} ر.س</td><td>انتظار: ${fmt(c.coPending)} ر.س</td></tr>
   <tr style="background:#FEF2F2"><td><b>إجمالي التكاليف</b></td><td class="red"><b>${fmt(c.totalCost)} ر.س</b></td><td></td></tr>
 </tbody></table>
@@ -438,6 +445,8 @@ ${coList.map(co=>`<tr><td style="font-family:monospace">${co.co_code}</td><td>${
                                         { l:'💸 مصروفات',               v:c.expCost },
                                         { l:'👷 مقاولون',               v:c.ctCost, sub: `مدفوع: ${fmt(c.ctPaid)} ر.س` },
                                         { l:'📦 أوامر شراء',            v:c.poCost },
+                                        { l:'💼 عمولات الوسطاء',          v:c.commCost },
+                                        { l:'💼 عمولات الوسطاء',                 v:c.commCost },
                                         { l:'📋 أوامر تغيير إضافات (معتمدة)',  v:c.coAdditions },
                                         { l:'📋 أوامر تغيير خصميات (معتمدة)', v:c.coDeductions, neg:true },
                                       ].map(({ l, v, sub, neg }: any, i: number) => (
