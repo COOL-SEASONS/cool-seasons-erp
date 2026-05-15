@@ -51,6 +51,7 @@ import CashFlowPage from '@/components/pages/CashFlowPage'
 import FlatRatePage from '@/components/pages/FlatRatePage'
 import CopperPipePage from '@/components/pages/CopperPipePage'
 import DuctWorksPage from '@/components/pages/DuctWorksPage'
+import LoginPage from '@/components/pages/LoginPage'
 
 const NAV = [
   { id:'dashboard', label:'لوحة التحكم', icon:LayoutDashboard },
@@ -269,6 +270,29 @@ function Dashboard({onNav}:{onNav:(id:string)=>void}) {
 }
 
 export default function Home() {
+  // ─── Auth ──────────────────────────────────────
+  const [session, setSession] = useState<any>(undefined)
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setSession(data.session))
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, s) => setSession(s))
+    return () => subscription.unsubscribe()
+  }, [])
+
+  // لا تزال تتحقق
+  if (session === undefined) return (
+    <div style={{minHeight:'100vh',display:'flex',alignItems:'center',
+      justifyContent:'center',background:'linear-gradient(135deg,#0F4C81,#1E9CD7)'}}>
+      <div style={{color:'white',fontSize:16,fontFamily:'Tajawal,sans-serif',fontWeight:600}}>
+        ⏳ جاري التحميل...
+      </div>
+    </div>
+  )
+
+  // غير مسجل دخول
+  if (!session) return <LoginPage onLogin={() => {}} />
+
+  // ─── التطبيق ─────────────────────────────────
   const [page,setPage]=useState('dashboard')
   const [open,setOpen]=useState<string[]>(['crm','ops'])
   const [mob,setMob]=useState(false)
