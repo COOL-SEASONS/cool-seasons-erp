@@ -6,7 +6,7 @@ import {
   Building2, TrendingUp, Lock, FolderOpen, Wrench, ClipboardList,
   ClipboardCheck, RefreshCw, ShoppingCart, DollarSign, UserCheck,
   Shield, Star, FileWarning, Car, Package, BarChart2, FileCheck,
-  Banknote, Users, Settings
+  Banknote, Users
 } from 'lucide-react'
 
 // ─── Helpers ─────────────────────────────────────────
@@ -77,24 +77,6 @@ function SecLabel({ color, label }: { color: string; label: string }) {
   )
 }
 
-// Quick Nav Button
-function NavBtn({ label, onClick }: { label: string; onClick: () => void }) {
-  return (
-    <button onClick={onClick} style={{
-      background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 6,
-      padding: '5px 7px', cursor: 'pointer', fontSize: 10.5,
-      fontFamily: 'Tajawal,sans-serif', fontWeight: 600,
-      color: '#0F4C81', textAlign: 'center', whiteSpace: 'nowrap',
-      overflow: 'hidden', textOverflow: 'ellipsis', width: '100%',
-      transition: 'background .12s'
-    }}
-      onMouseEnter={e => (e.currentTarget.style.background = '#EFF6FD')}
-      onMouseLeave={e => (e.currentTarget.style.background = '#F8FAFC')}
-    >
-      {label}
-    </button>
-  )
-}
 
 // ─── Main Component ───────────────────────────────────
 export default function DashboardContent({ onNav }: { onNav: (id: string) => void }) {
@@ -391,28 +373,7 @@ export default function DashboardContent({ onNav }: { onNav: (id: string) => voi
         <ICard icon={ClipboardCheck} iconBg="#EFF6FF" iconColor="#2563EB" label="قوائم الفحص"   value={d.lowStock>0?fmtN(d.lowStock)+'  صنف':'—'} sub="Job Checklists"      onClick={()=>onNav('job_checklists')} />
       </div>
 
-      {/* ═══ QUICK NAVIGATION ═══ */}
-      <div style={{ background: '#fff', border: '1px solid #E2E8F0', borderRadius: 9, overflow: 'hidden' }}>
-        <div style={{ background: '#F8FAFC', padding: '7px 13px', borderBottom: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', gap: 6 }}>
-          <Settings size={11} color="#94A3B8" />
-          <span style={{ fontSize: 8.5, fontWeight: 700, color: '#94A3B8', letterSpacing: 1, textTransform: 'uppercase' }}>التنقل السريع · Quick Navigation</span>
-        </div>
-        <div style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {[
-            { title: '💰 المالية', items: [{l:'الفواتير',n:'invoices'},{l:'عروض الأسعار',n:'quotations'},{l:'عقود AMC',n:'contracts'},{l:'لوحة AMC',n:'amc_dashboard'},{l:'الضمانات',n:'retention'},{l:'المصروفات',n:'expenses'},{l:'العمولات',n:'commissions'},{l:'تكاليف المشاريع',n:'job_costing'}] },
-            { title: '⚙️ المشاريع والعمليات', items: [{l:'المشاريع',n:'projects'},{l:'Dispatch Board',n:'dispatch'},{l:'الصيانة',n:'maintenance'},{l:'تقارير الصيانة',n:'maint_report'},{l:'أوامر التغيير',n:'change_orders'},{l:'Punch List',n:'punch_list'},{l:'أعمال متكررة',n:'recurring_jobs'},{l:'وثائق الشركة',n:'company_docs'}] },
-            { title: '👥 العملاء والفريق', items: [{l:'العملاء',n:'clients'},{l:'الفنيون',n:'technicians'},{l:'Call Center',n:'call_center'},{l:'متابعة العملاء',n:'customer_followup'},{l:'المقاولون',n:'contractors'},{l:'الحضور',n:'hr_attendance'},{l:'كارت العميل',n:'client_card'},{l:'Leaderboard',n:'leaderboard'}] },
-            { title: '📦 المواد والمخزون', items: [{l:'المخزون',n:'inventory'},{l:'الفريون',n:'freon'},{l:'النحاس',n:'copper_pipe'},{l:'الدكت',n:'duct_works'},{l:'المعدات',n:'equipment'},{l:'أوامر الشراء',n:'purchase_orders'},{l:'كتاب الأسعار',n:'pricebook'},{l:'الموردون',n:'supplier_compare'}] },
-          ].map((group, gi) => (
-            <div key={gi}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: '#64748B', marginBottom: 5 }}>{group.title}</div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8,1fr)', gap: 4 }}>
-                {group.items.map((item, i) => <NavBtn key={i} label={item.l} onClick={() => onNav(item.n)} />)}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+
 
       {/* Footer */}
       <div style={{ textAlign: 'center', fontSize: 9, color: '#CBD5E1', paddingBottom: 4, letterSpacing: '.3px' }}>
