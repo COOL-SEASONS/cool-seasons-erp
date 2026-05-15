@@ -120,7 +120,7 @@ export default function DashboardContent({ onNav }: { onNav: (id: string) => voi
         supabase.from('maintenance').select('status,cost,job_code,description'),
         supabase.from('technicians').select('full_name,status,residence_expiry,engineers_membership_exp,passport_expiry,has_driving_license,driving_license_expiry'),
         supabase.from('vehicles').select('plate_no,brand,model,insurance_expiry,registration_expiry'),
-        supabase.from('company_docs').select('doc_name,expiry_date'),
+        supabase.from('company_docs').select('doc_name,expiry_date,is_monthly'),
         supabase.from('contracts_amc').select('contract_code,status,annual_value,end_date,clients(company_name)'),
         supabase.from('quotations').select('status,total_amount'),
         supabase.from('punch_list').select('status'),
@@ -188,7 +188,16 @@ export default function DashboardContent({ onNav }: { onNav: (id: string) => voi
         if(v.insurance_expiry)    addAlert(n,v.insurance_expiry,'تأمين')
         if(v.registration_expiry) addAlert(n,v.registration_expiry,'استمارة')
       })
-      ;(docs||[]).forEach((d:any)=>{if(d.expiry_date) addAlert(d.doc_name,d.expiry_date,'وثيقة')})
+      ;(docs||[]).forEach((d:any)=>{
+        if(d.expiry_date) {
+          // الوثائق الشهرية تنبه قبل 10 أيام، البقية قبل 30 يوم
+          const thresh = d.is_monthly ? 10 : 30
+          const days   = Math.ceil((new Date(d.expiry_date.split('T')[0]).getTime()-today.getTime())/86400000)
+          if (days <= 0) expired.push({name:`${d.is_monthly?'🔄 ':''} وثيقة: ${d.doc_name}`, detail:'منتهية'})
+          else if (days <= thresh) soon.push({name:`${d.is_monthly?'🔄 ':''} وثيقة: ${d.doc_name}`, detail:`${days} يوم`})
+          else if (days <= 60) later.push({name:`وثيقة: ${d.doc_name}`, detail:`${days} يوم`})
+        }
+      })
       ;(amcs||[]).filter((a:any)=>a.status==='Active').forEach((a:any)=>{
         if(a.end_date) addAlert(a.clients?.company_name||a.contract_code,a.end_date,'عقد AMC')
       })
@@ -205,7 +214,12 @@ export default function DashboardContent({ onNav }: { onNav: (id: string) => voi
         const days=Math.ceil((new Date(t.residence_expiry).getTime()-today.getTime())/86400000)
         return days>0&&days<=14
       }).length
-      const expiredDocs=(docs||[]).filter(d=>d.expiry_date&&new Date(d.expiry_date)<today).length
+      const expiredDocs=(docs||[]).filter(d=>d.expiry_date&&new Date(d.expiry_date.split('T')[0])<today).length
+      const monthlyDocsDueSoon=(docs||[]).filter(d=>{
+        if(!d.is_monthly||!d.expiry_date) return false
+        const days=Math.ceil((new Date(d.expiry_date.split('T')[0]).getTime()-today.getTime())/86400000)
+        return days>0&&days<=10
+      }).length
       const docs60=(docs||[]).filter(d=>{
         if(!d.expiry_date) return false
         const days=Math.ceil((new Date(d.expiry_date).getTime()-today.getTime())/86400000)
