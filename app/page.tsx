@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase'
 import { LayoutDashboard,Users,FolderOpen,Wrench,DollarSign,Package,UserCheck,FileText,Bell,ChevronDown,AlertCircle,AlertTriangle,TrendingUp,Building2,Settings,Menu,X,BarChart3,BarChart2 } from 'lucide-react'
 
 import DashboardContent from '@/components/pages/DashboardContent'
+import LoginPage from '@/components/pages/LoginPage'
 const DashboardAny = DashboardContent as React.ComponentType<any>
 import ClientsPage from '@/components/pages/ClientsPage'
 import ProjectsPage from '@/components/pages/ProjectsPage'
