@@ -107,7 +107,7 @@ export default function JobCostingPage() {
     const invoiced    = invoices.filter(i=>i.project_id===pid).reduce((s,i)=>s+(i.amount||0),0)
     const collected   = invoices.filter(i=>i.project_id===pid).reduce((s,i)=>s+(i.paid_amount||0),0)
 
-    const totalCostBase = eqCost + materialCost + expCost + ctCost + poCost + commCost
+    const totalCost = eqCost + materialCost + expCost + ctCost + poCost + commCost
     return { eqCost, eqRevenue, materialCost, copperCost, freonCost, ductCost, expCost, ctCost, ctPaid, poCost, commCost, coApproved, coAdditions, coDeductions, coPending, invoiced, collected, totalCost }
   }
 
