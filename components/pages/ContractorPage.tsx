@@ -7,11 +7,12 @@ const SPECIALTIES=['كهرباء','سباكة','نجارة','حدادة','أعم
 const PAYMENT_METHODS=['حسب الإنجاز','شهري','أسبوعي','نقدي','تحويل بنكي','أخرى']
 
 const newCode=()=>`CCND-${11+Math.floor(Date.now()/1000)%9000}`
-const newForm=()=>({contractor_code:newCode(),company_name:'',specialty:'كهرباء',phone:'',cr_number:'',project_id:'',payment_method:'حسب الإنجاز',contract_start:new Date().toISOString().split('T')[0],contract_end:'',contract_value:'0',paid_amount:'0',status:'نشط',notes:''})
+const newForm=()=>({contractor_code:newCode(),company_name:'',specialty:'كهرباء',phone:'',cr_number:'',link_type:'project',project_id:'',contract_id:'',payment_method:'حسب الإنجاز',contract_start:new Date().toISOString().split('T')[0],contract_end:'',contract_value:'0',paid_amount:'0',status:'نشط',notes:''})
 
 export default function ContractorPage() {
   const [rows,setRows]=useState<any[]>([])
   const [projects,setProjects]=useState<any[]>([])
+  const [contracts,setContracts]=useState<any[]>([])
   const [loading,setLoading]=useState(true)
   const [search,setSearch]=useState('')
   const [modal,setModal]=useState(false)
@@ -22,17 +23,18 @@ export default function ContractorPage() {
 
   const load=async()=>{
     setLoading(true)
-    const [{data:r},{data:p}]=await Promise.all([
-      supabase.from('contractors').select('*,projects(project_name)').order('created_at',{ascending:false}),
+    const [{data:r},{data:p},{data:amc}]=await Promise.all([
+      supabase.from('contractors').select('*,projects(project_name),contracts_amc(contract_code,clients(company_name))').order('created_at',{ascending:false}),
       supabase.from('projects').select('id,project_name'),
+      supabase.from('contracts_amc').select('id,contract_code,clients(company_name)').eq('status','Active'),
     ])
-    setRows(r||[]); setProjects(p||[])
+    setRows(r||[]); setProjects(p||[]); setContracts(amc||[])
     setLoading(false)
   }
   useEffect(()=>{load()},[])
 
   const openEdit=(r:any)=>{
-    setForm({contractor_code:r.contractor_code||'',company_name:r.company_name||'',specialty:r.specialty||'كهرباء',phone:r.phone||'',cr_number:r.cr_number||'',project_id:r.project_id||'',payment_method:r.payment_method||'حسب الإنجاز',contract_start:r.contract_start?.split('T')[0]||'',contract_end:r.contract_end?.split('T')[0]||'',contract_value:String(r.contract_value||0),paid_amount:String(r.paid_amount||0),status:r.status||'نشط',notes:r.notes||''})
+    setForm({contractor_code:r.contractor_code||'',company_name:r.company_name||'',specialty:r.specialty||'كهرباء',phone:r.phone||'',cr_number:r.cr_number||'',link_type:r.link_type||'project',project_id:r.project_id||'',contract_id:r.contract_id||'',payment_method:r.payment_method||'حسب الإنجاز',contract_start:r.contract_start?.split('T')[0]||'',contract_end:r.contract_end?.split('T')[0]||'',contract_value:String(r.contract_value||0),paid_amount:String(r.paid_amount||0),status:r.status||'نشط',notes:r.notes||''})
     setEditId(r.id); setModal(true)
   }
 
@@ -40,7 +42,7 @@ export default function ContractorPage() {
     if(!form.contractor_code.trim()) return alert('الكود مطلوب')
     if(!form.company_name.trim()) return alert('اسم الشركة مطلوب')
     setSaving(true)
-    const payload={contractor_code:form.contractor_code.trim(),company_name:form.company_name.trim(),specialty:form.specialty||null,phone:form.phone||null,cr_number:form.cr_number||null,project_id:form.project_id||null,payment_method:form.payment_method||null,contract_start:form.contract_start||null,contract_end:form.contract_end||null,contract_value:parseFloat(form.contract_value)||0,paid_amount:parseFloat(form.paid_amount)||0,status:form.status||'نشط',notes:form.notes||null}
+    const payload={contractor_code:form.contractor_code.trim(),company_name:form.company_name.trim(),specialty:form.specialty||null,phone:form.phone||null,cr_number:form.cr_number||null,link_type:form.link_type||'project',project_id:form.link_type==='project'?(form.project_id||null):null,contract_id:form.link_type==='amc'?(form.contract_id||null):null,payment_method:form.payment_method||null,contract_start:form.contract_start||null,contract_end:form.contract_end||null,contract_value:parseFloat(form.contract_value)||0,paid_amount:parseFloat(form.paid_amount)||0,status:form.status||'نشط',notes:form.notes||null}
     const {error}=editId?await supabase.from('contractors').update(payload).eq('id',editId):await supabase.from('contractors').insert(payload)
     if(error) alert('خطأ: '+error.message); else{setModal(false);load()}
     setSaving(false)
@@ -78,7 +80,11 @@ export default function ContractorPage() {
                   <td style={{fontWeight:600}}>{r.company_name}</td>
                   <td><span className="badge badge-blue">{r.specialty}</span></td>
                   <td><a href={`tel:${r.phone}`} style={{color:'var(--cs-blue)',textDecoration:'none'}}>{r.phone||'—'}</a></td>
-                  <td>{r.projects?.project_name||'—'}</td>
+                  <td>
+                    {r.link_type==='amc'&&r.contracts_amc?(
+                      <span style={{fontSize:11}}><span style={{background:'#F0FDFA',color:'#0D9488',padding:'1px 6px',borderRadius:4,fontSize:10,fontWeight:700}}>🔄 AMC</span> {r.contracts_amc.contract_code}</span>
+                    ):(r.projects?.project_name||'—')}
+                  </td>
                   <td style={{fontWeight:700,color:'var(--cs-orange)'}}>{fmt(r.contract_value)} ر.س</td>
                   <td style={{color:'var(--cs-green)'}}>{fmt(r.paid_amount)} ر.س</td>
                   <td style={{color:'var(--cs-red)',fontWeight:700}}>{fmt((r.contract_value||0)-(r.paid_amount||0))} ر.س</td>
@@ -118,7 +124,22 @@ export default function ContractorPage() {
               <div><label className="form-label">التخصص</label><select className="form-input" value={form.specialty} onChange={e=>setForm({...form,specialty:e.target.value})}>{SPECIALTIES.map(s=><option key={s}>{s}</option>)}</select></div>
               <div><label className="form-label">رقم الهاتف</label><input className="form-input" dir="ltr" value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})}/></div>
               <div><label className="form-label">السجل التجاري</label><input className="form-input" value={form.cr_number} onChange={e=>setForm({...form,cr_number:e.target.value})}/></div>
-              <div><label className="form-label">المشروع</label><select className="form-input" value={form.project_id} onChange={e=>setForm({...form,project_id:e.target.value})}><option value="">— اختر —</option>{projects.map(p=><option key={p.id} value={p.id}>{p.project_name}</option>)}</select></div>
+              <div style={{gridColumn:'1/-1'}}>
+                <label className="form-label">نوع الارتباط *</label>
+                <div style={{display:'flex',gap:8,marginBottom:8}}>
+                  {[{v:'project',l:'📋 مشروع'},{v:'amc',l:'🔄 عقد AMC'}].map(opt=>(
+                    <label key={opt.v} style={{flex:1,display:'flex',alignItems:'center',gap:7,padding:'8px 12px',border:`2px solid ${form.link_type===opt.v?'var(--cs-blue)':'var(--cs-border)'}`,borderRadius:8,cursor:'pointer',background:form.link_type===opt.v?'#EFF6FD':'white'}}>
+                      <input type="radio" name="ct_link" value={opt.v} checked={form.link_type===opt.v} onChange={()=>setForm({...form,link_type:opt.v,project_id:'',contract_id:''})} style={{accentColor:'var(--cs-blue)'}}/>
+                      <span style={{fontSize:13,fontWeight:700,color:form.link_type===opt.v?'var(--cs-blue)':'var(--cs-text)'}}>{opt.l}</span>
+                    </label>
+                  ))}
+                </div>
+                {form.link_type==='project'?(
+                  <select className="form-input" value={form.project_id} onChange={e=>setForm({...form,project_id:e.target.value})}><option value="">— اختر مشروعاً —</option>{projects.map(p=><option key={p.id} value={p.id}>{p.project_name}</option>)}</select>
+                ):(
+                  <select className="form-input" value={form.contract_id} onChange={e=>setForm({...form,contract_id:e.target.value})}><option value="">— اختر عقد AMC —</option>{contracts.map(c=><option key={c.id} value={c.id}>{c.contract_code} — {c.clients?.company_name}</option>)}</select>
+                )}
+              </div>
               <div><label className="form-label">طريقة الدفع</label><select className="form-input" value={form.payment_method} onChange={e=>setForm({...form,payment_method:e.target.value})}>{PAYMENT_METHODS.map(p=><option key={p}>{p}</option>)}</select></div>
               <div><label className="form-label">الحالة</label><select className="form-input" value={form.status} onChange={e=>setForm({...form,status:e.target.value})}><option value="نشط">نشط</option><option value="منتهي">منتهي</option><option value="ملغي">ملغي</option></select></div>
               <div><label className="form-label">قيمة العقد</label><input type="number" min="0" className="form-input" value={form.contract_value} onChange={e=>setForm({...form,contract_value:e.target.value})}/></div>
