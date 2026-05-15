@@ -4,7 +4,6 @@ import { supabase } from '@/lib/supabase'
 import { LayoutDashboard,Users,FolderOpen,Wrench,DollarSign,Package,UserCheck,FileText,Bell,ChevronDown,AlertCircle,AlertTriangle,TrendingUp,Building2,Settings,Menu,X,BarChart3,BarChart2 } from 'lucide-react'
 
 import DashboardContent from '@/components/pages/DashboardContent'
-const DashboardAny = DashboardContent as React.ComponentType<any>
 import ClientsPage from '@/components/pages/ClientsPage'
 import ProjectsPage from '@/components/pages/ProjectsPage'
 import TechniciansPage from '@/components/pages/TechniciansPage'
@@ -51,7 +50,6 @@ import CashFlowPage from '@/components/pages/CashFlowPage'
 import FlatRatePage from '@/components/pages/FlatRatePage'
 import CopperPipePage from '@/components/pages/CopperPipePage'
 import DuctWorksPage from '@/components/pages/DuctWorksPage'
-import LoginPage from '@/components/pages/LoginPage'
 
 const NAV = [
   { id:'dashboard', label:'لوحة التحكم', icon:LayoutDashboard },
@@ -270,37 +268,22 @@ function Dashboard({onNav}:{onNav:(id:string)=>void}) {
 }
 
 export default function Home() {
-  // ─── Auth ──────────────────────────────────────
-  const [session, setSession] = useState<any>(undefined)
+  // ─── Auth + App state — جميع الـ hooks هنا في الأعلى ───
+  const [session,  setSession]  = useState<any>(undefined)
+  const [page,     setPage]     = useState('dashboard')
+  const [mob,      setMob]      = useState(false)
+  const [open,     setOpen]     = useState<string[]>(['crm','ops'])
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSession(data.session))
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, s) => setSession(s))
-    return () => subscription.unsubscribe()
-  }, [])
-
-  // لا تزال تتحقق
-  if (session === undefined) return (
-    <div style={{minHeight:'100vh',display:'flex',alignItems:'center',
-      justifyContent:'center',background:'linear-gradient(135deg,#0F4C81,#1E9CD7)'}}>
-      <div style={{color:'white',fontSize:16,fontFamily:'Tajawal,sans-serif',fontWeight:600}}>
-        ⏳ جاري التحميل...
-      </div>
-    </div>
-  )
-
-  // غير مسجل دخول
-  if (!session) return <LoginPage onLogin={() => {}} />
-
-  // ─── التطبيق ─────────────────────────────────
-  const [page,setPage]=useState('dashboard')
-  const [open,setOpen]=useState<string[]>(['crm','ops'])
-  const [mob,setMob]=useState(false)
+  useEffect(()=>{
+    supabase.auth.getSession().then(({data})=>setSession(data.session))
+    const {data:{subscription}}=supabase.auth.onAuthStateChange((_,s)=>setSession(s))
+    return ()=>subscription.unsubscribe()
+  },[])
   const nav=(id:string)=>{setPage(id);setMob(false)}
 
   function renderPage() {
     switch(page) {
-      case 'dashboard':         return <DashboardAny onNav={nav}/>
+      case 'dashboard':         return <DashboardContent onNav={nav}/>
       case 'clients':           return <ClientsPage/>
       case 'projects':          return <ProjectsPage/>
       case 'technicians':       return <TechniciansPage/>
@@ -351,7 +334,16 @@ export default function Home() {
     }
   }
 
-  const SidebarContent=()=>(
+  // ─── الشروط بعد جميع الـ hooks ───────────────────
+  if(session===undefined) return(
+    <div style={{minHeight:'100vh',display:'flex',alignItems:'center',
+      justifyContent:'center',background:'linear-gradient(135deg,#0F4C81,#1E9CD7)'}}>
+      <div style={{color:'white',fontSize:16,fontFamily:'Tajawal,sans-serif',fontWeight:600}}>⏳ جاري التحميل...</div>
+    </div>
+  )
+  if(!session) return <LoginPage onLogin={()=>{}}/>
+
+  const SidebarContent=()=(
     <div style={{display:'flex',flexDirection:'column',height:'100%'}}>
       <div style={{padding:'20px 16px 16px',borderBottom:'1px solid var(--cs-border)'}}>
         <div style={{display:'flex',alignItems:'center',gap:10}}>
