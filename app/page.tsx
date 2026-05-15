@@ -343,7 +343,7 @@ export default function Home() {
   )
   if(!session) return <LoginPage onLogin={()=>{}}/>
 
-  const SidebarContent=()=(
+  const SidebarContent=()=>(
     <div style={{display:'flex',flexDirection:'column',height:'100%'}}>
       <div style={{padding:'20px 16px 16px',borderBottom:'1px solid var(--cs-border)'}}>
         <div style={{display:'flex',alignItems:'center',gap:10}}>
