@@ -23,7 +23,6 @@ export default function JobCostingPage() {
   const [commissions,   setCommissions]   = useState<any[]>([])
   const [equipment,  setEquipment]  = useState<any[]>([])
   const [invoices,   setInvoices]   = useState<any[]>([])
-  const [commissions,setCommissions]= useState<any[]>([])
   const [copper,     setCopper]     = useState<any[]>([])
   const [freon,      setFreon]      = useState<any[]>([])
   const [duct,       setDuct]       = useState<any[]>([])
@@ -55,7 +54,6 @@ export default function JobCostingPage() {
       supabase.from('expenses').select('project_id,amount,status').not('project_id','is',null),
       supabase.from('contractors').select('project_id,contract_value,paid_amount').not('project_id','is',null),
       supabase.from('purchase_orders').select('project_id,grand_total,status').not('project_id','is',null),
-      supabase.from('commissions').select('project_id,commission_amt,source_type').eq('source_type','project').not('project_id','is',null),
       supabase.from('equipment_assets').select('project_id,purchase_price,selling_price,qty,installation_cost').not('project_id','is',null),
       supabase.from('invoices').select('project_id,amount,paid_amount,status').not('project_id','is',null),
       supabase.from('commissions').select('project_id,commission_amt,link_type').eq('link_type','project').not('project_id','is',null),
