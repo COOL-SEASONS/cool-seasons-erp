@@ -1,420 +1,388 @@
 'use client'
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import { LayoutDashboard,Users,FolderOpen,Wrench,DollarSign,Package,UserCheck,FileText,Bell,ChevronDown,AlertCircle,AlertTriangle,TrendingUp,Building2,Settings,Menu,X,BarChart3,BarChart2 } from 'lucide-react'
+import {
+  AlertTriangle, FileText, CheckCircle, AlertCircle, Clock,
+  Building2, TrendingUp, Lock, FolderOpen, Wrench, ClipboardList,
+  ClipboardCheck, RefreshCw, ShoppingCart, DollarSign, UserCheck,
+  Shield, Star, FileWarning, Car, Package, BarChart2, FileCheck,
+  Banknote, Users
+} from 'lucide-react'
 
-import DashboardContent from '@/components/pages/DashboardContent'
-import LoginPage from '@/components/pages/LoginPage'
-const DashboardAny = DashboardContent as React.ComponentType<any>
-import ClientsPage from '@/components/pages/ClientsPage'
-import ProjectsPage from '@/components/pages/ProjectsPage'
-import TechniciansPage from '@/components/pages/TechniciansPage'
-import InvoicesPage from '@/components/pages/InvoicesPage'
-import MaintenancePage from '@/components/pages/MaintenancePage'
-import MaintReportPage from '@/components/pages/MaintReportPage'
-import InventoryPage from '@/components/pages/InventoryPage'
-import ExpensesPage from '@/components/pages/ExpensesPage'
-import ContractsPage from '@/components/pages/ContractsPage'
-import VehiclesPage from '@/components/pages/VehiclesPage'
-import CompanyDocsPage from '@/components/pages/CompanyDocsPage'
-import QuotationsPage from '@/components/pages/QuotationsPage'
-import DailyLogsPage from '@/components/pages/DailyLogsPage'
-import PunchListPage from '@/components/pages/PunchListPage'
-import HRAttendancePage from '@/components/pages/HRAttendancePage'
-import CallCenterPage from '@/components/pages/CallCenterPage'
-import CommissionsPage from '@/components/pages/CommissionsPage'
-import DispatchBoardPage from '@/components/pages/DispatchBoardPage'
-import WIPPage from '@/components/pages/WIPPage'
-import JobCostingPage from '@/components/pages/JobCostingPage'
-import RetentionPage from '@/components/pages/RetentionPage'
-import PricebookPage from '@/components/pages/PricebookPage'
-import RecurringJobsPage from '@/components/pages/RecurringJobsPage'
-import FreonPage from '@/components/pages/FreonPage'
-import PurchaseOrdersPage from '@/components/pages/PurchaseOrdersPage'
-import EquipmentPage from '@/components/pages/EquipmentPage'
-import WarrantyPage from '@/components/pages/WarrantyPage'
-import ContractorPage from '@/components/pages/ContractorPage'
-import CustomerFollowupPage from '@/components/pages/CustomerFollowupPage'
-import TechLeaderboardPage from '@/components/pages/TechLeaderboardPage'
-import GanttPage from '@/components/pages/GanttPage'
-import PrintProjectPage from '@/components/pages/PrintProjectPage'
-import ReportsPage from '@/components/pages/ReportsPage'
-import SettingsPage from '@/components/pages/SettingsPage'
-import UnsoldEstimatesPage from '@/components/pages/UnsoldEstimatesPage'
-import AMCDashboardPage from '@/components/pages/AMCDashboardPage'
-import CapacityPlanPage from '@/components/pages/CapacityPlanPage'
-import ClientCardPage from '@/components/pages/ClientCardPage'
-import JobChecklistsPage from '@/components/pages/JobChecklistsPage'
-import MultiQuotesPage from '@/components/pages/MultiQuotesPage'
-import MonthlyReportPage from '@/components/pages/MonthlyReportPage'
-import SupplierComparePage from '@/components/pages/SupplierComparePage'
-import CashFlowPage from '@/components/pages/CashFlowPage'
-import FlatRatePage from '@/components/pages/FlatRatePage'
-import CopperPipePage from '@/components/pages/CopperPipePage'
-import DuctWorksPage from '@/components/pages/DuctWorksPage'
+// ─── Helpers ─────────────────────────────────────────
+const fmt = (n: number) =>
+  n != null ? new Intl.NumberFormat('ar-SA', { maximumFractionDigits: 0 }).format(n) + ' ر.س' : '—'
+const fmtN = (n: number) =>
+  n != null ? new Intl.NumberFormat('ar-SA', { maximumFractionDigits: 0 }).format(n) : '—'
 
-const NAV = [
-  { id:'dashboard', label:'لوحة التحكم', icon:LayoutDashboard },
-  { id:'crm', label:'CRM', icon:Users, children:[
-    {id:'clients',label:'العملاء'},
-    {id:'quotations',label:'عروض الأسعار'},
-    {id:'multi_quotes',label:'عروض متعددة الخيارات'},
-    {id:'call_center',label:'Call Center'},
-    {id:'customer_followup',label:'متابعة العملاء'},
-    {id:'unsold_estimates',label:'العروض المعلقة'},
-    {id:'client_card',label:'بطاقة العميل'},
-  ]},
-  { id:'ops', label:'العمليات', icon:FolderOpen, children:[
-    {id:'projects',label:'المشاريع'},
-    {id:'dispatch',label:'Dispatch Board'},
-    {id:'gantt',label:'مخطط جانت'},
-    {id:'invoices',label:'الفواتير'},
-    {id:'expenses',label:'المصروفات'},
-    {id:'punch_list',label:'Punch List'},
-    {id:'daily_logs',label:'السجل اليومي'},
-    {id:'recurring_jobs',label:'أعمال متكررة'},
-    {id:'job_checklists',label:'قوائم الفحص'},
-    {id:'print_project',label:'طباعة أمر المشروع'},
-  ]},
-  { id:'maint_grp', label:'الصيانة', icon:Wrench, children:[
-    {id:'maintenance',label:'جدول الصيانة'},
-    {id:'maint_report',label:'تقارير الصيانة'},
-    {id:'warranty',label:'الضمانات'},
-  ]},
-  { id:'hr_grp', label:'الموارد البشرية', icon:UserCheck, children:[
-    {id:'technicians',label:'الفنيون'},
-    {id:'hr_attendance',label:'الحضور'},
-    {id:'commissions',label:'العمولات'},
-    {id:'leaderboard',label:'لوحة الأداء'},
-    {id:'vehicles',label:'المركبات'},
-  ]},
-  { id:'inv_grp', label:'المخزون', icon:Package, children:[
-    {id:'inventory',label:'المخزون'},
-    {id:'purchase_orders',label:'أوامر الشراء'},
-    {id:'equipment',label:'المعدات المركّبة'},
-    {id:'freon',label:'سجل الفريون'},
-    {id:'pricebook',label:'كتالوج الأسعار'},
-    {id:'flat_rate',label:'أسعار ثابتة'},
-    {id:'copper_pipe',label:'مواسير النحاس'},
-    {id:'duct_works',label:'أعمال الدكت'},
-    {id:'supplier_compare',label:'مقارنة الموردين'},
-  ]},
-  { id:'finance_grp', label:'المالية', icon:BarChart2, children:[
-    {id:'wip',label:'تقرير WIP'},
-    {id:'job_costing',label:'تكاليف المشاريع'},
-    {id:'retention',label:'مبالغ الضمان'},
-    {id:'cash_flow',label:'التدفق النقدي'},
-    {id:'capacity_plan',label:'خطة الطاقة الإنتاجية'},
-    {id:'monthly_report',label:'التقرير الشهري'},
-    {id:'reports',label:'التقارير والإحصاءات'},
-  ]},
-  { id:'con_grp', label:'العقود والوثائق', icon:FileText, children:[
-    {id:'contracts',label:'عقود AMC'},
-    {id:'amc_dashboard',label:'لوحة AMC'},
-    {id:'contractors',label:'المقاولون'},
-    {id:'company_docs',label:'وثائق الشركة'},
-  ]},
-]
+// ─── Reusable Components ──────────────────────────────
 
-const MOBILE_NAV = [
-  {id:'dashboard',label:'الرئيسية',icon:LayoutDashboard},
-  {id:'clients',label:'العملاء',icon:Users},
-  {id:'projects',label:'المشاريع',icon:FolderOpen},
-  {id:'maintenance',label:'الصيانة',icon:Wrench},
-  {id:'invoices',label:'الفواتير',icon:DollarSign},
-]
-
-function StatCard({label,value,icon:Icon,color}:any) {
+// Alert Chip in command center
+function AChip({ type, icon: Icon, label, value, onClick }: any) {
+  const styles: any = {
+    r: { bg: '#FEF2F2', border: '#FCA5A5', iconBg: '#FEE2E2', iconColor: '#DC2626', labelColor: '#991B1B', valColor: '#DC2626' },
+    a: { bg: '#FFFBEB', border: '#FDE68A', iconBg: '#FEF3C7', iconColor: '#D97706', labelColor: '#92400E', valColor: '#D97706' },
+    g: { bg: '#F0FDF4', border: '#BBF7D0', iconBg: '#DCFCE7', iconColor: '#16A34A', labelColor: '#14532D', valColor: '#16A34A' },
+    n: { bg: '#F8FAFC', border: '#E2E8F0', iconBg: '#F1F5F9', iconColor: '#94A3B8', labelColor: '#475569', valColor: '#CBD5E1' },
+  }
+  const s = styles[type] || styles.n
   return (
-    <div className="stat-card">
-      <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
-        <div>
-          <div style={{fontSize:12,color:'var(--cs-text-muted)',fontWeight:600,marginBottom:6}}>{label}</div>
-          <div style={{fontSize:22,fontWeight:800,color:'var(--cs-text)',fontFamily:'Cairo,sans-serif'}}>{value??'—'}</div>
-        </div>
-        <div style={{background:color+'20',borderRadius:10,padding:10}}><Icon size={20} color={color}/></div>
+    <div onClick={onClick} style={{
+      background: s.bg, border: `1px solid ${s.border}`,
+      borderRadius: 8, padding: '8px 10px',
+      display: 'flex', alignItems: 'center', gap: 8,
+      cursor: onClick ? 'pointer' : 'default'
+    }}>
+      <div style={{ width: 30, height: 30, borderRadius: 7, background: s.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <Icon size={15} color={s.iconColor} />
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 9.5, fontWeight: 600, color: s.labelColor, marginBottom: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</div>
+        <div style={{ fontFamily: 'Cairo,sans-serif', fontSize: 17, fontWeight: 900, lineHeight: 1.1, color: s.valColor }}>{value}</div>
       </div>
     </div>
   )
 }
 
-function AlertRow({type,title,items}:any) {
-  const colors:any={red:'#C0392B',amber:'#E67E22',blue:'#1E9CD7'}
-  const bgs:any={red:'#FDECEA',amber:'#FEF3E2',blue:'#E8F6FC'}
-  const c=colors[type]; const bg=bgs[type]
-  if(!items||items.length===0) return null
+// KPI icon card
+function ICard({ icon: Icon, iconBg, iconColor, label, value, valuColor, sub, onClick }: any) {
   return (
-    <div style={{background:bg,border:`1px solid ${c}30`,borderRadius:10,padding:'12px 16px',marginBottom:10}}>
-      <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
-        <AlertTriangle size={15} color={c}/>
-        <span style={{fontSize:13,fontWeight:700,color:c}}>{title} ({items.length})</span>
+    <div onClick={onClick}
+      style={{ background:'#fff', border:'1px solid #E2E8F0', borderRadius:10, padding:'11px 12px',
+               display:'flex', alignItems:'center', gap:10,
+               cursor:onClick?'pointer':'default', boxShadow:'0 1px 3px rgba(0,0,0,0.04)' }}
+      onMouseEnter={e=>{e.currentTarget.style.borderColor='#93C5FD';e.currentTarget.style.boxShadow='0 2px 8px rgba(30,156,215,0.1)'}}
+      onMouseLeave={e=>{e.currentTarget.style.borderColor='#E2E8F0';e.currentTarget.style.boxShadow='0 1px 3px rgba(0,0,0,0.04)'}}
+    >
+      <div style={{ width:38, height:38, minWidth:38, borderRadius:10, background:iconBg,
+                    display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+        <Icon size={19} color={iconColor}/>
       </div>
-      <div style={{display:'flex',flexDirection:'column',gap:4}}>
-        {items.slice(0,5).map((item:any,i:number)=>(
-          <div key={i} style={{fontSize:12,color:c,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-            <span>{item.name}</span>
-            <span style={{background:c+'15',padding:'1px 8px',borderRadius:10,fontWeight:600}}>{item.detail}</span>
-          </div>
-        ))}
-        {items.length>5&&<div style={{fontSize:11,color:c,opacity:0.7}}>+ {items.length-5} أخرى</div>}
+      <div style={{ flex:1, minWidth:0, overflow:'hidden' }}>
+        <div style={{ fontSize:10, fontWeight:600, color:'#94A3B8', marginBottom:3,
+                      whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{label}</div>
+        <div style={{ fontFamily:'Cairo,sans-serif', fontWeight:900, fontSize:18, lineHeight:1,
+                      color:valuColor||'#0D1C2E', whiteSpace:'nowrap' }}>{value}</div>
+        {sub && <div style={{ fontSize:9, color:'#CBD5E1', marginTop:2,
+                              whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{sub}</div>}
       </div>
     </div>
   )
 }
 
-function Dashboard({onNav}:{onNav:(id:string)=>void}) {
-  const [stats,setStats]=useState<any>({})
-  const [loading,setLoading]=useState(true)
-  const [recentProjects,setRecentProjects]=useState<any[]>([])
-  const [alerts,setAlerts]=useState<any>({expired:[],expiringSoon:[],expiringLater:[]})
+// Section label
+function SecLabel({ color, label }: { color: string; label: string }) {
+  return (
+    <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:2 }}>
+      <div style={{ width:3, height:12, borderRadius:2, background:color, flexShrink:0 }}/>
+      <span style={{ fontSize:9, fontWeight:700, color:'#94A3B8', letterSpacing:'1px', textTransform:'uppercase', fontFamily:'Tajawal,sans-serif' }}>{label}</span>
+    </div>
+  )
+}
 
-  useEffect(()=>{
+
+// ─── Main Component ───────────────────────────────────
+export default function DashboardContent({ onNav }: { onNav: (id: string) => void }) {
+  const [d, setD]           = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [alerts, setAlerts]   = useState<any>({ expired: [], soon: [], later: [] })
+
+  useEffect(() => {
     async function load() {
-      const today=new Date()
-      const [{count:cc},{count:pc},{count:tc},{data:invData},{count:oc},{count:ls},{data:projs},{count:mo},{data:techs},{data:vehicles},{data:docs},{data:amcs}]=await Promise.all([
-        supabase.from('clients').select('*',{count:'exact',head:true}),
-        supabase.from('projects').select('*',{count:'exact',head:true}).eq('status','In Progress'),
-        supabase.from('technicians').select('*',{count:'exact',head:true}).eq('status','Active'),
-        supabase.from('invoices').select('total_amount,paid_amount'),
-        supabase.from('invoices').select('*',{count:'exact',head:true}).eq('status','Overdue'),
-        supabase.from('inventory').select('*',{count:'exact',head:true}).eq('status','Low Stock'),
-        supabase.from('projects').select('project_name,status,completion_pct').order('created_at',{ascending:false}).limit(5),
-        supabase.from('maintenance').select('*',{count:'exact',head:true}).eq('status','Overdue'),
-        supabase.from('technicians').select('full_name,residence_expiry,engineers_membership_exp').eq('status','Active'),
+      const today   = new Date()
+      const m1start = new Date(today.getFullYear(), today.getMonth(), 1).toISOString()
+
+      const [
+        { data: inv },   { data: proj },     { data: maint },
+        { data: techs }, { data: veh },      { data: docs },
+        { data: amcs },  { data: quot },     { data: punches },
+        { data: recur }, { data: po },       { data: exp },
+        { data: warranty }, { data: comm }, { data: inv2 },
+        { data: contr }, { data: maintRep },
+      ] = await Promise.all([
+        supabase.from('invoices').select('total_amount,paid_amount,balance,status'),
+        supabase.from('projects').select('project_name,status,completion_pct,budget,actual_cost'),
+        supabase.from('maintenance').select('status,cost,job_code,description'),
+        supabase.from('technicians').select('full_name,status,residence_expiry,engineers_membership_exp,passport_expiry,has_driving_license,driving_license_expiry'),
         supabase.from('vehicles').select('plate_no,brand,model,insurance_expiry,registration_expiry'),
-        supabase.from('company_docs').select('doc_name,expiry_date'),
-        supabase.from('contracts_amc').select('contract_code,end_date,clients(company_name)').eq('status','Active'),
+        supabase.from('company_docs').select('doc_name,expiry_date,is_monthly'),
+        supabase.from('contracts_amc').select('contract_code,status,annual_value,end_date,clients(company_name)'),
+        supabase.from('quotations').select('status,total_amount'),
+        supabase.from('punch_list').select('status'),
+        supabase.from('recurring_jobs').select('status'),
+        supabase.from('purchase_orders').select('status').eq('status', 'Sent'),
+        supabase.from('expenses').select('amount,transaction_type,status'),
+        supabase.from('warranty_tracking').select('start_date,duration_months'),
+        supabase.from('commissions').select('balance'),
+        supabase.from('inventory').select('status,quantity,min_quantity'),
+        supabase.from('contractors').select('status'),
+        supabase.from('maint_reports').select('id').gte('created_at', m1start),
       ])
-      const totalInv=invData?.reduce((s,r)=>s+(r.total_amount||0),0)||0
-      const totalPaid=invData?.reduce((s,r)=>s+(r.paid_amount||0),0)||0
-      setStats({cc,pc,tc,totalInv,totalPaid,oc,ls,mo})
-      setRecentProjects(projs||[])
-      const expired:any[]=[],expiringSoon:any[]=[],expiringLater:any[]=[]
-      function addDoc(name:string,expiry:string,cat:string){
+
+      // ── FINANCIAL ─────────────────────────────────
+      const totalInvoiced  = (inv||[]).reduce((s,r)=>s+(r.total_amount||0),0)
+      const totalCollected = (inv||[]).reduce((s,r)=>s+(r.paid_amount||0),0)
+      const balanceDue     = (inv||[]).reduce((s,r)=>s+(r.balance||0),0)
+      const overdueInv     = (inv||[]).filter(r=>r.status==='Overdue')
+      const overdueCount   = overdueInv.length
+      const contractsValue = (proj||[]).reduce((s,r)=>s+(r.budget||0),0)
+      const netProfit      = (proj||[]).reduce((s,r)=>s+((r.budget||0)-(r.actual_cost||0)),0)
+      const activeAMCCount = (amcs||[]).filter(c=>c.status==='Active').length
+      const retentionVal   = totalInvoiced * 0.1
+      const collectionPct  = totalInvoiced > 0 ? Math.round(totalCollected/totalInvoiced*100) : 0
+
+      // ── OPERATIONS ─────────────────────────────────
+      const activeProj        = (proj||[]).filter(p=>p.status==='In Progress').length
+      const openMaint         = (maint||[]).filter(m=>m.status==='Open').length
+      const maintThisMonth    = (maintRep||[]).length
+      const overduePunch      = (punches||[]).filter(p=>p.status==='متأخر').length
+      const sentQuotes        = (quot||[]).filter(q=>q.status==='Sent').length
+      const overdueRecurring  = (recur||[]).filter(r=>r.status==='متأخرة').length
+      const openPOs           = (po||[]).length
+      const pendingExp        = (exp||[]).filter(e=>e.status==='Pending').length
+
+      // ── PEOPLE & ASSETS ────────────────────────────
+      const activeTechs       = (techs||[]).filter(t=>t.status==='Active').length
+      const warrantyExpiring  = (warranty||[]).filter((w:any)=>{
+        if (!w.start_date||!w.duration_months) return false
+        const exp=new Date(w.start_date); exp.setMonth(exp.getMonth()+w.duration_months)
+        const days=Math.ceil((exp.getTime()-today.getTime())/86400000)
+        return days>0&&days<=30
+      }).length
+      const dueCommissions    = (comm||[]).reduce((s:number,r:any)=>s+(r.balance||0),0)
+      const lowStock          = (inv2||[]).filter(i=>i.status==='Low Stock').length
+
+      // ── ALERTS ─────────────────────────────────────
+      const expired:any[]=[],soon:any[]=[],later:any[]=[]
+      const addAlert=(name:string,expiry:string,cat:string)=>{
         if(!expiry) return
-        const d=expiry.split('T')[0]
-        const days=Math.ceil((new Date(d).getTime()-today.getTime())/86400000)
+        const days=Math.ceil((new Date(expiry.split('T')[0]).getTime()-today.getTime())/86400000)
         const item={name:`${cat}: ${name}`,detail:days<=0?'منتهية':`${days} يوم`}
         if(days<=0) expired.push(item)
-        else if(days<=30) expiringSoon.push(item)
-        else if(days<=60) expiringLater.push(item)
+        else if(days<=30) soon.push(item)
+        else if(days<=60) later.push(item)
       }
-      techs?.forEach((t:any)=>{
-        if(t.residence_expiry) addDoc(t.full_name,t.residence_expiry,'إقامة')
-        if(t.engineers_membership_exp) addDoc(t.full_name,t.engineers_membership_exp,'عضوية')
+      ;(techs||[]).forEach((t:any)=>{
+        if(t.residence_expiry)          addAlert(t.full_name,t.residence_expiry,'إقامة')
+        if(t.engineers_membership_exp)  addAlert(t.full_name,t.engineers_membership_exp,'عضوية')
+        if(t.passport_expiry)           addAlert(t.full_name,t.passport_expiry,'جواز سفر')
+        if(t.has_driving_license&&t.driving_license_expiry) addAlert(t.full_name,t.driving_license_expiry,'رخصة قيادة')
       })
-      vehicles?.forEach((v:any)=>{
-        const n=`${v.brand||''} ${v.model||''} (${v.plate_no||''})`
-        if(v.insurance_expiry) addDoc(n,v.insurance_expiry,'تأمين')
-        if(v.registration_expiry) addDoc(n,v.registration_expiry,'استمارة')
+      ;(veh||[]).forEach((v:any)=>{
+        const n=`${v.brand||''} (${v.plate_no||''})`
+        if(v.insurance_expiry)    addAlert(n,v.insurance_expiry,'تأمين')
+        if(v.registration_expiry) addAlert(n,v.registration_expiry,'استمارة')
       })
-      docs?.forEach((d:any)=>{if(d.expiry_date) addDoc(d.doc_name,d.expiry_date,'وثيقة')})
-      amcs?.forEach((a:any)=>{if(a.end_date) addDoc(a.clients?.company_name||a.contract_code,a.end_date,'عقد AMC')})
-      setAlerts({expired,expiringSoon,expiringLater})
+      ;(docs||[]).forEach((d:any)=>{
+        if(d.expiry_date) {
+          // الوثائق الشهرية تنبه قبل 10 أيام، البقية قبل 30 يوم
+          const thresh = d.is_monthly ? 10 : 30
+          const days   = Math.ceil((new Date(d.expiry_date.split('T')[0]).getTime()-today.getTime())/86400000)
+          if (days <= 0) expired.push({name:`${d.is_monthly?'🔄 ':''} وثيقة: ${d.doc_name}`, detail:'منتهية'})
+          else if (days <= thresh) soon.push({name:`${d.is_monthly?'🔄 ':''} وثيقة: ${d.doc_name}`, detail:`${days} يوم`})
+          else if (days <= 60) later.push({name:`وثيقة: ${d.doc_name}`, detail:`${days} يوم`})
+        }
+      })
+      ;(amcs||[]).filter((a:any)=>a.status==='Active').forEach((a:any)=>{
+        if(a.end_date) addAlert(a.clients?.company_name||a.contract_code,a.end_date,'عقد AMC')
+      })
+      setAlerts({ expired, soon, later })
+
+      // ── ALERT COUNTS ───────────────────────────────
+      const expiredVehDocs=(veh||[]).filter(v=>{
+        const ins=v.insurance_expiry&&new Date(v.insurance_expiry)<today
+        const reg=v.registration_expiry&&new Date(v.registration_expiry)<today
+        return ins||reg
+      }).length
+      const residencyExpiring=(techs||[]).filter(t=>{
+        if(!t.residence_expiry) return false
+        const days=Math.ceil((new Date(t.residence_expiry).getTime()-today.getTime())/86400000)
+        return days>0&&days<=14
+      }).length
+      const expiredDocs=(docs||[]).filter(d=>d.expiry_date&&new Date(d.expiry_date.split('T')[0])<today).length
+      const monthlyDocsDueSoon=(docs||[]).filter(d=>{
+        if(!d.is_monthly||!d.expiry_date) return false
+        const days=Math.ceil((new Date(d.expiry_date.split('T')[0]).getTime()-today.getTime())/86400000)
+        return days>0&&days<=10
+      }).length
+      const docs60=(docs||[]).filter(d=>{
+        if(!d.expiry_date) return false
+        const days=Math.ceil((new Date(d.expiry_date).getTime()-today.getTime())/86400000)
+        return days>0&&days<=60
+      }).length
+      const openMaintLate=(maint||[]).filter(m=>m.status==='Overdue'||m.status==='متأخرة').length
+
+      setD({
+        totalInvoiced, totalCollected, balanceDue, overdueCount, contractsValue,
+        netProfit, activeAMCCount, retentionVal, collectionPct,
+        activeProj, openMaint, maintThisMonth, overduePunch, sentQuotes,
+        overdueRecurring, openPOs, pendingExp,
+        activeTechs, warrantyExpiring, dueCommissions, lowStock,
+        expiredVehDocs, residencyExpiring, expiredDocs, docs60,
+        openMaintLate, expiredDocsDetail: expired,
+        projTotal: (proj||[]).length,
+        invTotal:  (inv||[]).length,
+        invPaid:   (inv||[]).filter(i=>i.status==='Paid').length,
+      })
       setLoading(false)
     }
     load()
-  },[])
+  }, [])
 
-  const fmt=(n:number)=>new Intl.NumberFormat('ar-SA',{maximumFractionDigits:0}).format(n)+' ر.س'
-  const totalAlerts=alerts.expired.length+alerts.expiringSoon.length+alerts.expiringLater.length
-  if(loading) return <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))',gap:16}}>{[...Array(8)].map((_,i)=><div key={i} className="skeleton" style={{height:100}}/>)}</div>
+  if (loading) return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 8, padding: 4 }}>
+      {[...Array(20)].map((_,i) => (
+        <div key={i} className="skeleton" style={{ height: 54, borderRadius: 8 }} />
+      ))}
+    </div>
+  )
+
+  const totalAlerts = (d.overdueCount>0?1:0)+(d.expiredDocs>0?1:0)+(d.overduePunch>0?1:0)+(d.expiredVehDocs>0?1:0)+(d.docs60>0?1:0)+(d.residencyExpiring>0?1:0)+(d.openMaintLate>0?1:0)
+  const alertChipType = (v:number, urgent=true) => v>0 ? (urgent?'r':'a') : 'n'
+
+  // ─── STYLES ──────────────────────────────────────
+  const grid4: React.CSSProperties = { display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:8 }
 
   return (
-    <div>
-      <div className="page-header">
-        <div><div className="page-title">لوحة التحكم</div><div className="page-subtitle">COOL SEASONS & DARAJA.STORE</div></div>
-        {totalAlerts>0&&<div style={{background:'#FDECEA',border:'1px solid #C0392B30',borderRadius:8,padding:'8px 14px',display:'flex',alignItems:'center',gap:8}}><AlertTriangle size={16} color="#C0392B"/><span style={{fontSize:13,fontWeight:700,color:'#C0392B'}}>{totalAlerts} تنبيه</span></div>}
-      </div>
-      {totalAlerts>0&&(
-        <div className="card" style={{padding:20,marginBottom:20,borderRight:'4px solid #C0392B'}}>
-          <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:16}}><AlertTriangle size={18} color="#C0392B"/><span style={{fontFamily:'Cairo,sans-serif',fontWeight:700,fontSize:16,color:'#C0392B'}}>تنبيهات الوثائق والتراخيص</span></div>
-          <AlertRow type="red" title="منتهية الصلاحية" items={alerts.expired}/>
-          <AlertRow type="amber" title="تنتهي خلال 30 يوم" items={alerts.expiringSoon}/>
-          <AlertRow type="blue" title="تنتهي خلال 60 يوم" items={alerts.expiringLater}/>
-          <div style={{display:'flex',gap:10,marginTop:12,flexWrap:'wrap'}}>
-            {[{id:'technicians',l:'الفنيون'},{id:'vehicles',l:'المركبات'},{id:'company_docs',l:'وثائق الشركة'}].map(b=>(
-              <button key={b.id} onClick={()=>onNav(b.id)} style={{fontSize:12,background:'none',border:'1px solid var(--cs-border)',borderRadius:6,padding:'5px 12px',cursor:'pointer',color:'var(--cs-text-muted)'}}>← {b.l}</button>
-            ))}
-          </div>
-        </div>
-      )}
-      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:14,marginBottom:24}}>
-        <StatCard label="العملاء" value={stats.cc} icon={Users} color="var(--cs-blue)"/>
-        <StatCard label="مشاريع جارية" value={stats.pc} icon={FolderOpen} color="var(--cs-green)"/>
-        <StatCard label="الفنيون النشطون" value={stats.tc} icon={UserCheck} color="var(--cs-orange)"/>
-        <StatCard label="إجمالي الفواتير" value={fmt(stats.totalInv)} icon={DollarSign} color="var(--cs-blue)"/>
-        <StatCard label="المحصّل" value={fmt(stats.totalPaid)} icon={TrendingUp} color="var(--cs-green)"/>
-        <StatCard label="فواتير متأخرة" value={stats.oc} icon={AlertCircle} color="var(--cs-red)"/>
-        <StatCard label="صيانة متأخرة" value={stats.mo} icon={Wrench} color="var(--cs-orange)"/>
-        <StatCard label="مخزون منخفض" value={stats.ls} icon={Package} color="var(--cs-red)"/>
-      </div>
-      <div className="card" style={{padding:20}}>
-        <div style={{fontFamily:'Cairo,sans-serif',fontWeight:700,fontSize:16,marginBottom:16}}>أحدث المشاريع</div>
-        {recentProjects.length===0?<div style={{textAlign:'center',color:'var(--cs-text-muted)',padding:30}}>لا توجد مشاريع بعد</div>:(
-          <div className="table-wrap"><table><thead><tr><th>اسم المشروع</th><th>الحالة</th><th>الإنجاز</th></tr></thead>
-          <tbody>{recentProjects.map((p,i)=>(
-            <tr key={i}>
-              <td style={{fontWeight:600}}>{p.project_name}</td>
-              <td><span className={`badge ${p.status==='Completed'?'badge-green':p.status==='In Progress'?'badge-blue':'badge-gray'}`}>{p.status}</span></td>
-              <td><div style={{display:'flex',alignItems:'center',gap:8,minWidth:100}}>
-                <div style={{flex:1,background:'var(--cs-border)',borderRadius:4,height:6}}><div style={{width:`${p.completion_pct||0}%`,background:'var(--cs-blue)',height:6,borderRadius:4}}/></div>
-                <span style={{fontSize:12,color:'var(--cs-text-muted)',minWidth:30}}>{p.completion_pct||0}%</span>
-              </div></td>
-            </tr>
-          ))}</tbody></table></div>
-        )}
-      </div>
-    </div>
-  )
-}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
 
-export default function Home() {
-  const [session,setSession]=useState<any>(undefined)
-  const [page,setPage]=useState('dashboard')
-
-  useEffect(()=>{
-    supabase.auth.getSession().then(({data})=>setSession(data.session))
-    const {data:{subscription}}=supabase.auth.onAuthStateChange((_,s)=>setSession(s))
-    return ()=>subscription.unsubscribe()
-  },[])
-  const [open,setOpen]=useState<string[]>(['crm','ops'])
-  const [mob,setMob]=useState(false)
-  const nav=(id:string)=>{setPage(id);setMob(false)}
-
-  function renderPage() {
-    switch(page) {
-      case 'dashboard':         return <DashboardAny onNav={nav}/>
-      case 'clients':           return <ClientsPage/>
-      case 'projects':          return <ProjectsPage/>
-      case 'technicians':       return <TechniciansPage/>
-      case 'invoices':          return <InvoicesPage/>
-      case 'maintenance':       return <MaintenancePage/>
-      case 'maint_report':      return <MaintReportPage/>
-      case 'inventory':         return <InventoryPage/>
-      case 'expenses':          return <ExpensesPage/>
-      case 'contracts':         return <ContractsPage/>
-      case 'vehicles':          return <VehiclesPage/>
-      case 'company_docs':      return <CompanyDocsPage/>
-      case 'quotations':        return <QuotationsPage/>
-      case 'daily_logs':        return <DailyLogsPage/>
-      case 'punch_list':        return <PunchListPage/>
-      case 'hr_attendance':     return <HRAttendancePage/>
-      case 'call_center':       return <CallCenterPage/>
-      case 'commissions':       return <CommissionsPage/>
-      case 'dispatch':          return <DispatchBoardPage/>
-      case 'wip':               return <WIPPage/>
-      case 'job_costing':       return <JobCostingPage/>
-      case 'retention':         return <RetentionPage/>
-      case 'pricebook':         return <PricebookPage/>
-      case 'recurring_jobs':    return <RecurringJobsPage/>
-      case 'freon':             return <FreonPage/>
-      case 'purchase_orders':   return <PurchaseOrdersPage/>
-      case 'equipment':         return <EquipmentPage/>
-      case 'warranty':          return <WarrantyPage/>
-      case 'contractors':       return <ContractorPage/>
-      case 'customer_followup': return <CustomerFollowupPage/>
-      case 'leaderboard':       return <TechLeaderboardPage/>
-      case 'gantt':             return <GanttPage/>
-      case 'print_project':     return <PrintProjectPage/>
-      case 'reports':           return <ReportsPage/>
-      case 'settings_page':     return <SettingsPage/>
-      case 'unsold_estimates':  return <UnsoldEstimatesPage/>
-      case 'amc_dashboard':     return <AMCDashboardPage/>
-      case 'capacity_plan':     return <CapacityPlanPage/>
-      case 'client_card':       return <ClientCardPage/>
-      case 'job_checklists':    return <JobChecklistsPage/>
-      case 'multi_quotes':      return <MultiQuotesPage/>
-      case 'monthly_report':    return <MonthlyReportPage/>
-      case 'supplier_compare':  return <SupplierComparePage/>
-      case 'cash_flow':         return <CashFlowPage/>
-      case 'flat_rate':         return <FlatRatePage/>
-      case 'copper_pipe':       return <CopperPipePage/>
-      case 'duct_works':        return <DuctWorksPage/>
-      default: return <div style={{textAlign:'center',padding:60,color:'var(--cs-text-muted)'}}><BarChart3 size={40} style={{marginBottom:12,opacity:0.3}}/><div style={{fontWeight:600}}>قيد التطوير</div></div>
-    }
-  }
-
-  if(session===undefined) return(
-    <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'linear-gradient(135deg,#0F4C81,#1E9CD7)'}}>
-      <div style={{color:'white',fontSize:16,fontFamily:'Tajawal,sans-serif',fontWeight:600}}>⏳ جاري التحميل...</div>
-    </div>
-  )
-  if(!session) return <LoginPage onLogin={()=>{}}/>
-
-  const SidebarContent=()=>(
-    <div style={{display:'flex',flexDirection:'column',height:'100%'}}>
-      <div style={{padding:'20px 16px 16px',borderBottom:'1px solid var(--cs-border)'}}>
-        <div style={{display:'flex',alignItems:'center',gap:10}}>
-          <div style={{background:'var(--cs-blue)',borderRadius:10,width:36,height:36,display:'flex',alignItems:'center',justifyContent:'center'}}><Building2 size={18} color="white"/></div>
-          <div>
-            <div style={{fontFamily:'Cairo,sans-serif',fontWeight:900,fontSize:13,color:'var(--cs-text)',lineHeight:1.2}}>COOL SEASONS</div>
-            <div style={{fontSize:10,color:'var(--cs-text-muted)'}}>DARAJA.STORE</div>
-          </div>
-        </div>
-      </div>
-      <nav style={{flex:1,padding:'12px 10px',overflowY:'auto'}}>
-        {NAV.map(item=>(
-          <div key={item.id}>
-            {item.children?(
-              <div>
-                <div className="nav-item" onClick={()=>setOpen(p=>p.includes(item.id)?p.filter(x=>x!==item.id):[...p,item.id])} style={{justifyContent:'space-between'}}>
-                  <div style={{display:'flex',alignItems:'center',gap:10}}><item.icon size={16}/><span>{item.label}</span></div>
-                  <ChevronDown size={14} style={{transform:open.includes(item.id)?'rotate(180deg)':'none',transition:'transform 0.2s'}}/>
-                </div>
-                <div style={{paddingRight:26,marginBottom:4,display:open.includes(item.id)?'block':'none'}}>
-                    {item.children.map(c=>(
-                      <div key={c.id} className={`nav-item ${page===c.id?'active':''}`} onClick={()=>nav(c.id)} style={{fontSize:13,padding:'6px 12px',color:'#374151',fontFamily:'Tajawal,sans-serif'}}>{c.label}</div>
-                    ))}
-                  </div>
-              </div>
-            ):(
-              <div className={`nav-item ${page===item.id?'active':''}`} onClick={()=>nav(item.id)}><item.icon size={16}/><span>{item.label}</span></div>
+      {/* ═══ ALERT COMMAND CENTER ═══ */}
+      <div style={{ background: '#fff', borderRadius: 10, border: '1px solid #E2E8F0', overflow: 'hidden' }}>
+        {/* Header */}
+        <div style={{ background: 'linear-gradient(135deg,#FEF3C7,#FEF9EC)', padding: '8px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #FDE68A' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, fontWeight: 700, color: '#78350F', letterSpacing: '.6px', textTransform: 'uppercase' }}>
+            <AlertTriangle size={13} color="#D97706" />
+            مركز التنبيهات
+            {totalAlerts > 0 && (
+              <span style={{ background: '#DC2626', color: 'white', fontSize: 9, fontWeight: 900, padding: '1px 8px', borderRadius: 20, fontFamily: 'Cairo,sans-serif' }}>
+                {totalAlerts} نشطة
+              </span>
+            )}
+            {totalAlerts === 0 && (
+              <span style={{ background: '#059669', color: 'white', fontSize: 9, fontWeight: 900, padding: '1px 8px', borderRadius: 20, fontFamily: 'Cairo,sans-serif' }}>
+                كل شيء سليم ✅
+              </span>
             )}
           </div>
-        ))}
-      </nav>
-      <div style={{padding:'12px 10px',borderTop:'1px solid var(--cs-border)'}}>
-        <div className={`nav-item ${page==='settings_page'?'active':''}`} onClick={()=>nav('settings_page')}><Settings size={16}/><span>الإعدادات</span></div>
-      </div>
-    </div>
-  )
+          <div style={{ fontSize: 9, color: '#92400E', fontWeight: 500 }}>
+            {new Date().toLocaleDateString('ar-SA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+          </div>
+        </div>
 
-  return (
-    <div style={{display:'flex',minHeight:'100vh'}}>
-      <aside style={{width:240,background:'white',borderLeft:'1px solid var(--cs-border)',position:'fixed',top:0,right:0,height:'100vh',zIndex:50,overflowY:'auto'}} className="sidebar">{SidebarContent()}</aside>
-      {mob&&<>
-        <div onClick={()=>setMob(false)} style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.4)',zIndex:99}}/>
-        <aside style={{width:260,background:'white',position:'fixed',top:0,right:0,height:'100vh',zIndex:100,overflowY:'auto'}}>
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:16,borderBottom:'1px solid var(--cs-border)'}}>
-            <span style={{fontWeight:700}}>القائمة</span>
-            <button onClick={()=>setMob(false)} style={{background:'none',border:'none',cursor:'pointer'}}><X size={20}/></button>
+        {/* Chips */}
+        <div style={{ padding: '9px 11px', display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 6 }}>
+          <AChip type={alertChipType(d.overdueCount)}     icon={FileText}      label="فواتير متأخرة"    value={d.overdueCount}      onClick={()=>onNav('invoices')} />
+          <AChip type={alertChipType(d.expiredDocs)}      icon={FileWarning}   label="وثائق منتهية"     value={d.expiredDocs}       onClick={()=>onNav('company_docs')} />
+          <AChip type={alertChipType(d.overduePunch)}     icon={ClipboardCheck} label="Punch List متأخر" value={d.overduePunch}      onClick={()=>onNav('punch_list')} />
+          <AChip type={alertChipType(d.expiredVehDocs)}   icon={Car}           label="وثائق مركبات"     value={d.expiredVehDocs}    onClick={()=>onNav('vehicles')} />
+          <AChip type={alertChipType(d.docs60, false)}    icon={Clock}         label="وثائق 60 يوم"     value={d.docs60}            onClick={()=>onNav('company_docs')} />
+          <AChip type={alertChipType(d.residencyExpiring, false)} icon={UserCheck} label="إقامات تنتهي" value={d.residencyExpiring} onClick={()=>onNav('technicians')} />
+          <AChip type={alertChipType(d.openMaintLate)}    icon={Wrench}        label="صيانة متأخرة"     value={d.openMaintLate}     onClick={()=>onNav('maintenance')} />
+          <AChip type={d.overdueCount===0&&d.expiredDocs===0?'g':'n'} icon={CheckCircle} label="مخالفات مركبات" value={0} onClick={()=>onNav('vehicles')} />
+        </div>
+
+        {/* Document detail strip */}
+        {alerts.expired.length > 0 && (
+          <div style={{ borderTop: '1px solid #FEF3C7', padding: '6px 12px', background: '#FFFBEB', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ width: 24, height: 24, borderRadius: 6, background: '#FEF3C7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <FileWarning size={12} color="#D97706" />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 9.5, fontWeight: 700, color: '#92400E' }}>
+                وثائق منتهية: {alerts.expired.length}
+              </div>
+              <div style={{ fontSize: 8.5, color: '#B45309' }}>
+                {alerts.expired.slice(0, 3).map((a:any) => a.name).join(' · ')}
+                {alerts.expired.length > 3 && ` · +${alerts.expired.length - 3} أخرى`}
+              </div>
+            </div>
+            {alerts.soon.length > 0 && (
+              <div style={{ fontSize: 8.5, fontWeight: 700, color: '#92400E', background: '#FEF3C7', padding: '2px 8px', borderRadius: 4 }}>
+                {alerts.soon.length} تنتهي خلال 30 يوم
+              </div>
+            )}
           </div>
-          {SidebarContent()}
-        </aside>
-      </>}
-      <main className="main-content" style={{flex:1,marginRight:240,minHeight:'100vh',display:'flex',flexDirection:'column'}}>
-        <header style={{background:'white',borderBottom:'1px solid var(--cs-border)',padding:'0 24px',height:60,display:'flex',alignItems:'center',justifyContent:'space-between',position:'sticky',top:0,zIndex:40}}>
-          <button onClick={()=>setMob(true)} style={{background:'none',border:'none',cursor:'pointer'}} id="mob-btn"><Menu size={22}/></button>
-          <div style={{display:'flex',alignItems:'center',gap:8}}>
-            <div style={{width:8,height:8,background:'var(--cs-green)',borderRadius:'50%'}}/>
-            <span style={{fontSize:12,color:'var(--cs-text-muted)'}}>متصل بـ Supabase</span>
+        )}
+      </div>
+
+      {/* ═══ MOMENTUM BAR ═══ */}
+      <div style={{ background: '#fff', border: '1px solid #E2E8F0', borderRadius: 9, padding: '11px 14px' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 9 }}>
+          <div>
+            <div style={{ fontSize: 8.5, fontWeight: 700, color: '#94A3B8', letterSpacing: '.8px', textTransform: 'uppercase', marginBottom: 2 }}>
+              إيرادات {new Date().toLocaleDateString('ar-SA',{month:'long',year:'numeric'})}
+            </div>
+            <div style={{ fontFamily: 'Cairo,sans-serif', fontWeight: 900, fontSize: 19, color: '#0D1C2E', lineHeight: 1 }}>
+              {fmt(d.totalInvoiced)}
+            </div>
+            <div style={{ fontSize: 8.5, color: '#94A3B8', marginTop: 2 }}>
+              إجمالي الفواتير الصادرة · {d.invTotal} فاتورة
+            </div>
           </div>
-          <div style={{display:'flex',alignItems:'center',gap:12}}>
-            <Bell size={18} color="var(--cs-text-muted)" style={{cursor:'pointer'}}/>
-            <div style={{width:32,height:32,background:'var(--cs-blue)',borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',color:'white',fontSize:13,fontWeight:700}}>م</div>
+          <div style={{ textAlign: 'left' }}>
+            <div style={{ fontSize: 8.5, fontWeight: 700, color: '#94A3B8', letterSpacing: '.8px', textTransform: 'uppercase', marginBottom: 2 }}>
+              نسبة التحصيل
+            </div>
+            <div style={{ fontFamily: 'Cairo,sans-serif', fontSize: 24, fontWeight: 900, color: '#1E9CD7', lineHeight: 1 }}>
+              {d.collectionPct}%
+            </div>
+            <div style={{ fontSize: 8.5, color: '#94A3B8', marginTop: 2 }}>
+              {fmt(d.totalCollected)} محصّل من {fmt(d.totalInvoiced)}
+            </div>
           </div>
-        </header>
-        <div style={{flex:1,padding:24}}>{renderPage()}</div>
-      </main>
-      <nav id="mob-nav" style={{display:'none',position:'fixed',bottom:0,left:0,right:0,background:'white',borderTop:'1px solid var(--cs-border)',zIndex:100,padding:'6px 0'}}>
-        {MOBILE_NAV.map(item=>(
-          <button key={item.id} onClick={()=>nav(item.id)} style={{flex:1,background:'none',border:'none',cursor:'pointer',display:'flex',flexDirection:'column',alignItems:'center',gap:3,padding:'4px 0',color:page===item.id?'var(--cs-blue)':'var(--cs-text-muted)',fontSize:10,fontFamily:'Tajawal,sans-serif',fontWeight:600}}>
-            <item.icon size={20}/>{item.label}
-          </button>
-        ))}
-      </nav>
-      <style>{`@media(max-width:768px){.sidebar{display:none!important}.main-content{margin-right:0!important;padding-bottom:70px}#mob-nav{display:flex!important}#mob-btn{display:flex!important}}@media(min-width:769px){#mob-btn{display:none!important}}`}</style>
+        </div>
+        <div style={{ height: 4, background: '#F1F5F9', borderRadius: 4, overflow: 'hidden', marginBottom: 3 }}>
+          <div style={{ height: 4, background: '#1E9CD7', borderRadius: 4, width: `${Math.min(d.collectionPct, 100)}%`, transition: 'width .6s ease' }} />
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+          {['٠%','٢٥%','٥٠%','٧٥%','١٠٠%'].map(m => (
+            <span key={m} style={{ fontSize: 7.5, color: '#CBD5E1' }}>{m}</span>
+          ))}
+        </div>
+      </div>
+
+      {/* ═══ FINANCIAL 8 ═══ */}
+      <SecLabel color="#1E9CD7" label="الملف المالي · Financial Overview" />
+      <div style={grid4}>
+        <ICard icon={FileText}    iconBg="#EFF6FF" iconColor="#2563EB" label="إجمالي الفواتير"  value={fmt(d.totalInvoiced)}  sub="Total Invoiced"    onClick={()=>onNav('invoices')} />
+        <ICard icon={CheckCircle} iconBg="#ECFDF5" iconColor="#059669" label="المحصّل"          value={fmt(d.totalCollected)} valuColor="#059669" sub="Collected"          onClick={()=>onNav('invoices')} />
+        <ICard icon={AlertCircle} iconBg="#FEF2F2" iconColor="#DC2626" label="الرصيد المتبقي"  value={fmt(d.balanceDue)}     valuColor={d.balanceDue>0?'#DC2626':'#059669'} sub="Balance Due" onClick={()=>onNav('invoices')} />
+        <ICard icon={Clock}       iconBg="#FEF2F2" iconColor="#DC2626" label="فواتير متأخرة"   value={fmtN(d.overdueCount)}  valuColor={d.overdueCount>0?'#DC2626':'#CBD5E1'} sub="Overdue Invoices" onClick={()=>onNav('invoices')} />
+        <ICard icon={Building2}   iconBg="#F5F3FF" iconColor="#7C3AED" label="قيمة العقود"     value={d.contractsValue>0?fmt(d.contractsValue):'—'} sub="Contracts Value"  onClick={()=>onNav('projects')} />
+        <ICard icon={TrendingUp}  iconBg="#F0FDFA" iconColor="#0D9488" label="إجمالي الربح"    value={d.netProfit!==0?fmt(d.netProfit):'—'} valuColor={d.netProfit>=0?'#059669':'#DC2626'} sub="Net Profit" onClick={()=>onNav('job_costing')} />
+        <ICard icon={FileCheck}   iconBg="#FFFBEB" iconColor="#D97706" label="عقود AMC نشطة"  value={fmtN(d.activeAMCCount)} valuColor={d.activeAMCCount>0?'#D97706':'#CBD5E1'} sub="Active AMC" onClick={()=>onNav('amc_dashboard')} />
+        <ICard icon={Lock}        iconBg="#F8FAFC" iconColor="#94A3B8" label="الضمان المحتجز" value={d.retentionVal>0?fmt(d.retentionVal):'—'} sub="Retention"          onClick={()=>onNav('retention')} />
+      </div>
+
+      {/* ═══ OPERATIONS 8 ═══ */}
+      <SecLabel color="#7C3AED" label="العمليات · Operations" />
+      <div style={grid4}>
+        <ICard icon={FolderOpen}   iconBg="#EFF6FF" iconColor="#2563EB" label="مشاريع نشطة"           value={fmtN(d.activeProj)}        valuColor={d.activeProj>0?'#2563EB':'#CBD5E1'}  sub="Active Projects"       onClick={()=>onNav('projects')} />
+        <ICard icon={Wrench}       iconBg="#FFFBEB" iconColor="#D97706" label="صيانة مفتوحة"          value={fmtN(d.openMaint)}         valuColor={d.openMaint>0?'#D97706':'#CBD5E1'}   sub="Open Maintenance"      onClick={()=>onNav('maintenance')} />
+        <ICard icon={ClipboardList} iconBg="#F0FDFA" iconColor="#0D9488" label="تقارير الصيانة"       value={fmtN(d.maintThisMonth)}    valuColor={d.maintThisMonth>0?'#0D9488':'#CBD5E1'} sub="هذا الشهر"            onClick={()=>onNav('maint_report')} />
+        <ICard icon={ClipboardCheck} iconBg="#FEF2F2" iconColor="#DC2626" label="Punch List متأخر"   value={fmtN(d.overduePunch)}      valuColor={d.overduePunch>0?'#DC2626':'#CBD5E1'} sub="Overdue Punch"         onClick={()=>onNav('punch_list')} />
+        <ICard icon={FileText}     iconBg="#ECFDF5" iconColor="#059669" label="عروض مرسلة"           value={fmtN(d.sentQuotes)}        valuColor={d.sentQuotes>0?'#059669':'#CBD5E1'}  sub="Sent Quotes"           onClick={()=>onNav('quotations')} />
+        <ICard icon={RefreshCw}    iconBg="#F5F3FF" iconColor="#7C3AED" label="أعمال متكررة متأخرة"  value={fmtN(d.overdueRecurring)}  valuColor={d.overdueRecurring>0?'#DC2626':'#CBD5E1'} sub="Overdue Recurring"  onClick={()=>onNav('recurring_jobs')} />
+        <ICard icon={ShoppingCart} iconBg="#FFFBEB" iconColor="#D97706" label="طلبات شراء مفتوحة"   value={fmtN(d.openPOs)}           valuColor={d.openPOs>0?'#D97706':'#CBD5E1'}     sub="Open POs"              onClick={()=>onNav('purchase_orders')} />
+        <ICard icon={DollarSign}   iconBg="#F8FAFC" iconColor="#94A3B8" label="مصروفات معلقة"        value={fmtN(d.pendingExp)}        valuColor={d.pendingExp>0?'#D97706':'#CBD5E1'}  sub="Pending Expenses"      onClick={()=>onNav('expenses')} />
+      </div>
+
+      {/* ═══ PEOPLE & ASSETS 4 ═══ */}
+      <SecLabel color="#D97706" label="الموارد والأصول · People & Assets" />
+      <div style={grid4}>
+        <ICard icon={UserCheck}  iconBg="#ECFDF5" iconColor="#059669" label="فنيون نشطون"       value={fmtN(d.activeTechs)}      valuColor={d.activeTechs>0?'#059669':'#CBD5E1'} sub="Active Techs"      onClick={()=>onNav('technicians')} />
+        <ICard icon={Shield}     iconBg="#F0FDFA" iconColor="#0D9488" label="ضمانات تنتهي قريباً" value={fmtN(d.warrantyExpiring)} valuColor={d.warrantyExpiring>0?'#D97706':'#CBD5E1'} sub="Warranty Expiring" onClick={()=>onNav('warranty')} />
+        <ICard icon={Star}       iconBg="#F5F3FF" iconColor="#7C3AED" label="عمولات مستحقة"     value={d.dueCommissions>0?fmt(d.dueCommissions):'—'} sub="Due Commissions"    onClick={()=>onNav('commissions')} />
+        <ICard icon={ClipboardCheck} iconBg="#EFF6FF" iconColor="#2563EB" label="قوائم الفحص"   value={d.lowStock>0?fmtN(d.lowStock)+'  صنف':'—'} sub="Job Checklists"      onClick={()=>onNav('job_checklists')} />
+      </div>
+
+
+
+      {/* Footer */}
+      <div style={{ textAlign: 'center', fontSize: 9, color: '#CBD5E1', paddingBottom: 4, letterSpacing: '.3px' }}>
+        COOL SEASONS ERP · Premium Light Edition · {totalAlerts} Alerts · 20 KPIs
+      </div>
+
     </div>
   )
 }
