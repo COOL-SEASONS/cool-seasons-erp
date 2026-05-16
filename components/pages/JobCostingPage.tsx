@@ -219,7 +219,7 @@ export default function JobCostingPage() {
   <tr><td>💸 مصروفات</td><td class="red">${fmt(c.expCost)} ر.س</td><td>من صفحة المصروفات</td></tr>
   <tr><td>👷 مقاولون (قيمة العقود)</td><td class="red">${fmt(c.ctCost)} ر.س</td><td>المدفوع: ${fmt(c.ctPaid)} ر.س</td></tr>
   <tr><td>📦 أوامر الشراء</td><td class="red">${fmt(c.poCost)} ر.س</td><td>من صفحة أوامر الشراء</td></tr>
-  <tr><td>💼 عمولات الوسطاء</td><td class="red">${fmtD(c.commCost)} ر.س</td><td>من صفحة العمولات</td></tr>
+  <tr><td>💼 عمولات الوسطاء</td><td class="red">${fmt(c.commCost)} ر.س</td><td>من صفحة العمولات</td></tr>
   <tr><td>📋 أوامر التغيير (معتمدة)</td><td class="red">${fmt(c.coApproved)} ر.س</td><td>انتظار: ${fmt(c.coPending)} ر.س</td></tr>
   <tr style="background:#FEF2F2"><td><b>إجمالي التكاليف</b></td><td class="red"><b>${fmt(c.totalCost)} ر.س</b></td><td></td></tr>
 </tbody></table>
