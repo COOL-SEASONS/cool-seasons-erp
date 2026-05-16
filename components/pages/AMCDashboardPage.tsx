@@ -8,6 +8,7 @@ const PART_STATUS_AR: any = { Pending:'معلق', Invoiced:'مُفوتَر', Pai
 const PART_STATUS_C:  any = { Pending:'badge-amber', Invoiced:'badge-blue', Paid:'badge-green' }
 
 const newPart = (contractId = '', clientId = '') => ({
+  company_pays: false,
   part_code:    `PRT-${1001 + Math.floor(Date.now()/1000) % 9000}`,
   contract_id:  contractId,
   client_id:    clientId,
@@ -47,7 +48,7 @@ export default function AMCDashboardPage() {
         .select('id,contract_id,report_no,report_date,problem,cost,status,technicians(full_name)')
         .not('contract_id', 'is', null),
       supabase.from('amc_parts')
-        .select('*,clients(company_name)')
+        .select('*,clients(company_name),company_pays')
         .order('invoice_date', { ascending: false }),
       supabase.from('contractors').select('contract_id,company_name,specialty,contract_value,paid_amount,status,link_type').eq('link_type','amc').not('contract_id','is',null),
       supabase.from('commissions').select('contract_id,broker_name,commission_amt,paid_amount,status,link_type').eq('link_type','amc').not('contract_id','is',null),
@@ -67,12 +68,15 @@ export default function AMCDashboardPage() {
     const partsRev  = cParts.reduce((s,  p) => s + (p.total_price||0), 0)
     const partsPaid = cParts.filter(p=>p.status==='Paid').reduce((s,p)=>s+(p.total_price||0),0)
     const partsPending = cParts.filter(p=>p.status!=='Paid').reduce((s,p)=>s+(p.total_price||0),0)
-    const cCtrs      = ctrs.filter(ct => ct.contract_id === cid)
-    const cComms     = comms.filter(cm => cm.contract_id === cid)
-    const ctrsCost   = cCtrs.reduce((s,ct)=>s+(ct.contract_value||0),0)
-    const ctrsValue  = cCtrs.reduce((s,ct)=>s+(ct.paid_amount||0),0)
-    const commsCost  = cComms.reduce((s,cm)=>s+(cm.commission_amt||0),0)
-    return { cVisits, cParts, visitCost, partsCost, partsRev, partsPaid, partsPending, cCtrs, cComms, ctrsCost, ctrsValue, commsCost }
+    const cCtrs           = ctrs.filter(ct => ct.contract_id === cid)
+    const cComms          = comms.filter(cm => cm.contract_id === cid)
+    const ctrsCost        = cCtrs.reduce((s,ct)=>s+(ct.contract_value||0),0)
+    const ctrsValue       = cCtrs.reduce((s,ct)=>s+(ct.paid_amount||0),0)
+    const commsCost       = cComms.reduce((s,cm)=>s+(cm.commission_amt||0),0)
+    // قطع الغيار التي تتحملها الشركة → تُخصم من قيمة العقد
+    const companyPartsCost = cParts.filter(p=>p.company_pays).reduce((s,p)=>s+(p.total_cost||0),0)
+    const totalDeductions  = visitCost + ctrsCost + commsCost + companyPartsCost
+    return { cVisits, cParts, visitCost, partsCost, partsRev, partsPaid, partsPending, cCtrs, cComms, ctrsCost, ctrsValue, commsCost, companyPartsCost, totalDeductions }
   }
 
   // ─── CRUD قطع الغيار ─────────────────────────────
@@ -83,6 +87,7 @@ export default function AMCDashboardPage() {
 
   const openEditPart = (p: any) => {
     setPartForm({
+      company_pays: p.company_pays||false,
       part_code: p.part_code||'', contract_id: p.contract_id||'', client_id: p.client_id||'',
       invoice_no: p.invoice_no||'', invoice_date: p.invoice_date?.split('T')[0]||'',
       part_name: p.part_name||'', part_number: p.part_number||'',
@@ -107,6 +112,7 @@ export default function AMCDashboardPage() {
       qty:          parseInt(partForm.qty)||1,
       unit_cost:    parseFloat(partForm.unit_cost)||0,
       unit_price:   parseFloat(partForm.unit_price)||0,
+      company_pays: partForm.company_pays||false,
       supplier:     partForm.supplier||null,
       status:       partForm.status||'Pending',
       notes:        partForm.notes||null,
@@ -127,7 +133,7 @@ export default function AMCDashboardPage() {
   // ─── طباعة تقرير العقد ───────────────────────────
   const printContract = (contract: any) => {
     const c = calcContract(contract.id)
-    const profit = (contract.annual_value||0) - c.visitCost
+    const profit = (contract.annual_value||0) - calc.totalDeductions
     const margin = contract.annual_value > 0 ? Math.round(profit/contract.annual_value*100) : 0
     const fmtN   = (n:number) => Number(n||0).toLocaleString('ar-SA',{maximumFractionDigits:2})
 
@@ -246,9 +252,9 @@ ${c.cParts.map((p,i) => `<tr>
   const enriched = contracts.map(c => {
     const daysLeft = c.end_date ? Math.ceil((new Date(c.end_date).getTime()-today.getTime())/86400000) : null
     const calc     = calcContract(c.id)
-    const profit   = (c.annual_value||0) - calc.visitCost
+    const profit   = (c.annual_value||0) - c.totalDeductions
     const margin   = c.annual_value > 0 ? Math.round(profit/c.annual_value*100) : 0
-    const totalCosts = calc.visitCost + calc.ctrsCost + calc.commsCost
+    const totalCosts = calc.totalDeductions
     return { ...c, daysLeft, ...calc, profit, margin, totalCosts }
   })
 
@@ -576,7 +582,10 @@ ${c.cParts.map((p,i) => `<tr>
                                               <td style={{ padding:'6px 8px', textAlign:'center', fontWeight:700 }}>{p.qty||1}</td>
                                               <td style={{ padding:'6px 8px', color:'var(--cs-text-muted)' }}>{fmt(p.unit_cost||0)} ر.س</td>
                                               <td style={{ padding:'6px 8px' }}>{fmt(p.unit_price||0)} ر.س</td>
-                                              <td style={{ padding:'6px 8px', fontWeight:700, color:'var(--cs-blue)' }}>{fmt(p.total_price||0)} ر.س</td>
+                                              <td style={{ padding:'6px 8px', fontWeight:700, color: p.company_pays?'var(--cs-red)':'var(--cs-blue)' }}>
+                                                {fmt(p.company_pays?(p.total_cost||0):(p.total_price||0))} ر.س
+                                                {p.company_pays && <div style={{ fontSize:9, color:'var(--cs-red)', fontWeight:600 }}>🏢 تتحملها الشركة</div>}
+                                              </td>
                                               <td style={{ padding:'6px 8px', fontSize:11 }}>{p.supplier||'—'}</td>
                                               <td style={{ padding:'6px 8px' }}>
                                                 <span className={`badge ${PART_STATUS_C[p.status]||'badge-gray'}`} style={{ fontSize:10 }}>
@@ -600,10 +609,11 @@ ${c.cParts.map((p,i) => `<tr>
                                           </tr>
                                         </tfoot>
                                       </table>
-                                      <div style={{ marginTop:10, padding:'8px 12px', background:'#EFF6FF', borderRadius:8, fontSize:12, display:'flex', gap:20 }}>
+                                      <div style={{ marginTop:10, padding:'8px 12px', background:'#EFF6FF', borderRadius:8, fontSize:12, display:'flex', gap:16, flexWrap:'wrap' }}>
+                                        <span>العميل يدفع: <b style={{ color:'var(--cs-blue)' }}>{fmt(c.partsRev - c.companyPartsCost)} ر.س</b></span>
+                                        <span>الشركة تتحمل: <b style={{ color:'var(--cs-red)' }}>{fmt(c.companyPartsCost)} ر.س</b></span>
                                         <span>مدفوع: <b style={{ color:'var(--cs-green)' }}>{fmt(c.partsPaid)} ر.س</b></span>
-                                        <span>معلق: <b style={{ color:'var(--cs-red)' }}>{fmt(c.partsPending)} ر.س</b></span>
-                                        <span style={{ fontSize:11, color:'var(--cs-text-muted)' }}>⚠️ قطع الغيار بدون هامش ربح — يدفعها العميل بالتكلفة</span>
+                                        {c.companyPartsCost>0 && <span style={{ fontSize:11, color:'var(--cs-red)', fontWeight:700 }}>⚠️ {fmt(c.companyPartsCost)} ر.س مخصومة من ربح العقد</span>}
                                       </div>
                                     </>
                                   }
@@ -696,6 +706,24 @@ ${c.cParts.map((p,i) => `<tr>
                       ? Math.round(((parseFloat(partForm.unit_price)||0)-(parseFloat(partForm.unit_cost)||0))/(parseFloat(partForm.unit_price)||1)*100)+'%'
                       : '—'}
                   </div>
+                </div>
+              </div>
+              {/* ✅ خيار: تتحملها الشركة */}
+              <div style={{ gridColumn:'1/-1' }}>
+                <div style={{ background: partForm.company_pays?'#FEF2F2':'#F8FAFC', border:`2px solid ${partForm.company_pays?'#FCA5A5':'#E5E7EB'}`, borderRadius:8, padding:'10px 14px' }}>
+                  <label style={{ display:'flex', alignItems:'center', gap:10, cursor:'pointer', userSelect:'none' as any }}>
+                    <input type="checkbox" checked={partForm.company_pays||false}
+                      onChange={e=>setPartForm({...partForm,company_pays:e.target.checked})}
+                      style={{ width:18, height:18, accentColor:'#DC2626', cursor:'pointer' }}/>
+                    <div>
+                      <div style={{ fontSize:13, fontWeight:700, color:partForm.company_pays?'#DC2626':'#374151' }}>
+                        🏢 تتحملها الشركة (تُخصم من قيمة العقد)
+                      </div>
+                      <div style={{ fontSize:10, color:'var(--cs-text-muted)', marginTop:2 }}>
+                        عند التفعيل: تكلفة القطعة تُضاف لتكاليف العقد وتُخصم من الربح
+                      </div>
+                    </div>
+                  </label>
                 </div>
               </div>
               <div style={{ gridColumn:'1/-1' }}><label className="form-label">الحالة</label>
