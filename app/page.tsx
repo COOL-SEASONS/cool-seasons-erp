@@ -346,39 +346,63 @@ export default function Home() {
   if(!session) return <LoginPage onLogin={()=>{}}/>
 
   const SidebarContent=()=>(
-    <div style={{display:'flex',flexDirection:'column',height:'100%'}}>
-      <div style={{padding:'20px 16px 16px',borderBottom:'1px solid var(--cs-border)'}}>
-        <div style={{display:'flex',alignItems:'center',gap:10}}>
-          <div style={{background:'var(--cs-blue)',borderRadius:10,width:36,height:36,display:'flex',alignItems:'center',justifyContent:'center'}}><Building2 size={18} color="white"/></div>
-          <div>
-            <div style={{fontFamily:'Cairo,sans-serif',fontWeight:900,fontSize:13,color:'var(--cs-text)',lineHeight:1.2}}>COOL SEASONS</div>
-            <div style={{fontSize:10,color:'var(--cs-text-muted)'}}>DARAJA.STORE</div>
-          </div>
+    <div style={{display:'flex',flexDirection:'column',height:'100%',fontFamily:'Tajawal,sans-serif'}}>
+      {/* LOGO */}
+      <div style={{padding:'14px 14px 11px',borderBottom:'1px solid #EEF1F6',display:'flex',alignItems:'center',gap:9}}>
+        <div style={{background:'linear-gradient(135deg,#1E9CD7,#0F4C81)',borderRadius:9,width:34,height:34,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+          <Building2 size={17} color="white"/>
+        </div>
+        <div>
+          <div style={{fontFamily:'Cairo,sans-serif',fontWeight:900,fontSize:12.5,color:'#C0392B',lineHeight:1.1}}>مواسم البرودة°</div>
+          <div style={{fontSize:8.5,color:'#94A3B8',fontWeight:700,letterSpacing:'0.8px'}}>COOL SEASONS · ERP</div>
         </div>
       </div>
-      <nav style={{flex:1,padding:'12px 10px',overflowY:'auto'}}>
+      {/* NAV */}
+      <nav style={{flex:1,padding:'6px 9px',overflowY:'auto'}}>
+        <style>{`
+          .sb-grp{font-size:8.5px;font-weight:700;color:#CBD5E1;letter-spacing:1.4px;padding:10px 7px 3px;text-transform:uppercase}
+          .sb-ni{display:flex;align-items:center;gap:7px;padding:5.5px 8px;border-radius:6px;margin-bottom:1px;cursor:pointer;font-size:11.5px;font-weight:500;color:#4B5563;transition:background .12s}
+          .sb-ni:hover{background:#F8FAFC}
+          .sb-ni.active{background:#EFF6FD;border:1px solid #DBEAFE;font-weight:700;color:#0F4C81}
+          .sb-ni svg{color:#CBD5E1;flex-shrink:0}
+          .sb-ni.active svg{color:#1E9CD7}
+          .sb-child{display:flex;align-items:center;padding:4.5px 8px 4.5px 24px;border-radius:6px;margin-bottom:1px;cursor:pointer;font-size:11px;font-weight:500;color:#64748B;transition:background .12s}
+          .sb-child:hover{background:#F8FAFC;color:#0F4C81}
+          .sb-child.active{background:#EFF6FD;color:#1E9CD7;font-weight:700}
+          .sb-hd{display:flex;align-items:center;gap:7px;justify-content:space-between;padding:5.5px 8px;border-radius:6px;margin-bottom:1px;cursor:pointer;font-size:11.5px;font-weight:500;color:#4B5563;transition:background .12s}
+          .sb-hd:hover{background:#F8FAFC}
+        `}</style>
         {NAV.map(item=>(
           <div key={item.id}>
             {item.children?(
               <div>
-                <div className="nav-item" onClick={()=>setOpen(p=>p.includes(item.id)?p.filter(x=>x!==item.id):[...p,item.id])} style={{justifyContent:'space-between'}}>
-                  <div style={{display:'flex',alignItems:'center',gap:10}}><item.icon size={16}/><span>{item.label}</span></div>
-                  <ChevronDown size={14} style={{transform:open.includes(item.id)?'rotate(180deg)':'none',transition:'transform 0.2s'}}/>
+                <div className="sb-hd" onClick={()=>setOpen(p=>p.includes(item.id)?p.filter(x=>x!==item.id):[...p,item.id])}>
+                  <div style={{display:'flex',alignItems:'center',gap:7}}><item.icon size={14}/><span>{item.label}</span></div>
+                  <ChevronDown size={11} style={{transform:open.includes(item.id)?'rotate(180deg)':'none',transition:'transform 0.2s',color:'#CBD5E1'}}/>
                 </div>
-                <div style={{paddingRight:26,marginBottom:4,display:open.includes(item.id)?'block':'none'}}>
-                    {item.children.map(c=>(
-                      <div key={c.id} className={`nav-item ${page===c.id?'active':''}`} onClick={()=>nav(c.id)} style={{fontSize:13,padding:'7px 12px'}}>{c.label}</div>
-                    ))}
-                  </div>
+                <div style={{display:open.includes(item.id)?'block':'none'}}>
+                  {item.children.map(ch=>(
+                    <div key={ch.id} className={`sb-child${page===ch.id?' active':''}`} onClick={()=>nav(ch.id)}>{ch.label}</div>
+                  ))}
+                </div>
               </div>
             ):(
-              <div className={`nav-item ${page===item.id?'active':''}`} onClick={()=>nav(item.id)}><item.icon size={16}/><span>{item.label}</span></div>
+              <div className={`sb-ni${page===item.id?' active':''}`} onClick={()=>nav(item.id)}>
+                <item.icon size={14}/><span>{item.label}</span>
+              </div>
             )}
           </div>
         ))}
       </nav>
-      <div style={{padding:'12px 10px',borderTop:'1px solid var(--cs-border)'}}>
-        <div className={`nav-item ${page==='settings_page'?'active':''}`} onClick={()=>nav('settings_page')}><Settings size={16}/><span>الإعدادات</span></div>
+      {/* FOOTER */}
+      <div style={{padding:'8px 12px',borderTop:'1px solid #EEF1F6',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+        <div className={`sb-ni${page==='settings_page'?' active':''}`} onClick={()=>nav('settings_page')} style={{flex:1,marginBottom:0}}>
+          <Settings size={13}/><span style={{fontSize:11}}>الإعدادات</span>
+        </div>
+        <div style={{display:'flex',alignItems:'center',gap:5}}>
+          <div style={{width:5,height:5,borderRadius:'50%',background:'#10B981'}}/>
+          <span style={{fontSize:9,color:'#94A3B8'}}>Supabase</span>
+        </div>
       </div>
     </div>
   )
