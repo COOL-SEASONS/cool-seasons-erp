@@ -360,17 +360,17 @@ export default function Home() {
       {/* NAV */}
       <nav style={{flex:1,padding:'6px 9px',overflowY:'auto'}}>
         <style>{`
-          .sb-grp{font-size:8.5px;font-weight:700;color:#CBD5E1;letter-spacing:1.4px;padding:10px 7px 3px;text-transform:uppercase}
-          .sb-ni{display:flex;align-items:center;gap:7px;padding:5.5px 8px;border-radius:6px;margin-bottom:1px;cursor:pointer;font-size:11.5px;font-weight:500;color:#4B5563;transition:background .12s}
-          .sb-ni:hover{background:#F8FAFC}
-          .sb-ni.active{background:#EFF6FD;border:1px solid #DBEAFE;font-weight:700;color:#0F4C81}
-          .sb-ni svg{color:#CBD5E1;flex-shrink:0}
+          .sb-grp{font-size:9.5px;font-weight:700;color:#BBC4D4;letter-spacing:1.2px;padding:12px 8px 4px;text-transform:uppercase}
+          .sb-ni{display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:7px;margin-bottom:2px;cursor:pointer;font-size:13px;font-weight:500;color:#374151;transition:background .12s;font-family:Tajawal,sans-serif}
+          .sb-ni:hover{background:#F5F7FA}
+          .sb-ni.active{background:#EFF6FD;font-weight:700;color:#0F4C81}
+          .sb-ni svg{color:#9CA3AF;flex-shrink:0}
           .sb-ni.active svg{color:#1E9CD7}
-          .sb-child{display:flex;align-items:center;padding:4.5px 8px 4.5px 24px;border-radius:6px;margin-bottom:1px;cursor:pointer;font-size:11px;font-weight:500;color:#64748B;transition:background .12s}
-          .sb-child:hover{background:#F8FAFC;color:#0F4C81}
+          .sb-child{display:flex;align-items:center;padding:6px 10px 6px 28px;border-radius:7px;margin-bottom:2px;cursor:pointer;font-size:12.5px;font-weight:500;color:#4B5563;transition:background .12s;font-family:Tajawal,sans-serif}
+          .sb-child:hover{background:#F5F7FA;color:#0F4C81}
           .sb-child.active{background:#EFF6FD;color:#1E9CD7;font-weight:700}
-          .sb-hd{display:flex;align-items:center;gap:7px;justify-content:space-between;padding:5.5px 8px;border-radius:6px;margin-bottom:1px;cursor:pointer;font-size:11.5px;font-weight:500;color:#4B5563;transition:background .12s}
-          .sb-hd:hover{background:#F8FAFC}
+          .sb-hd{display:flex;align-items:center;gap:9px;justify-content:space-between;padding:7px 10px;border-radius:7px;margin-bottom:2px;cursor:pointer;font-size:13px;font-weight:500;color:#374151;transition:background .12s;font-family:Tajawal,sans-serif}
+          .sb-hd:hover{background:#F5F7FA}
         `}</style>
         {NAV.map(item=>(
           <div key={item.id}>
