@@ -65,7 +65,7 @@ export default function JobCostingPage() {
     setProjects(pr||[]); setChangeOrders(co||[]); setExpenses(ex||[])
     setContractors(ct||[]); setPurchaseOrders(po||[]); setEquipment(eq||[])
     setInvoices(inv||[]); setCommissions(comm||[]); setCopper(cu||[]); setFreon(fr||[]); setDuct(du||[])
-    setClients(cl||[]); setCommissions(comm||[])
+    setClients(cl||[])
     setLoading(false)
   }, [])
 
@@ -443,7 +443,6 @@ ${coList.map(co=>`<tr><td style="font-family:monospace">${co.co_code}</td><td>${
                                         { l:'💸 مصروفات',               v:c.expCost },
                                         { l:'👷 مقاولون',               v:c.ctCost, sub: `مدفوع: ${fmt(c.ctPaid)} ر.س` },
                                         { l:'📦 أوامر شراء',            v:c.poCost },
-                                        { l:'💼 عمولات الوسطاء',          v:c.commCost },
                                         { l:'💼 عمولات الوسطاء',                 v:c.commCost },
                                         { l:'📋 أوامر تغيير إضافات (معتمدة)',  v:c.coAdditions },
                                         { l:'📋 أوامر تغيير خصميات (معتمدة)', v:c.coDeductions, neg:true },
