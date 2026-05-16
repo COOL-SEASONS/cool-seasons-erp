@@ -133,7 +133,7 @@ export default function AMCDashboardPage() {
   // ─── طباعة تقرير العقد ───────────────────────────
   const printContract = (contract: any) => {
     const c = calcContract(contract.id)
-    const profit = (contract.annual_value||0) - calc.totalDeductions
+    const profit = (contract.annual_value||0) - c.totalDeductions
     const margin = contract.annual_value > 0 ? Math.round(profit/contract.annual_value*100) : 0
     const fmtN   = (n:number) => Number(n||0).toLocaleString('ar-SA',{maximumFractionDigits:2})
 
