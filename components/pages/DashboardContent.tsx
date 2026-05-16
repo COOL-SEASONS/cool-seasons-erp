@@ -47,21 +47,18 @@ function AChip({ type, icon: Icon, label, value, onClick }: any) {
 // KPI icon card
 function ICard({ icon: Icon, iconBg, iconColor, label, value, valuColor, sub, onClick }: any) {
   return (
-    <div onClick={onClick} style={{
-      background: '#fff', border: '1px solid #E2E8F0', borderRadius: 8,
-      padding: '9px 10px', display: 'flex', alignItems: 'center', gap: 8,
-      cursor: onClick ? 'pointer' : 'default', transition: 'border-color .15s'
-    }}
-      onMouseEnter={e => (e.currentTarget.style.borderColor = '#BFDBFE')}
-      onMouseLeave={e => (e.currentTarget.style.borderColor = '#E2E8F0')}
+    <div onClick={onClick}
+      style={{ background:'#fff', border:'1px solid #E8ECF2', borderRadius:9, padding:'10px 11px', display:'flex', alignItems:'center', gap:9, cursor:onClick?'pointer':'default' }}
+      onMouseEnter={e=>(e.currentTarget.style.borderColor='#BFDBFE')}
+      onMouseLeave={e=>(e.currentTarget.style.borderColor='#E8ECF2')}
     >
-      <div style={{ width: 32, height: 32, minWidth: 32, borderRadius: 7, background: iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-        <Icon size={15} color={iconColor} />
+      <div style={{ flex:1, minWidth:0, overflow:'hidden' }}>
+        <div style={{ fontSize:9, fontWeight:600, color:'#94A3B8', marginBottom:3, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', letterSpacing:'0.2px' }}>{label}</div>
+        <div style={{ fontFamily:'Cairo,sans-serif', fontWeight:900, fontSize:16, lineHeight:1, color:valuColor||'#0D1C2E', whiteSpace:'nowrap' }}>{value}</div>
+        {sub && <div style={{ fontSize:8, color:'#CBD5E1', marginTop:2, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{sub}</div>}
       </div>
-      <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
-        <div style={{ fontSize: 9, fontWeight: 600, color: '#94A3B8', marginBottom: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</div>
-        <div style={{ fontFamily: 'Cairo,sans-serif', fontWeight: 900, fontSize: 15, lineHeight: 1, color: valuColor || '#0D1C2E', whiteSpace: 'nowrap' }}>{value}</div>
-        {sub && <div style={{ fontSize: 8, color: '#CBD5E1', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sub}</div>}
+      <div style={{ width:34, height:34, minWidth:34, borderRadius:8, background:iconBg, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+        <Icon size={16} color={iconColor}/>
       </div>
     </div>
   )
@@ -70,9 +67,9 @@ function ICard({ icon: Icon, iconBg, iconColor, label, value, valuColor, sub, on
 // Section label
 function SecLabel({ color, label }: { color: string; label: string }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-      <div style={{ width: 2.5, height: 11, borderRadius: 2, background: color, flexShrink: 0 }} />
-      <span style={{ fontSize: 8.5, fontWeight: 700, color: '#94A3B8', letterSpacing: 1, textTransform: 'uppercase' }}>{label}</span>
+    <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:2 }}>
+      <div style={{ width:3, height:12, borderRadius:2, background:color, flexShrink:0 }}/>
+      <span style={{ fontSize:9, fontWeight:700, color:'#94A3B8', letterSpacing:'1px', textTransform:'uppercase', fontFamily:'Tajawal,sans-serif' }}>{label}</span>
     </div>
   )
 }
@@ -238,7 +235,7 @@ export default function DashboardContent({ onNav }: { onNav: (id: string) => voi
   const alertChipType = (v:number, urgent=true) => v>0 ? (urgent?'r':'a') : 'n'
 
   // ─── STYLES ──────────────────────────────────────
-  const grid4: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 6 }
+  const grid4: React.CSSProperties = { display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:7 }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
