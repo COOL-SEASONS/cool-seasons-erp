@@ -48,17 +48,23 @@ function AChip({ type, icon: Icon, label, value, onClick }: any) {
 function ICard({ icon: Icon, iconBg, iconColor, label, value, valuColor, sub, onClick }: any) {
   return (
     <div onClick={onClick}
-      style={{ background:'#fff', border:'1px solid #E8ECF2', borderRadius:9, padding:'10px 11px', display:'flex', alignItems:'center', gap:9, cursor:onClick?'pointer':'default' }}
-      onMouseEnter={e=>(e.currentTarget.style.borderColor='#BFDBFE')}
-      onMouseLeave={e=>(e.currentTarget.style.borderColor='#E8ECF2')}
+      style={{ background:'#fff', border:'1px solid #E2E8F0', borderRadius:10, padding:'11px 12px',
+               display:'flex', alignItems:'center', gap:10,
+               cursor:onClick?'pointer':'default', boxShadow:'0 1px 3px rgba(0,0,0,0.04)' }}
+      onMouseEnter={e=>{e.currentTarget.style.borderColor='#93C5FD';e.currentTarget.style.boxShadow='0 2px 8px rgba(30,156,215,0.1)'}}
+      onMouseLeave={e=>{e.currentTarget.style.borderColor='#E2E8F0';e.currentTarget.style.boxShadow='0 1px 3px rgba(0,0,0,0.04)'}}
     >
-      <div style={{ flex:1, minWidth:0, overflow:'hidden' }}>
-        <div style={{ fontSize:9, fontWeight:600, color:'#94A3B8', marginBottom:3, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', letterSpacing:'0.2px' }}>{label}</div>
-        <div style={{ fontFamily:'Cairo,sans-serif', fontWeight:900, fontSize:16, lineHeight:1, color:valuColor||'#0D1C2E', whiteSpace:'nowrap' }}>{value}</div>
-        {sub && <div style={{ fontSize:8, color:'#CBD5E1', marginTop:2, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{sub}</div>}
+      <div style={{ width:38, height:38, minWidth:38, borderRadius:10, background:iconBg,
+                    display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+        <Icon size={19} color={iconColor}/>
       </div>
-      <div style={{ width:34, height:34, minWidth:34, borderRadius:8, background:iconBg, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-        <Icon size={16} color={iconColor}/>
+      <div style={{ flex:1, minWidth:0, overflow:'hidden' }}>
+        <div style={{ fontSize:10, fontWeight:600, color:'#94A3B8', marginBottom:3,
+                      whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{label}</div>
+        <div style={{ fontFamily:'Cairo,sans-serif', fontWeight:900, fontSize:18, lineHeight:1,
+                      color:valuColor||'#0D1C2E', whiteSpace:'nowrap' }}>{value}</div>
+        {sub && <div style={{ fontSize:9, color:'#CBD5E1', marginTop:2,
+                              whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{sub}</div>}
       </div>
     </div>
   )
@@ -235,7 +241,7 @@ export default function DashboardContent({ onNav }: { onNav: (id: string) => voi
   const alertChipType = (v:number, urgent=true) => v>0 ? (urgent?'r':'a') : 'n'
 
   // ─── STYLES ──────────────────────────────────────
-  const grid4: React.CSSProperties = { display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:7 }
+  const grid4: React.CSSProperties = { display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:8 }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
