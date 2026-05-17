@@ -28,17 +28,17 @@ function AChip({ type, icon: Icon, label, value, onClick }: any) {
   const s = styles[type] || styles.n
   return (
     <div onClick={onClick} style={{
-      background: s.bg, border: `1px solid ${s.border}`,
-      borderRadius: 8, padding: '8px 10px',
-      display: 'flex', alignItems: 'center', gap: 8,
-      cursor: onClick ? 'pointer' : 'default'
+      background: s.bg, border: `1.5px solid ${s.border}`,
+      borderRadius: 10, padding: '11px 14px',
+      display: 'flex', alignItems: 'center', gap: 11,
+      cursor: onClick ? 'pointer' : 'default', minHeight:62
     }}>
-      <div style={{ width: 30, height: 30, borderRadius: 7, background: s.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-        <Icon size={15} color={s.iconColor} />
+      <div style={{ width: 42, height: 42, borderRadius: 10, background: s.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <Icon size={22} color={s.iconColor} strokeWidth={2.2}/>
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 9.5, fontWeight: 600, color: s.labelColor, marginBottom: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</div>
-        <div style={{ fontFamily: 'Cairo,sans-serif', fontSize: 17, fontWeight: 900, lineHeight: 1.1, color: s.valColor }}>{value}</div>
+        <div style={{ fontSize: 12, fontWeight: 700, color: s.labelColor, marginBottom: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontFamily:'Tajawal,sans-serif' }}>{label}</div>
+        <div style={{ fontFamily: 'Cairo,sans-serif', fontSize: 22, fontWeight: 900, lineHeight: 1, color: s.valColor }}>{value}</div>
       </div>
     </div>
   )
@@ -48,22 +48,23 @@ function AChip({ type, icon: Icon, label, value, onClick }: any) {
 function ICard({ icon: Icon, iconBg, iconColor, label, value, valuColor, sub, onClick }: any) {
   return (
     <div onClick={onClick}
-      style={{ background:'#fff', border:'1px solid #E2E8F0', borderRadius:10, padding:'11px 12px',
-               display:'flex', alignItems:'center', gap:10,
-               cursor:onClick?'pointer':'default', boxShadow:'0 1px 3px rgba(0,0,0,0.04)' }}
-      onMouseEnter={e=>{e.currentTarget.style.borderColor='#93C5FD';e.currentTarget.style.boxShadow='0 2px 8px rgba(30,156,215,0.1)'}}
-      onMouseLeave={e=>{e.currentTarget.style.borderColor='#E2E8F0';e.currentTarget.style.boxShadow='0 1px 3px rgba(0,0,0,0.04)'}}
+      style={{ background:'#fff', border:'1px solid #E2E8F0', borderRadius:12, padding:'14px 16px',
+               display:'flex', alignItems:'center', gap:14, minHeight:78,
+               cursor:onClick?'pointer':'default', boxShadow:'0 1px 3px rgba(0,0,0,0.06)' }}
+      onMouseEnter={e=>{e.currentTarget.style.borderColor='#93C5FD';e.currentTarget.style.boxShadow='0 4px 12px rgba(30,156,215,0.12)'}}
+      onMouseLeave={e=>{e.currentTarget.style.borderColor='#E2E8F0';e.currentTarget.style.boxShadow='0 1px 3px rgba(0,0,0,0.06)'}}
     >
-      <div style={{ width:38, height:38, minWidth:38, borderRadius:10, background:iconBg,
+      <div style={{ width:50, height:50, minWidth:50, borderRadius:12, background:iconBg,
                     display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-        <Icon size={19} color={iconColor}/>
+        <Icon size={26} color={iconColor} strokeWidth={2.2}/>
       </div>
       <div style={{ flex:1, minWidth:0, overflow:'hidden' }}>
-        <div style={{ fontSize:10, fontWeight:600, color:'#94A3B8', marginBottom:3,
-                      whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{label}</div>
-        <div style={{ fontFamily:'Cairo,sans-serif', fontWeight:900, fontSize:18, lineHeight:1,
+        <div style={{ fontSize:13, fontWeight:600, color:'#64748B', marginBottom:5,
+                      whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
+                      fontFamily:'Tajawal,sans-serif' }}>{label}</div>
+        <div style={{ fontFamily:'Cairo,sans-serif', fontWeight:900, fontSize:22, lineHeight:1,
                       color:valuColor||'#0D1C2E', whiteSpace:'nowrap' }}>{value}</div>
-        {sub && <div style={{ fontSize:9, color:'#CBD5E1', marginTop:2,
+        {sub && <div style={{ fontSize:11, color:'#94A3B8', marginTop:4, fontWeight:500,
                               whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{sub}</div>}
       </div>
     </div>
@@ -73,9 +74,9 @@ function ICard({ icon: Icon, iconBg, iconColor, label, value, valuColor, sub, on
 // Section label
 function SecLabel({ color, label }: { color: string; label: string }) {
   return (
-    <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:2 }}>
-      <div style={{ width:3, height:12, borderRadius:2, background:color, flexShrink:0 }}/>
-      <span style={{ fontSize:9, fontWeight:700, color:'#94A3B8', letterSpacing:'1px', textTransform:'uppercase', fontFamily:'Tajawal,sans-serif' }}>{label}</span>
+    <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:4, marginBottom:2 }}>
+      <div style={{ width:4, height:18, borderRadius:3, background:color, flexShrink:0 }}/>
+      <span style={{ fontSize:13, fontWeight:800, color:'#475569', letterSpacing:'0.8px', textTransform:'uppercase', fontFamily:'Tajawal,sans-serif' }}>{label}</span>
     </div>
   )
 }
@@ -241,7 +242,7 @@ export default function DashboardContent({ onNav }: { onNav: (id: string) => voi
   const alertChipType = (v:number, urgent=true) => v>0 ? (urgent?'r':'a') : 'n'
 
   // ─── STYLES ──────────────────────────────────────
-  const grid4: React.CSSProperties = { display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:8 }
+  const grid4: React.CSSProperties = { display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:10 }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
@@ -250,21 +251,21 @@ export default function DashboardContent({ onNav }: { onNav: (id: string) => voi
       <div style={{ background: '#fff', borderRadius: 10, border: '1px solid #E2E8F0', overflow: 'hidden' }}>
         {/* Header */}
         <div style={{ background: 'linear-gradient(135deg,#FEF3C7,#FEF9EC)', padding: '8px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #FDE68A' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, fontWeight: 700, color: '#78350F', letterSpacing: '.6px', textTransform: 'uppercase' }}>
-            <AlertTriangle size={13} color="#D97706" />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 800, color: '#78350F', letterSpacing: '.3px', textTransform: 'uppercase' }}>
+            <AlertTriangle size={17} color="#D97706" />
             مركز التنبيهات
             {totalAlerts > 0 && (
-              <span style={{ background: '#DC2626', color: 'white', fontSize: 9, fontWeight: 900, padding: '1px 8px', borderRadius: 20, fontFamily: 'Cairo,sans-serif' }}>
+              <span style={{ background: '#DC2626', color: 'white', fontSize: 11, fontWeight: 900, padding: '3px 12px', borderRadius: 20, fontFamily: 'Cairo,sans-serif' }}>
                 {totalAlerts} نشطة
               </span>
             )}
             {totalAlerts === 0 && (
-              <span style={{ background: '#059669', color: 'white', fontSize: 9, fontWeight: 900, padding: '1px 8px', borderRadius: 20, fontFamily: 'Cairo,sans-serif' }}>
+              <span style={{ background: '#059669', color: 'white', fontSize: 11, fontWeight: 900, padding: '3px 12px', borderRadius: 20, fontFamily: 'Cairo,sans-serif' }}>
                 كل شيء سليم ✅
               </span>
             )}
           </div>
-          <div style={{ fontSize: 9, color: '#92400E', fontWeight: 500 }}>
+          <div style={{ fontSize: 12, color: '#92400E', fontWeight: 600 }}>
             {new Date().toLocaleDateString('ar-SA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
           </div>
         </div>
@@ -288,10 +289,10 @@ export default function DashboardContent({ onNav }: { onNav: (id: string) => voi
               <FileWarning size={12} color="#D97706" />
             </div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 9.5, fontWeight: 700, color: '#92400E' }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: '#92400E' }}>
                 وثائق منتهية: {alerts.expired.length}
               </div>
-              <div style={{ fontSize: 8.5, color: '#B45309' }}>
+              <div style={{ fontSize: 11, color: '#B45309', fontWeight: 500 }}>
                 {alerts.expired.slice(0, 3).map((a:any) => a.name).join(' · ')}
                 {alerts.expired.length > 3 && ` · +${alerts.expired.length - 3} أخرى`}
               </div>
@@ -309,34 +310,34 @@ export default function DashboardContent({ onNav }: { onNav: (id: string) => voi
       <div style={{ background: '#fff', border: '1px solid #E2E8F0', borderRadius: 9, padding: '11px 14px' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 9 }}>
           <div>
-            <div style={{ fontSize: 8.5, fontWeight: 700, color: '#94A3B8', letterSpacing: '.8px', textTransform: 'uppercase', marginBottom: 2 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: '#64748B', letterSpacing: '.5px', textTransform: 'uppercase', marginBottom: 4 }}>
               إيرادات {new Date().toLocaleDateString('ar-SA',{month:'long',year:'numeric'})}
             </div>
-            <div style={{ fontFamily: 'Cairo,sans-serif', fontWeight: 900, fontSize: 19, color: '#0D1C2E', lineHeight: 1 }}>
+            <div style={{ fontFamily: 'Cairo,sans-serif', fontWeight: 900, fontSize: 26, color: '#0D1C2E', lineHeight: 1 }}>
               {fmt(d.totalInvoiced)}
             </div>
-            <div style={{ fontSize: 8.5, color: '#94A3B8', marginTop: 2 }}>
+            <div style={{ fontSize: 12, color: '#94A3B8', marginTop: 4 }}>
               إجمالي الفواتير الصادرة · {d.invTotal} فاتورة
             </div>
           </div>
           <div style={{ textAlign: 'left' }}>
-            <div style={{ fontSize: 8.5, fontWeight: 700, color: '#94A3B8', letterSpacing: '.8px', textTransform: 'uppercase', marginBottom: 2 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: '#64748B', letterSpacing: '.5px', textTransform: 'uppercase', marginBottom: 4 }}>
               نسبة التحصيل
             </div>
-            <div style={{ fontFamily: 'Cairo,sans-serif', fontSize: 24, fontWeight: 900, color: '#1E9CD7', lineHeight: 1 }}>
+            <div style={{ fontFamily: 'Cairo,sans-serif', fontSize: 32, fontWeight: 900, color: '#1E9CD7', lineHeight: 1 }}>
               {d.collectionPct}%
             </div>
-            <div style={{ fontSize: 8.5, color: '#94A3B8', marginTop: 2 }}>
+            <div style={{ fontSize: 12, color: '#94A3B8', marginTop: 4 }}>
               {fmt(d.totalCollected)} محصّل من {fmt(d.totalInvoiced)}
             </div>
           </div>
         </div>
-        <div style={{ height: 4, background: '#F1F5F9', borderRadius: 4, overflow: 'hidden', marginBottom: 3 }}>
-          <div style={{ height: 4, background: '#1E9CD7', borderRadius: 4, width: `${Math.min(d.collectionPct, 100)}%`, transition: 'width .6s ease' }} />
+        <div style={{ height: 6, background: '#F1F5F9', borderRadius: 4, overflow: 'hidden', marginBottom: 5 }}>
+          <div style={{ height: 6, background: 'linear-gradient(90deg,#1E9CD7,#0F4C81)', borderRadius: 4, width: `${Math.min(d.collectionPct, 100)}%`, transition: 'width .6s ease' }} />
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
           {['٠%','٢٥%','٥٠%','٧٥%','١٠٠%'].map(m => (
-            <span key={m} style={{ fontSize: 7.5, color: '#CBD5E1' }}>{m}</span>
+            <span key={m} style={{ fontSize: 10, color: '#94A3B8', fontWeight: 600 }}>{m}</span>
           ))}
         </div>
       </div>
